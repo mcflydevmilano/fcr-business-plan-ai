@@ -2,85 +2,55 @@
 FCR General Contractor - AI Business Plan & Rating Platform
 Aetheris Labs - Ing. Lorenzo Di Ferdinando
 
-Dipendenze (requirements.txt):
-    streamlit>=1.40
-    pandas
-    openpyxl
-    xlrd
-    fpdf2>=2.7
-    google-genai
+File dell'applicazione (interfaccia). La logica sta in:
+    core.py      calcoli, scoring, scenari, stress test, covenant, commesse
+    charts.py    grafici
+    exports.py   report PDF / Word / Excel con formule
+    storage.py   salvataggio pratiche e registro dei report (SQLite)
 
 Secrets / variabili d'ambiente:
     APP_PASSWORD     (obbligatoria)
     GEMINI_API_KEY   (opzionale: l'utente puo' inserirne una propria nella sidebar)
     GEMINI_MODEL     (opzionale, default: gemini-3.8-flash)
+    FCR_DB_PATH      (opzionale, percorso del database delle pratiche)
 """
 import hmac
-import io
 import json
 import math
 import os
-import re
 
+import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
-from fpdf import FPDF
-from fpdf.enums import XPos, YPos
-from google import genai
 from google.genai import types
 
-# ----------------------------------------------------------------------------
-# COSTANTI
-# ----------------------------------------------------------------------------
-LOGO_PATH = "aetheris_labs_logo.jpg"
+import ai
+import charts
+import core
+import exports
+import storage
+from core import (
+    COLONNE_COMMESSE, COVENANT_DEFAULT, DATI_DEFAULT, DISCLAIMER, LEVE_DEFAULT, PIANO_DEFAULT,
+    SOGLIE_DEFAULT, fmt_eur, fmt_num, fmt_pct, fmt_x, livello_classe, ratio, to_float,
+)
+
 MAX_LOGIN_ATTEMPTS = 5
 MAX_UPLOAD_MB = 20
 MAX_EXCEL_SHEETS = 8
 MAX_EXCEL_ROWS = 300
+LOGO_PATH = exports.LOGO_PATH
 
-CAMPI_MONETARI = [
-    "ricavi", "ebitda", "utile_netto", "totale_attivo",
-    "patrimonio_netto", "debiti_finanziari_totali", "pfn",
-]
-
-DATI_DEFAULT = {
-    "anno_riferimento": 2025,
-    "ricavi": 2500000.0,
-    "ebitda": 300000.0,
-    "utile_netto": 120000.0,
-    "totale_attivo": 3000000.0,
-    "patrimonio_netto": 800000.0,
-    "debiti_finanziari_totali": 900000.0,
-    "pfn": 600000.0,
-    "dscr_stimato": 1.45,
+ETICHETTE = {
+    "ricavi": "Ricavi delle vendite (EUR)",
+    "ebitda": "EBITDA / MOL (EUR)",
+    "utile_netto": "Utile netto (EUR)",
+    "totale_attivo": "Totale attivo (EUR)",
+    "patrimonio_netto": "Patrimonio netto (EUR)",
+    "debiti_finanziari_totali": "Debiti finanziari totali (EUR)",
+    "pfn": "Posizione finanziaria netta - PFN (EUR)",
+    "dscr_stimato": "DSCR stimato (x)",
 }
-
-PIANO_DEFAULT = {
-    "g_ricavi": 5.0,
-    "g_ebitda": 6.0,
-    "rimborso": 50000.0,
-    "capex": 60000.0,
-    "amm": 100000.0,
-    "aliquota": 27.9,      # IRES 24% + IRAP 3,9% (indicativa)
-    "tasso": 4.5,
-    "ccn_pct": 20.0,
-}
-
-# Soglie del modello di scoring interno (indicativo, NON un rating regolamentare)
-SOGLIE = {
-    "pfn_ebitda": (2.5, 4.5),    # minore = meglio (verde, giallo)
-    "pfn_pn": (1.0, 2.0),        # minore = meglio
-    "equity_ratio": (0.25, 0.15),  # maggiore = meglio
-    "dscr": (1.30, 1.00),        # maggiore = meglio
-}
-
-DISCLAIMER = (
-    "Il presente documento e' una simulazione indicativa basata su un modello di scoring interno e "
-    "su dati forniti dall'utente e/o estratti automaticamente con strumenti di intelligenza artificiale. "
-    "Non costituisce un rating regolamentare ai sensi di Basilea 3/4, ne' un parere di merito creditizio "
-    "di alcun istituto di credito, ne' consulenza finanziaria. I dati devono essere verificati da un "
-    "professionista prima di qualsiasi utilizzo decisionale."
-)
+COL_STORICO = ["anno", "ricavi", "ebitda", "patrimonio_netto", "pfn"]
 
 st.set_page_config(
     page_title="FCR General Contractor | AI Business Plan & Rating Platform",
@@ -126,10 +96,12 @@ st.markdown(
 
 
 # ----------------------------------------------------------------------------
-# UTILITA'
+# UTILITA' DI INTERFACCIA
 # ----------------------------------------------------------------------------
+ss = st.session_state
+
+
 def get_secret(name, default=None):
-    """Legge da st.secrets, poi dalle variabili d'ambiente."""
     try:
         if name in st.secrets:
             return st.secrets[name]
@@ -157,165 +129,33 @@ def show_df(df):
         st.dataframe(df, use_container_width=True, hide_index=True)
 
 
-def fmt_num(x, dec=0):
-    """Formato italiano: 1.234.567,89"""
-    if x is None or (isinstance(x, float) and (math.isnan(x))):
-        return "n.d."
-    if isinstance(x, float) and math.isinf(x):
-        return "n.s."
-    s = f"{x:,.{dec}f}"
-    return s.replace(",", "X").replace(".", ",").replace("X", ".")
-
-
-def fmt_eur(x, dec=0):
-    v = fmt_num(x, dec)
-    return v if v in ("n.d.", "n.s.") else f"{v} EUR"
-
-
-def fmt_x(x):
-    v = fmt_num(x, 2)
-    return v if v in ("n.d.", "n.s.") else f"{v}x"
-
-
-def to_float(v, default=0.0):
-    """Converte numeri o stringhe (anche in formato italiano) in float."""
-    if v is None:
-        return default
-    if isinstance(v, (int, float)):
-        return float(v)
-    s = str(v).strip().replace("€", "").replace("EUR", "").replace(" ", "")
-    if not s:
-        return default
-    neg = s.startswith("(") and s.endswith(")")
-    s = s.strip("()")
-    if "," in s and "." in s:
-        s = s.replace(".", "").replace(",", ".")
-    elif "," in s:
-        s = s.replace(",", ".")
-    elif s.count(".") > 1:
-        s = s.replace(".", "")
+def show_editor(df, **kw):
     try:
-        n = float(s)
-    except ValueError:
-        return default
-    return -n if neg else n
+        return st.data_editor(df, width="stretch", **kw)
+    except Exception:
+        return st.data_editor(df, use_container_width=True, **kw)
 
 
-def normalizza_dati(raw):
-    """Unisce l'output dell'AI ai default, converte i tipi e scala le migliaia."""
-    if isinstance(raw, list) and raw:
-        raw = raw[0]
-    if not isinstance(raw, dict):
-        raise ValueError("Il modello non ha restituito un oggetto JSON valido.")
-
-    in_migliaia = bool(raw.get("valori_in_migliaia", False))
-    dati = dict(DATI_DEFAULT)
-    for k, default in DATI_DEFAULT.items():
-        if k in raw and raw[k] is not None:
-            dati[k] = to_float(raw[k], default)
-    dati["anno_riferimento"] = int(dati["anno_riferimento"]) or DATI_DEFAULT["anno_riferimento"]
-    if in_migliaia:
-        for k in CAMPI_MONETARI:
-            dati[k] *= 1000.0
-    return dati
+def show_fig(fig):
+    st.pyplot(fig, clear_figure=True)
+    plt.close(fig)
 
 
-def valida_dati(d):
-    """Restituisce una lista di avvisi di coerenza."""
-    w = []
-    if d["ricavi"] <= 0:
-        w.append("I ricavi sono nulli o negativi.")
-    if d["ebitda"] > d["ricavi"] > 0:
-        w.append("L'EBITDA supera i ricavi: controlla le unita' (euro o migliaia?).")
-    if d["totale_attivo"] > 0 and d["patrimonio_netto"] > d["totale_attivo"]:
-        w.append("Il patrimonio netto supera il totale attivo.")
-    if d["pfn"] > d["debiti_finanziari_totali"] > 0:
-        w.append("La PFN supera i debiti finanziari totali (possibile solo con liquidita' negativa).")
-    if d["patrimonio_netto"] <= 0:
-        w.append("Patrimonio netto nullo o negativo: situazione di possibile perdita del capitale.")
-    if d["ebitda"] <= 0:
-        w.append("EBITDA nullo o negativo: i rapporti basati sull'EBITDA non sono significativi.")
-    return w
+def slider_k(label, mn, mx, default, step, key):
+    """Slider con chiave: passa il default solo se lo stato non e' gia' impostato."""
+    if key in ss:
+        return st.slider(label, mn, mx, step=step, key=key)
+    return st.slider(label, mn, mx, default, step, key=key)
 
 
-def ratio(num, den):
-    """Rapporto sicuro. Den <= 0 con num > 0 -> inf (non significativo)."""
-    if den > 0:
-        return num / den
-    return math.inf if num > 0 else 0.0
+def number_k(label, mn, mx, default, step, key):
+    if key in ss:
+        return st.number_input(label, mn, mx, step=step, key=key)
+    return st.number_input(label, mn, mx, default, step, key=key)
 
 
-# ----------------------------------------------------------------------------
-# MOTORE DI CALCOLO
-# ----------------------------------------------------------------------------
-def proietta(ricavi0, ebitda0, pfn0, p, anno_base, n=3):
-    """
-    Proiezione pluriennale con free cash flow:
-        FCF  = EBITDA - imposte - capex - interessi - variazione CCN
-        PFN_t = PFN_(t-1) - FCF
-    Il rimborso del debito NON riduce la PFN (usa cassa), ma pesa sul DSCR.
-        DSCR = (EBITDA - imposte - variazione CCN) / (interessi + rimborso)
-    """
-    rows = []
-    r_prev, e, pfn = ricavi0, ebitda0, pfn0
-    for i in range(1, n + 1):
-        r = r_prev * (1 + p["g_ricavi"] / 100.0)
-        e = e * (1 + p["g_ebitda"] / 100.0)
-        interessi = max(pfn, 0.0) * p["tasso"] / 100.0
-        imposte = max(e - p["amm"] - interessi, 0.0) * p["aliquota"] / 100.0
-        d_ccn = p["ccn_pct"] / 100.0 * (r - r_prev)
-        fcf = e - imposte - p["capex"] - interessi - d_ccn
-        pfn_new = pfn - fcf
-        servizio = interessi + p["rimborso"]
-        dscr = (e - imposte - d_ccn) / servizio if servizio > 0 else None
-        rows.append(
-            {
-                "Anno": f"Anno {i} ({int(anno_base) + i})",
-                "Ricavi": r,
-                "EBITDA": e,
-                "FCF": fcf,
-                "PFN": pfn_new,
-                "PFN/EBITDA": ratio(pfn_new, e),
-                "DSCR": dscr,
-            }
-        )
-        r_prev, pfn = r, pfn_new
-    return rows
-
-
-def _punti_min(v, verde, giallo):
-    return 2 if v < verde else (1 if v < giallo else 0)
-
-
-def _punti_max(v, verde, giallo):
-    return 2 if v >= verde else (1 if v >= giallo else 0)
-
-
-def calcola_rating(pfn, ebitda, pn, attivo, dscr):
-    pfn_ebitda = ratio(pfn, ebitda)
-    pfn_pn = ratio(pfn, pn)
-    equity_ratio = pn / attivo if attivo > 0 else 0.0
-
-    punti = _punti_min(pfn_ebitda, *SOGLIE["pfn_ebitda"])
-    punti += _punti_min(pfn_pn, *SOGLIE["pfn_pn"])
-    punti += _punti_max(equity_ratio, *SOGLIE["equity_ratio"])
-    punti += 2 if dscr is None else _punti_max(dscr, *SOGLIE["dscr"])
-
-    if pn <= 0 or ebitda <= 0 or punti < 4:
-        classe = "FASCIA ROSSA - Rischio Elevato / Requisiti di Garanzia"
-    elif punti >= 7:
-        classe = "FASCIA VERDE - Rating Elevato / Bancabile"
-    else:
-        classe = "FASCIA GIALLA - Rating Neutro / Sotto Osservazione"
-
-    return {
-        "pfn_ebitda": pfn_ebitda,
-        "pfn_pn": pfn_pn,
-        "equity_ratio": equity_ratio,
-        "dscr": dscr,
-        "punti": punti,
-        "classe": classe,
-    }
+def classe_breve(classe):
+    return classe.split(" - ")[0].replace("FASCIA ", "")
 
 
 # ----------------------------------------------------------------------------
@@ -326,22 +166,21 @@ def check_password():
     if not expected:
         st.error("⚠️ Configurazione mancante: imposta APP_PASSWORD nei secrets o nelle variabili d'ambiente.")
         return False
-
-    if st.session_state.get("password_correct"):
+    if ss.get("password_correct"):
         return True
 
-    attempts = st.session_state.get("login_attempts", 0)
+    attempts = ss.get("login_attempts", 0)
 
     def password_entered():
-        given = st.session_state.pop("password_input", "")
-        if st.session_state.get("login_attempts", 0) >= MAX_LOGIN_ATTEMPTS:
+        given = ss.pop("password_input", "")
+        if ss.get("login_attempts", 0) >= MAX_LOGIN_ATTEMPTS:
             return
         if hmac.compare_digest(given.encode("utf-8"), str(expected).encode("utf-8")):
-            st.session_state["password_correct"] = True
-            st.session_state["login_attempts"] = 0
+            ss["password_correct"] = True
+            ss["login_attempts"] = 0
         else:
-            st.session_state["password_correct"] = False
-            st.session_state["login_attempts"] = st.session_state.get("login_attempts", 0) + 1
+            ss["password_correct"] = False
+            ss["login_attempts"] = ss.get("login_attempts", 0) + 1
 
     st.markdown("<br><br>", unsafe_allow_html=True)
     _, col2, _ = st.columns([1, 1.2, 1])
@@ -360,7 +199,7 @@ def check_password():
             st.error("Troppi tentativi. Ricarica la pagina piu' tardi.")
         else:
             st.text_input("Password di Accesso:", type="password", on_change=password_entered, key="password_input")
-            if st.session_state.get("password_correct") is False:
+            if ss.get("password_correct") is False:
                 st.error("😕 Password errata. Riprova.")
     return False
 
@@ -373,227 +212,178 @@ if not check_password():
 # AI (google-genai)
 # ----------------------------------------------------------------------------
 MODEL_NAME = get_secret("GEMINI_MODEL", "gemini-3.8-flash")
-# Alias di ripiego se il modello principale non e' disponibile (errore 404)
 FALLBACK_MODELS = ["gemini-flash-latest"]
 SERVER_API_KEY = get_secret("GEMINI_API_KEY", "")
 
 
 def ai_generate(api_key, contents, json_mode=False, temperature=0.2):
-    client = genai.Client(api_key=api_key)
-    cfg = types.GenerateContentConfig(
-        temperature=temperature,
-        response_mime_type="application/json" if json_mode else "text/plain",
-    )
-    res, last_err = None, None
-    for model in [MODEL_NAME] + [m for m in FALLBACK_MODELS if m != MODEL_NAME]:
-        try:
-            res = client.models.generate_content(model=model, contents=contents, config=cfg)
-            break
-        except Exception as e:
-            last_err = e
-            if "404" not in str(e) and "NOT_FOUND" not in str(e):
-                raise
-    if res is None:
-        raise last_err
-    try:
-        text = res.text
-    except Exception:
-        text = None
-    if not text:
-        raise RuntimeError("Risposta vuota o bloccata dal modello. Riprova.")
-    return text
+    return ai.genera(api_key, contents, MODEL_NAME, FALLBACK_MODELS, json_mode, temperature)
 
 
-def pulisci_testo_ia(testo):
-    """Rimuove markdown residuo."""
-    if not testo:
-        return ""
-    t = testo.replace("```", "").replace("`", "")
-    t = re.sub(r"^\s{0,3}#{1,6}\s*", "", t, flags=re.MULTILINE)
-    t = t.replace("**", "").replace("__", "")
-    return t.strip()
+pulisci_testo_ia = ai.pulisci_testo
 
 
 PROMPT_ESTRAZIONE = (
-    "Sei un analista fidi esperto. Dal bilancio fornito estrai i dati contabili dell'ultimo esercizio "
-    "e restituisci ESCLUSIVAMENTE un oggetto JSON con queste chiavi: anno_riferimento (intero), "
-    "ricavi, ebitda, utile_netto, totale_attivo, patrimonio_netto, debiti_finanziari_totali, pfn, "
-    "dscr_stimato (numeri, senza separatori delle migliaia e con il punto come separatore decimale), "
-    "valori_in_migliaia (true se gli importi del documento sono espressi in migliaia di euro, altrimenti false). "
+    "Sei un analista fidi esperto. Dal bilancio fornito estrai i dati dell'ultimo esercizio e restituisci "
+    "ESCLUSIVAMENTE un oggetto JSON con queste chiavi: anno_riferimento (intero), ricavi, ebitda, utile_netto, "
+    "totale_attivo, patrimonio_netto, debiti_finanziari_totali, pfn, dscr_stimato (numeri, senza separatori delle "
+    "migliaia e con il punto come separatore decimale), valori_in_migliaia (true se gli importi del documento sono "
+    "espressi in migliaia di euro, altrimenti false), storico (array degli ESERCIZI PRECEDENTI presenti nel documento, "
+    "ciascuno {anno, ricavi, ebitda, patrimonio_netto, pfn}; array vuoto se assenti), fonti (oggetto con una chiave per "
+    "ciascun dato sopra, il cui valore e' una breve indicazione di dove l'hai letto, es. 'pag. 4 - Conto economico, "
+    "voce A1' oppure 'foglio Bilancio, cella B12'; stringa vuota se il dato non e' reperibile). "
+    "Se l'EBITDA non e' esposto calcolalo (valore della produzione - costi della produzione + ammortamenti e "
+    "svalutazioni) e scrivilo nella fonte. La PFN e' debiti finanziari meno disponibilita' liquide. "
     "Riporta gli importi ESATTAMENTE come nel documento, senza convertire le unita'. "
     "Se un dato non e' reperibile usa null."
 )
 
 
-# ----------------------------------------------------------------------------
-# PDF
-# ----------------------------------------------------------------------------
-def pdf_safe(text):
-    """Sostituisce i caratteri non latin-1 per i font core di FPDF."""
-    if text is None:
-        return ""
-    rep = {
-        "€": "EUR", "–": "-", "—": "-", "’": "'", "‘": "'", "“": '"', "”": '"',
-        "…": "...", "•": "-", "≥": ">=", "≤": "<=", "→": "->",
-    }
-    for k, v in rep.items():
-        text = text.replace(k, v)
-    return text.encode("latin-1", "replace").decode("latin-1")
-
-
-class PDFReport(FPDF):
-    def header(self):
-        self.set_fill_color(15, 23, 42)
-        self.rect(0, 0, 210, 26, "F")
-        if os.path.exists(LOGO_PATH):
-            try:
-                self.image(LOGO_PATH, 10, 4, 18)
-            except Exception:
-                pass
-        self.set_font("Helvetica", "B", 10)
-        self.set_text_color(255, 255, 255)
-        self.set_xy(32, 6)
-        self.cell(0, 6, "FCR GENERAL CONTRACTOR - RISK MANAGEMENT REPORT", align="L")
-        self.set_font("Helvetica", "", 8)
-        self.set_xy(32, 13)
-        self.cell(0, 6, "Powered by Aetheris Labs | Lead Eng: Ing. Lorenzo Di Ferdinando", align="L")
-        self.set_y(32)
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font("Helvetica", "I", 8)
-        self.set_text_color(128, 128, 128)
-        self.cell(0, 10, f"Pagina {self.page_no()} - FCR General Contractor / Aetheris Labs", align="C")
-
-
-def _row(pdf, cells, widths, aligns, fill=False, h=6):
-    """Riga di tabella con celle affiancate."""
-    for i, (txt, w, a) in enumerate(zip(cells, widths, aligns)):
-        last = i == len(cells) - 1
-        pdf.cell(
-            w, h, pdf_safe(txt), border=1, align=a, fill=fill,
-            new_x=XPos.LMARGIN if last else XPos.RIGHT,
-            new_y=YPos.NEXT if last else YPos.TOP,
-        )
-
-
-def _titolo(pdf, txt):
-    pdf.set_font("Helvetica", "B", 11)
-    pdf.set_text_color(15, 23, 42)
-    pdf.cell(0, 7, pdf_safe(txt), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-
-
-def genera_pdf_report(base, scen, rating, piano, relazione, dati_demo):
-    pdf = PDFReport()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
-
-    pdf.set_font("Helvetica", "B", 15)
-    pdf.set_text_color(15, 23, 42)
-    pdf.cell(0, 8, "VALUTAZIONE DEL MERITO DI CREDITO E BUSINESS PLAN", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.set_font("Helvetica", "I", 10)
-    pdf.set_text_color(100, 100, 100)
-    pdf.cell(
-        0, 6, "Analisi indicativa, scoring prospettico e parere per il Comitato Fidi",
-        new_x=XPos.LMARGIN, new_y=YPos.NEXT,
+def prompt_relazione(ctx):
+    base, scen, rating = ctx["dati"], ctx["scen"], ctx["rating"]
+    piano_txt = "\n".join(
+        f"- {r['Anno']}: ricavi {fmt_num(r['Ricavi'])} EUR, EBITDA {fmt_num(r['EBITDA'])} EUR, FCF {fmt_num(r['FCF'])} EUR, "
+        f"PFN {fmt_num(r['PFN'])} EUR, PFN/EBITDA {fmt_x(r['PFN/EBITDA'])}, "
+        f"DSCR {fmt_x(r['DSCR']) if r['DSCR'] is not None else 'n.d.'}"
+        for r in ctx["piano"]
     )
-    pdf.ln(2)
-
-    if dati_demo:
-        pdf.set_font("Helvetica", "B", 9)
-        pdf.set_text_color(185, 28, 28)
-        pdf.multi_cell(
-            0, 5,
-            pdf_safe("ATTENZIONE: il report e' basato su dati di esempio non verificati."),
-            new_x=XPos.LMARGIN, new_y=YPos.NEXT,
-        )
-        pdf.ln(1)
-
-    # 1. Sintesi
-    _titolo(pdf, f"1. Sintesi Indicatori (anno base {int(base['anno_riferimento'])}) - Base vs Scenario")
-    w, al = [80, 50, 50], ["L", "R", "R"]
-    pdf.set_font("Helvetica", "B", 9)
-    pdf.set_fill_color(30, 41, 59)
-    pdf.set_text_color(255, 255, 255)
-    _row(pdf, ["  Parametro", "Base  ", "Scenario  "], w, al, fill=True, h=7)
-
-    dscr1 = rating["dscr"]
-    righe = [
-        ("Ricavi delle Vendite", fmt_eur(base["ricavi"]), fmt_eur(scen["ricavi"])),
-        ("EBITDA (MOL)", fmt_eur(base["ebitda"]), fmt_eur(scen["ebitda"])),
-        ("Patrimonio Netto", fmt_eur(base["patrimonio_netto"]), fmt_eur(scen["pn"])),
-        ("Posizione Finanziaria Netta", fmt_eur(base["pfn"]), fmt_eur(scen["pfn"])),
-        ("PFN / EBITDA", fmt_x(ratio(base["pfn"], base["ebitda"])), fmt_x(rating["pfn_ebitda"])),
-        ("PFN / Patrimonio Netto", fmt_x(ratio(base["pfn"], base["patrimonio_netto"])), fmt_x(rating["pfn_pn"])),
-        (
-            "Patrimonio Netto / Totale Attivo",
-            fmt_num(100 * base["patrimonio_netto"] / base["totale_attivo"], 1) + "%" if base["totale_attivo"] > 0 else "n.d.",
-            fmt_num(100 * rating["equity_ratio"], 1) + "%",
-        ),
-        ("DSCR (Anno 1 del piano)", "-", fmt_x(dscr1) if dscr1 is not None else "n.d."),
-        ("Punteggio scoring (max 8)", "-", str(rating["punti"])),
-    ]
-    pdf.set_font("Helvetica", "", 9)
-    fill = False
-    for lab, a, b in righe:
-        pdf.set_text_color(0, 0, 0)
-        pdf.set_fill_color(*((241, 245, 249) if fill else (255, 255, 255)))
-        _row(pdf, ["  " + lab, a + "  ", b + "  "], w, al, fill=True)
-        fill = not fill
-    pdf.set_font("Helvetica", "B", 9)
-    pdf.set_text_color(0, 0, 0)
-    pdf.cell(
-        0, 7, pdf_safe("Giudizio stimato (scenario): " + rating["classe"]),
-        new_x=XPos.LMARGIN, new_y=YPos.NEXT,
+    punti_txt = "; ".join(f"{d['indicatore']}: {core.fmt_num(d['valore'], 2) if d['valore'] is not None else 'n.d.'} -> {d['punti']}/2"
+                          for d in rating["dettaglio"])
+    stress_txt = "\n".join(
+        f"- {s['Caso']}: PFN/EBITDA a fine piano {fmt_x(s['PFN/EBITDA anno 3'])}, "
+        f"DSCR minimo {fmt_x(s['DSCR minimo']) if s['DSCR minimo'] is not None else 'n.d.'}, fascia {s['Fascia']}"
+        for s in ctx["stress"]
     )
-    pdf.ln(3)
-
-    # 2. Piano
-    _titolo(pdf, "2. Proiezioni Economico-Finanziarie Pluriennali (partendo dallo scenario)")
-    w2 = [42, 30, 30, 30, 30, 28]
-    al2 = ["L", "R", "R", "R", "R", "R"]
-    pdf.set_font("Helvetica", "B", 8)
-    pdf.set_fill_color(30, 41, 59)
-    pdf.set_text_color(255, 255, 255)
-    _row(pdf, ["  Anno", "Ricavi", "EBITDA", "FCF", "PFN", "PFN/EBITDA"], w2, al2, fill=True, h=7)
-    pdf.set_font("Helvetica", "", 8)
-    pdf.set_text_color(0, 0, 0)
-    for r in piano:
-        _row(
-            pdf,
-            ["  " + r["Anno"], fmt_num(r["Ricavi"]), fmt_num(r["EBITDA"]), fmt_num(r["FCF"]),
-             fmt_num(r["PFN"]), fmt_x(r["PFN/EBITDA"])],
-            w2, al2,
+    cov_txt = "; ".join(f"{c['Anno']}: leva {c['Esito leva']}, DSCR {c['Esito DSCR']}" for c in ctx["cov_res"])
+    storico_txt = ""
+    if ctx["storico"]:
+        storico_txt = "STORICO: " + "; ".join(
+            f"{r['anno']}: ricavi {fmt_num(r['ricavi'])}, EBITDA {fmt_num(r['ebitda'])}, PN {fmt_num(r['patrimonio_netto'])}, PFN {fmt_num(r['pfn'])}"
+            for r in ctx["storico"]
+        ) + "\n"
+    k = ctx.get("commesse_kpi")
+    comm_txt = ""
+    if k:
+        comm_txt = (
+            f"PORTAFOGLIO COMMESSE: {k['n_commesse']} commesse, importo {fmt_num(k['importo_totale'])} EUR, backlog "
+            f"{fmt_num(k['backlog'])} EUR, margine medio sul backlog {fmt_num(k['margine_backlog_pct'], 1)}%, primo cliente "
+            f"{fmt_num(k['top1_pct'], 0)}% e primi tre {fmt_num(k['top3_pct'], 0)}% del totale, crediti {fmt_num(k['crediti'])} EUR, "
+            f"produzione non fatturata {fmt_num(k['da_fatturare'])} EUR.\n"
         )
-    pdf.set_font("Helvetica", "I", 8)
-    pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 5, "Importi in EUR. FCF = EBITDA - imposte - capex - interessi - variazione CCN.",
-             new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.ln(3)
-
-    # 3. Relazione
-    _titolo(pdf, "3. Relazione e Parere del Risk Management")
-    pdf.set_font("Helvetica", "", 9)
-    pdf.set_text_color(50, 50, 50)
-    pdf.multi_cell(0, 5, pdf_safe(relazione), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.ln(4)
-
-    # Disclaimer
-    pdf.set_font("Helvetica", "I", 8)
-    pdf.set_text_color(100, 100, 100)
-    pdf.multi_cell(0, 4, pdf_safe("Avvertenza: " + DISCLAIMER), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-
-    return bytes(pdf.output())
+    return (
+        "Agisci come Risk Manager e redigi una relazione formale per il Comitato di Credito.\n"
+        f"DATI ANNO BASE ({int(base['anno_riferimento'])}): ricavi {fmt_num(base['ricavi'])} EUR, EBITDA {fmt_num(base['ebitda'])} EUR, "
+        f"utile netto {fmt_num(base['utile_netto'])} EUR, totale attivo {fmt_num(base['totale_attivo'])} EUR, patrimonio netto "
+        f"{fmt_num(base['patrimonio_netto'])} EUR, debiti finanziari {fmt_num(base['debiti_finanziari_totali'])} EUR, PFN {fmt_num(base['pfn'])} EUR.\n"
+        f"{storico_txt}"
+        f"SCENARIO: EBITDA {fmt_num(scen['ebitda'])} EUR, PFN {fmt_num(scen['pfn'])} EUR, PN {fmt_num(scen['pn'])} EUR. "
+        f"Indicatori: {punti_txt}. Punteggio {rating['punti']}/8, giudizio del modello interno: {rating['classe']}.\n"
+        f"PIANO TRIENNALE:\n{piano_txt}\n"
+        f"COVENANT (PFN/EBITDA max {fmt_x(ctx['covenant']['pfn_ebitda_max'])}, DSCR min {fmt_x(ctx['covenant']['dscr_min'])}): {cov_txt}\n"
+        f"STRESS TEST:\n{stress_txt}\n"
+        f"{comm_txt}\n"
+        "Struttura: 1. Solvibilita' e struttura finanziaria. 2. Punti di forza e criticita'. 3. Sostenibilita' del piano "
+        "pluriennale e tenuta negli stress test. 4. Raccomandazioni. "
+        "Usa SOLO i dati forniti e riportali con le stesse cifre; non inventare numeri ne' stime. Precisa che e' una "
+        "valutazione indicativa e non un rating regolamentare. Scrivi in italiano, in testo semplice senza markdown."
+    )
 
 
 # ----------------------------------------------------------------------------
 # STATO
 # ----------------------------------------------------------------------------
-if "financial_data" not in st.session_state:
-    st.session_state["financial_data"] = dict(DATI_DEFAULT)
-    st.session_state["dati_demo"] = True
+def storico_to_df(lst):
+    df = pd.DataFrame(lst or [], columns=COL_STORICO)
+    return df.astype({c: "float64" for c in COL_STORICO})
 
-dati = st.session_state["financial_data"]
+
+def df_to_storico(df, anno_base):
+    out = {}
+    for _, r in df.iterrows():
+        anno = to_float(r.get("anno"), 0)
+        if 1900 <= anno < anno_base:
+            out[int(anno)] = {"anno": int(anno), **{k: to_float(r.get(k), 0.0) for k in COL_STORICO[1:]}}
+    return [out[a] for a in sorted(out)]
+
+
+def commesse_df_pulito(df):
+    d = pd.DataFrame(df if df is not None else [], columns=COLONNE_COMMESSE).copy()
+    for c in ("Importo", "Avanzamento_pct", "Fatturato", "Incassato", "Margine_pct"):
+        d[c] = pd.to_numeric(d[c], errors="coerce").astype("float64")
+    for c in ("Commessa", "Cliente"):
+        d[c] = d[c].astype("object").where(d[c].notna(), "")
+    return d
+
+
+def imposta_dati(dati, storico, demo=False):
+    ss["financial_data"] = dati
+    ss["storico_base"] = storico_to_df(storico)
+    ss["storico_ver"] = ss.get("storico_ver", 0) + 1
+    ss["storico"] = storico
+    ss["dati_demo"] = demo
+    ss.pop("report", None)
+    ss.pop("excel", None)
+
+
+def imposta_commesse(df):
+    d = commesse_df_pulito(df)
+    ss["commesse_base"] = d
+    ss["commesse_ver"] = ss.get("commesse_ver", 0) + 1
+    ss["commesse"] = d
+
+
+if "financial_data" not in ss:
+    ss["financial_data"] = dict(DATI_DEFAULT)
+    ss["dati_demo"] = True
+    ss["storico"] = []
+    ss["storico_base"] = storico_to_df([])
+    ss["storico_ver"] = 0
+    ss["scenari"] = {}
+    imposta_commesse(commesse_df_pulito(core.commesse_vuote().iloc[0:0]))
+
+# Valori di widget da applicare PRIMA che i widget vengano creati (carica pratica / scenario)
+if "_pending" in ss:
+    for _k, _v in ss.pop("_pending").items():
+        ss[_k] = _v
+
+dati = ss["financial_data"]
+leve = {k: ss.get(k, 0) for k in LEVE_DEFAULT}
+piano_par = {k: ss.get(f"piano_{k}", v) for k, v in PIANO_DEFAULT.items()}
+soglie = {k: (ss.get(f"soglia_{k}_v", v[0]), ss.get(f"soglia_{k}_g", v[1])) for k, v in SOGLIE_DEFAULT.items()}
+cov = {
+    "pfn_ebitda_max": ss.get("cov_lev", COVENANT_DEFAULT["pfn_ebitda_max"]),
+    "dscr_min": ss.get("cov_dscr", COVENANT_DEFAULT["dscr_min"]),
+}
+res = core.esegui_scenario(dati, leve, piano_par, soglie)
+res_base = core.esegui_scenario(dati, LEVE_DEFAULT, piano_par, soglie)
+scen, piano, rating = res["scen"], res["piano"], res["rating"]
+
+
+def payload_pratica():
+    return {
+        "dati": ss["financial_data"], "storico": ss["storico"],
+        "commesse": commesse_df_pulito(ss["commesse"]).to_dict("records"),
+        "scenari": ss["scenari"], "leve": leve, "piano_par": piano_par,
+        "soglie": {k: list(v) for k, v in soglie.items()}, "covenant": cov, "dati_demo": ss["dati_demo"],
+    }
+
+
+def applica_payload(p, nome):
+    imposta_dati({**DATI_DEFAULT, **p.get("dati", {})}, p.get("storico", []), p.get("dati_demo", False))
+    imposta_commesse(pd.DataFrame(p.get("commesse") or [], columns=COLONNE_COMMESSE))
+    ss["scenari"] = p.get("scenari", {})
+    pend = {"pratica_nome": nome}
+    for k in LEVE_DEFAULT:
+        pend[k] = int(p.get("leve", {}).get(k, 0))
+    for k, v in PIANO_DEFAULT.items():
+        pend[f"piano_{k}"] = float(p.get("piano_par", {}).get(k, v))
+    for k, (v, g) in SOGLIE_DEFAULT.items():
+        s = p.get("soglie", {}).get(k, [v, g])
+        pend[f"soglia_{k}_v"], pend[f"soglia_{k}_g"] = float(s[0]), float(s[1])
+    c = p.get("covenant", COVENANT_DEFAULT)
+    pend["cov_lev"], pend["cov_dscr"] = float(c["pfn_ebitda_max"]), float(c["dscr_min"])
+    ss["_pending"] = pend
+
 
 # ----------------------------------------------------------------------------
 # INTESTAZIONE E SIDEBAR
@@ -616,47 +406,53 @@ with st.sidebar:
     st.markdown("<p style='text-align:center;margin-bottom:2px;'>🛠️ <b>Sviluppato da</b></p>", unsafe_allow_html=True)
     st.markdown("<h4 style='text-align:center;color:#38bdf8;margin:0;'>Ing. Lorenzo Di Ferdinando</h4>", unsafe_allow_html=True)
     st.markdown("<p style='text-align:center;color:#94a3b8;font-size:0.85rem;'>FCR General Contractor</p>", unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("---")
+
+    st.markdown("#### 📁 Pratica")
+    st.text_input("Nome pratica", key="pratica_nome", placeholder="es. Rossi Costruzioni 2025")
+    if st.button("💾 Salva pratica", width="stretch"):
+        try:
+            storage.salva_pratica(ss.get("pratica_nome", ""), payload_pratica())
+            st.success("Pratica salvata.")
+        except Exception as e:
+            st.error(f"Impossibile salvare: {e}")
+    try:
+        elenco = storage.elenca_pratiche()
+    except Exception as e:
+        elenco = []
+        st.error(f"Database non disponibile: {e}")
+    if elenco:
+        scelta = st.selectbox("Pratiche salvate", [p["nome"] for p in elenco],
+                              format_func=lambda n: f"{n}  ({next(p['aggiornato'] for p in elenco if p['nome'] == n)[:16]})")
+        c1, c2 = st.columns(2)
+        if c1.button("📂 Carica", width="stretch"):
+            payload = storage.carica_pratica(scelta)
+            if payload:
+                applica_payload(payload, scelta)
+                st.rerun()
+        if c2.button("🗑️ Elimina", width="stretch"):
+            storage.elimina_pratica(scelta)
+            st.rerun()
+    st.caption("Il database e' un file locale: su hosting con disco temporaneo (es. Streamlit Cloud) i salvataggi "
+               "si perdono al riavvio. Imposta FCR_DB_PATH su un volume persistente.")
+    st.markdown("---")
 
     user_api_key = st.text_input("Gemini API Key personale (opzionale)", value="", type="password")
     active_key = user_api_key.strip() or SERVER_API_KEY
     if active_key:
         st.info("Motore AI attivo per estrazione dati e relazione.")
     else:
-        st.warning("Nessuna chiave API: inseriscila qui per usare le funzioni AI.")
-
-# ----------------------------------------------------------------------------
-# CALCOLO SCENARIO E PIANO (unica fonte di verita' per tab 2, 3 e 4)
-# ----------------------------------------------------------------------------
-ss = st.session_state
-delta_pfn = ss.get("delta_pfn", 0)
-delta_pn = ss.get("delta_pn", 0)
-delta_ebitda = ss.get("delta_ebitda", 0)
-piano_par = {k: ss.get(f"piano_{k}", v) for k, v in PIANO_DEFAULT.items()}
-
-scen = {
-    "ricavi": dati["ricavi"],
-    "ebitda": dati["ebitda"] + delta_ebitda,
-    "pfn": dati["pfn"] + delta_pfn - delta_pn,   # l'aumento di capitale riduce il debito netto
-    "pn": dati["patrimonio_netto"] + delta_pn,
-    "attivo": dati["totale_attivo"] + delta_pn,
-}
-piano = proietta(scen["ricavi"], scen["ebitda"], scen["pfn"], piano_par, dati["anno_riferimento"])
-dscr_anno1 = piano[0]["DSCR"]
-rating = calcola_rating(scen["pfn"], scen["ebitda"], scen["pn"], scen["attivo"], dscr_anno1)
-rating_base = calcola_rating(
-    dati["pfn"], dati["ebitda"], dati["patrimonio_netto"], dati["totale_attivo"], None
-)
+        st.warning("Nessuna chiave API: le funzioni AI non sono disponibili (grafici, Excel e calcoli si').")
 
 # ----------------------------------------------------------------------------
 # TABS
 # ----------------------------------------------------------------------------
-tab1, tab2, tab3, tab4 = st.tabs(
-    ["📂 1. Acquisizione Dati", "⚡ 2. Simulatore What-If", "📈 3. Business Plan Pluriennale", "📑 4. Report PDF"]
+tab_dati, tab_comm, tab_sim, tab_piano, tab_scen, tab_rep = st.tabs(
+    ["📂 1. Dati", "🏗️ 2. Commesse", "⚡ 3. Simulatore", "📈 4. Piano e Grafici", "🔀 5. Scenari", "📑 6. Report"]
 )
 
-# --- TAB 1 -------------------------------------------------------------------
-with tab1:
+# =============================== TAB 1: DATI ==================================
+with tab_dati:
     st.subheader("Importazione Bilancio Aziendale (PDF o Excel)")
     if ss.get("dati_demo"):
         st.warning("⚠️ Stai usando **dati di esempio non verificati**. Carica un bilancio o inserisci i dati reali.")
@@ -665,10 +461,8 @@ with tab1:
 
     if mode == "Upload File (PDF o Excel)":
         uploaded = st.file_uploader("Trascina qui il bilancio (.pdf, .xlsx, .xls)", type=["pdf", "xlsx", "xls"])
-        st.caption(
-            "I dati del bilancio vengono inviati al servizio Gemini. Verifica il piano utilizzato e la "
-            "conformita' GDPR prima di caricare documenti di clienti."
-        )
+        st.caption("I dati del bilancio vengono inviati al servizio Gemini. Verifica il piano utilizzato e la "
+                   "conformita' GDPR prima di caricare documenti di clienti.")
         if uploaded and st.button("🚀 Estrai Dati Contabili con AI", type="primary"):
             if not active_key:
                 st.error("Inserisci la chiave API Gemini nella sidebar.")
@@ -679,10 +473,8 @@ with tab1:
                 with st.spinner("Elaborazione dati contabili in corso..."):
                     try:
                         if name.endswith(".pdf"):
-                            contents = [
-                                PROMPT_ESTRAZIONE,
-                                types.Part.from_bytes(data=uploaded.getvalue(), mime_type="application/pdf"),
-                            ]
+                            contents = [PROMPT_ESTRAZIONE,
+                                        types.Part.from_bytes(data=uploaded.getvalue(), mime_type="application/pdf")]
                         else:
                             engine = "xlrd" if name.endswith(".xls") else "openpyxl"
                             xls = pd.ExcelFile(uploaded, engine=engine)
@@ -691,14 +483,10 @@ with tab1:
                                 df = pd.read_excel(xls, sheet_name=sheet, header=None).head(MAX_EXCEL_ROWS)
                                 testo += f"\n--- Foglio: {sheet} ---\n" + df.to_string(index=False, header=False)
                             contents = [PROMPT_ESTRAZIONE, testo]
-
-                        raw_txt = ai_generate(active_key, contents, json_mode=True, temperature=0.0)
-                        nuovi = normalizza_dati(json.loads(raw_txt))
-                        ss["financial_data"] = nuovi
-                        ss["dati_demo"] = False
-                        ss.pop("report", None)
-                        st.success("Dati estratti con successo. Verificali prima di procedere.")
-                        st.rerun()
+                        raw_txt, _usato = ai_generate(active_key, contents, json_mode=True, temperature=0.0)
+                        d_n, s_n, f_n = core.normalizza_estrazione(json.loads(raw_txt))
+                        ss["bozza"] = {"dati": d_n, "storico": s_n, "fonti": f_n}
+                        ss["bozza_ver"] = ss.get("bozza_ver", 0) + 1
                     except json.JSONDecodeError:
                         st.error("Il modello non ha restituito un JSON valido. Riprova.")
                     except Exception as e:
@@ -717,163 +505,369 @@ with tab1:
             pn_in = st.number_input("Patrimonio Netto", value=float(dati["patrimonio_netto"]))
             deb_in = st.number_input("Debiti Finanziari Totali", value=float(dati["debiti_finanziari_totali"]))
             pfn_in = st.number_input("Posizione Finanziaria Netta (PFN)", value=float(dati["pfn"]))
-
         if st.button("Aggiorna Dati Inseriti"):
-            k = 1000.0 if in_migliaia else 1.0
-            ss["financial_data"] = {
-                **dati,
-                "anno_riferimento": int(anno_in),
-                "ricavi": ricavi_in * k,
-                "ebitda": ebitda_in * k,
-                "utile_netto": utile_in * k,
-                "totale_attivo": attivo_in * k,
-                "patrimonio_netto": pn_in * k,
-                "debiti_finanziari_totali": deb_in * k,
-                "pfn": pfn_in * k,
+            kk = 1000.0 if in_migliaia else 1.0
+            nuovi = {
+                **dati, "anno_riferimento": int(anno_in), "ricavi": ricavi_in * kk, "ebitda": ebitda_in * kk,
+                "utile_netto": utile_in * kk, "totale_attivo": attivo_in * kk, "patrimonio_netto": pn_in * kk,
+                "debiti_finanziari_totali": deb_in * kk, "pfn": pfn_in * kk,
             }
-            ss["dati_demo"] = False
-            ss.pop("report", None)
-            st.success("Dati aggiornati con successo.")
+            imposta_dati(nuovi, [r for r in ss["storico"] if r["anno"] < nuovi["anno_riferimento"]])
             st.rerun()
 
-    for avviso in valida_dati(dati):
-        st.warning(f"⚠️ {avviso}")
+    # ---- Verifica dei dati estratti (conferma campo per campo) ---------------
+    bozza = ss.get("bozza")
+    if bozza:
+        st.markdown("### ✍️ Verifica i dati estratti prima di applicarli")
+        st.caption("Confronta ogni valore con la fonte indicata dall'AI e correggi dove serve. "
+                   "I campi 'NON TROVATO' contengono valori di esempio da sostituire.")
+        ver = ss.get("bozza_ver", 0)
+        anno_b = st.number_input("Anno di riferimento", min_value=1990, max_value=2100,
+                                 value=int(bozza["dati"]["anno_riferimento"]), step=1, key=f"bozza_anno_{ver}")
+        chiavi = [k for k in DATI_DEFAULT if k != "anno_riferimento"]
+        df_b = pd.DataFrame(
+            {"Campo": [ETICHETTE[k] for k in chiavi],
+             "Valore": [float(bozza["dati"][k]) for k in chiavi],
+             "Fonte indicata dall'AI": [bozza["fonti"].get(k, "") for k in chiavi]},
+            index=chiavi,
+        )
+        ed_b = show_editor(
+            df_b, key=f"ed_bozza_{ver}", disabled=["Campo", "Fonte indicata dall'AI"],
+            column_config={"Valore": st.column_config.NumberColumn(format="%.2f")},
+        )
+        st.markdown("**Esercizi precedenti rilevati (opzionale, modificabili):**")
+        ed_s = show_editor(
+            storico_to_df(bozza["storico"]), key=f"ed_bozza_storico_{ver}", num_rows="dynamic",
+            column_config={"anno": st.column_config.NumberColumn("Anno", format="%.0f"),
+                           **{k: st.column_config.NumberColumn(k, format="%.0f") for k in COL_STORICO[1:]}},
+        )
+        nuovi = dict(DATI_DEFAULT)
+        for k in chiavi:
+            nuovi[k] = to_float(ed_b.loc[k, "Valore"], DATI_DEFAULT[k])
+        nuovi["anno_riferimento"] = int(anno_b)
+        for a in core.valida_dati(nuovi):
+            st.warning(f"⚠️ {a}")
+        cb1, cb2 = st.columns(2)
+        if cb1.button("✅ Conferma e applica", type="primary"):
+            imposta_dati(nuovi, df_to_storico(ed_s, nuovi["anno_riferimento"]))
+            ss.pop("bozza", None)
+            st.rerun()
+        if cb2.button("Annulla"):
+            ss.pop("bozza", None)
+            st.rerun()
 
+    # ---- Storico ---------------------------------------------------------------
+    with st.expander("📚 Storico esercizi precedenti (per vedere il trend)", expanded=False):
+        st.caption("Inserisci fino a 3-4 esercizi precedenti all'anno base. Sono usati nei grafici e nei report.")
+        ed_st = show_editor(
+            ss["storico_base"], key=f"ed_storico_{ss['storico_ver']}", num_rows="dynamic",
+            column_config={"anno": st.column_config.NumberColumn("Anno", format="%.0f"),
+                           **{k: st.column_config.NumberColumn(k, format="%.0f") for k in COL_STORICO[1:]}},
+        )
+        ss["storico"] = df_to_storico(ed_st, int(dati["anno_riferimento"]))
+
+    for avviso in core.valida_dati(dati):
+        st.warning(f"⚠️ {avviso}")
     st.markdown("### 📊 Stato Attuale del Dataset")
     st.json(dati)
 
-# --- TAB 2 -------------------------------------------------------------------
-with tab2:
+# ============================= TAB 2: COMMESSE ================================
+with tab_comm:
+    st.subheader("🏗️ Portafoglio commesse e lavori in corso")
+    st.caption("Inserisci le commesse in corso: importo contrattuale, avanzamento (%), SAL fatturati e incassati, "
+               "margine atteso. Il portafoglio entra nei report e nella relazione.")
+    ed_c = show_editor(
+        ss["commesse_base"], key=f"ed_commesse_{ss['commesse_ver']}", num_rows="dynamic",
+        column_config={
+            "Commessa": st.column_config.TextColumn("Commessa"),
+            "Cliente": st.column_config.TextColumn("Cliente"),
+            "Importo": st.column_config.NumberColumn("Importo contratto (EUR)", format="%.0f", min_value=0),
+            "Avanzamento_pct": st.column_config.NumberColumn("Avanzamento (%)", format="%.1f", min_value=0, max_value=100),
+            "Fatturato": st.column_config.NumberColumn("Fatturato SAL (EUR)", format="%.0f", min_value=0),
+            "Incassato": st.column_config.NumberColumn("Incassato (EUR)", format="%.0f", min_value=0),
+            "Margine_pct": st.column_config.NumberColumn("Margine atteso (%)", format="%.1f"),
+        },
+    )
+    ss["commesse"] = commesse_df_pulito(ed_c)
+    kpi_c, per_cli = core.analisi_commesse(ss["commesse"], dati["ricavi"])
+    if kpi_c is None:
+        st.info("Nessuna commessa inserita (aggiungi almeno una riga con importo > 0).")
+    else:
+        m = st.columns(4)
+        m[0].metric("Backlog residuo", fmt_eur(kpi_c["backlog"]))
+        m[1].metric("Copertura ricavi", fmt_x(kpi_c["copertura_ricavi"]) if kpi_c["copertura_ricavi"] is not None else "n.d.")
+        m[2].metric("Margine medio backlog", fmt_pct(kpi_c["margine_backlog_pct"]))
+        m[3].metric("Primo cliente", fmt_pct(kpi_c["top1_pct"], 0))
+        m2 = st.columns(3)
+        m2[0].metric("Crediti da commesse", fmt_eur(kpi_c["crediti"]))
+        m2[1].metric("Prodotto non fatturato", fmt_eur(kpi_c["da_fatturare"]),
+                     help="Negativo = fatturato in eccesso rispetto all'avanzamento (anticipi).")
+        m2[2].metric("Primi 3 clienti", fmt_pct(kpi_c["top3_pct"], 0))
+        if kpi_c["top1_pct"] > 40:
+            st.warning("⚠️ Forte concentrazione su un solo cliente: rischio di dipendenza.")
+        show_fig(charts.fig_commesse(per_cli, "dark"))
+
+# ============================ TAB 3: SIMULATORE ===============================
+with tab_sim:
     st.subheader("🎯 Simulatore di Scoring e Ottimizzazione")
     col1, col2 = st.columns([1, 2])
-
     with col1:
         st.markdown("#### ⚙️ Leve Strategiche")
-        st.slider("Variazione Debito Netto - PFN (€)", -500000, 500000, 0, 25000, key="delta_pfn")
-        st.slider("Iniezione Capitale / Mezzi Propri (€)", 0, 500000, 0, 25000, key="delta_pn")
-        st.slider("Variazione EBITDA (€)", -100000, 300000, 0, 10000, key="delta_ebitda")
-        st.caption(
-            "L'aumento di capitale entra come liquidita': aumenta il patrimonio netto e riduce la PFN. "
-            "Una PFN negativa indica cassa netta."
-        )
-
+        slider_k("Variazione Debito Netto - PFN (€)", -500000, 500000, 0, 25000, "delta_pfn")
+        slider_k("Iniezione Capitale / Mezzi Propri (€)", 0, 500000, 0, 25000, "delta_pn")
+        slider_k("Variazione EBITDA (€)", -100000, 300000, 0, 10000, "delta_ebitda")
+        st.caption("L'aumento di capitale entra come liquidita': aumenta il patrimonio netto e riduce la PFN. "
+                   "Una PFN negativa indica cassa netta.")
     with col2:
         st.markdown("#### 📈 Output Modulo di Scoring")
         m1, m2, m3, m4 = st.columns(4)
-        d1 = rating["pfn_ebitda"] - rating_base["pfn_ebitda"]
-        d2 = rating["pfn_pn"] - rating_base["pfn_pn"]
-        m1.metric(
-            "PFN / EBITDA", fmt_x(rating["pfn_ebitda"]),
-            delta=None if math.isinf(d1) or math.isnan(d1) else f"{d1:+.2f}x vs base",
-            delta_color="inverse",
-        )
-        m2.metric(
-            "PFN / Patrimonio Netto", fmt_x(rating["pfn_pn"]),
-            delta=None if math.isinf(d2) or math.isnan(d2) else f"{d2:+.2f}x vs base",
-            delta_color="inverse",
-        )
+        d1 = rating["pfn_ebitda"] - res_base["rating"]["pfn_ebitda"]
+        d2 = rating["pfn_pn"] - res_base["rating"]["pfn_pn"]
+        m1.metric("PFN / EBITDA", fmt_x(rating["pfn_ebitda"]),
+                  delta=None if (math.isinf(d1) or math.isnan(d1) or d1 == 0) else f"{d1:+.2f}x vs base", delta_color="inverse")
+        m2.metric("PFN / Patrimonio Netto", fmt_x(rating["pfn_pn"]),
+                  delta=None if (math.isinf(d2) or math.isnan(d2) or d2 == 0) else f"{d2:+.2f}x vs base", delta_color="inverse")
         m3.metric("DSCR (Anno 1)", fmt_x(rating["dscr"]) if rating["dscr"] is not None else "n.d.")
-        m4.metric("Fascia", rating["classe"].split(" - ")[0].replace("FASCIA ", ""))
+        m4.metric("Fascia", classe_breve(rating["classe"]))
         st.info(f"**Posizionamento:** {rating['classe']}  \nPunteggio: {rating['punti']}/8")
-        st.caption(
-            "Soglie (verde/giallo): PFN/EBITDA < 2,5x / 4,5x · PFN/PN < 1,0x / 2,0x · "
-            "PN/Attivo ≥ 25% / 15% · DSCR ≥ 1,30 / 1,00. Modello interno indicativo."
-        )
-        st.caption(
-            f"Scenario: EBITDA {fmt_eur(scen['ebitda'])} · PFN {fmt_eur(scen['pfn'])} · "
-            f"PN {fmt_eur(scen['pn'])}"
-        )
 
-# --- TAB 3 -------------------------------------------------------------------
-with tab3:
+    st.markdown("#### 🔍 Perche' questo punteggio")
+    det = pd.DataFrame(
+        [
+            {
+                "Indicatore": x["indicatore"],
+                "Valore": exports._valore_dettaglio(x),
+                "Soglie (verde / giallo)": exports._soglie_testo(x),
+                "Punti": f"{x['punti']}/2",
+                "Esito": {2: "🟢", 1: "🟡", 0: "🔴"}[x["punti"]],
+            }
+            for x in rating["dettaglio"]
+        ]
+    )
+    show_df(det)
+    st.caption("Verde: punteggio ≥ 7 su 8. Rossa: punteggio < 4, oppure patrimonio netto ≤ 0, oppure EBITDA ≤ 0.")
+
+    with st.expander("⚙️ Soglie di scoring personalizzabili (calibrazione)"):
+        st.caption("Le soglie predefinite sono ipotesi di lavoro: calibrale sulla politica di rischio o sui dati storici.")
+        nomi_s = {"pfn_ebitda": "PFN / EBITDA (minore = meglio)", "pfn_pn": "PFN / PN (minore = meglio)",
+                  "equity_ratio": "PN / Attivo (decimale, maggiore = meglio)", "dscr": "DSCR (maggiore = meglio)"}
+        for k, lab in nomi_s.items():
+            ca, cb = st.columns(2)
+            with ca:
+                number_k(f"{lab} - verde", 0.0, 50.0, float(SOGLIE_DEFAULT[k][0]), 0.05, f"soglia_{k}_v")
+            with cb:
+                number_k(f"{lab} - giallo", 0.0, 50.0, float(SOGLIE_DEFAULT[k][1]), 0.05, f"soglia_{k}_g")
+            v, g = soglie[k]
+            if (core.VERSO[k] == "min" and v > g) or (core.VERSO[k] == "max" and v < g):
+                st.warning(f"⚠️ Soglie incoerenti per {lab}: la soglia verde deve essere "
+                           f"{'≤' if core.VERSO[k] == 'min' else '≥'} della gialla.")
+
+    st.markdown("#### 🎯 Cosa serve per migliorare la fascia")
+
+    @st.cache_data(show_spinner=False)
+    def tabella_leve(d_in, lv_in, par_in, sog_in):
+        # attenzione: i parametri NON devono iniziare con "_" (verrebbero esclusi dalla chiave di cache)
+        out = []
+        for target in ("VERDE", "GIALLA"):
+            riga = {"Obiettivo": f"Fascia {target.lower()}"}
+            for leva, nome in (("delta_pn", "Capitale da iniettare"), ("delta_ebitda", "Miglioramento EBITDA"),
+                               ("delta_pfn", "Riduzione del debito netto")):
+                x = core.leva_minima(d_in, lv_in, par_in, sog_in, leva, target, step=5000.0, massimo=3_000_000.0)
+                riga[nome] = "non raggiungibile con questa leva" if x is None else ("gia' raggiunta" if x == 0 else fmt_eur(x))
+            out.append(riga)
+        return out
+
+    st.caption("Valore minimo di ciascuna leva, da sola, per raggiungere l'obiettivo (le altre impostazioni restano come sono).")
+    show_df(pd.DataFrame(tabella_leve(dati, leve, piano_par, soglie)))
+
+    st.markdown("#### 🌪️ Stress test")
+    st_rows = core.stress_test(dati, leve, piano_par, soglie)
+    show_df(pd.DataFrame(
+        [{"Caso": s["Caso"], "PFN/EBITDA a fine piano": fmt_x(s["PFN/EBITDA anno 3"]),
+          "DSCR minimo": fmt_x(s["DSCR minimo"]) if s["DSCR minimo"] is not None else "n.d.",
+          "Punteggio": f"{s['Punteggio']}/8", "Fascia": s["Fascia"]} for s in st_rows]
+    ))
+
+# ============================ TAB 4: PIANO E GRAFICI ==========================
+with tab_piano:
     st.subheader("📈 Proiezioni Pluriennali (3 Anni)")
     st.caption("Il piano parte dai valori dello scenario impostato nel simulatore.")
     cp1, cp2, cp3 = st.columns(3)
     with cp1:
-        st.slider("Crescita Annua Ricavi (%)", -10.0, 30.0, PIANO_DEFAULT["g_ricavi"], 0.5, key="piano_g_ricavi")
-        st.slider("Crescita Annua EBITDA (%)", -10.0, 30.0, PIANO_DEFAULT["g_ebitda"], 0.5, key="piano_g_ebitda")
-        st.slider("CCN su variazione ricavi (%)", 0.0, 60.0, PIANO_DEFAULT["ccn_pct"], 1.0, key="piano_ccn_pct")
+        slider_k("Crescita Annua Ricavi (%)", -10.0, 30.0, PIANO_DEFAULT["g_ricavi"], 0.5, "piano_g_ricavi")
+        slider_k("Crescita Annua EBITDA (%)", -10.0, 30.0, PIANO_DEFAULT["g_ebitda"], 0.5, "piano_g_ebitda")
+        slider_k("CCN su variazione ricavi (%)", 0.0, 60.0, PIANO_DEFAULT["ccn_pct"], 1.0, "piano_ccn_pct")
     with cp2:
-        st.number_input("Capex annuo (€)", 0.0, 5_000_000.0, PIANO_DEFAULT["capex"], 10000.0, key="piano_capex")
-        st.number_input("Ammortamenti annui (€)", 0.0, 5_000_000.0, PIANO_DEFAULT["amm"], 10000.0, key="piano_amm")
-        st.number_input("Rimborso annuo quota capitale (€)", 0.0, 5_000_000.0, PIANO_DEFAULT["rimborso"], 10000.0,
-                        key="piano_rimborso")
+        number_k("Capex annuo (€)", 0.0, 5_000_000.0, PIANO_DEFAULT["capex"], 10000.0, "piano_capex")
+        number_k("Ammortamenti annui (€)", 0.0, 5_000_000.0, PIANO_DEFAULT["amm"], 10000.0, "piano_amm")
+        number_k("Rimborso annuo quota capitale (€)", 0.0, 5_000_000.0, PIANO_DEFAULT["rimborso"], 10000.0, "piano_rimborso")
     with cp3:
-        st.number_input("Tasso d'interesse sulla PFN (%)", 0.0, 20.0, PIANO_DEFAULT["tasso"], 0.25, key="piano_tasso")
-        st.number_input("Aliquota fiscale (%)", 0.0, 60.0, PIANO_DEFAULT["aliquota"], 0.5, key="piano_aliquota")
+        number_k("Tasso d'interesse sulla PFN (%)", 0.0, 20.0, PIANO_DEFAULT["tasso"], 0.25, "piano_tasso")
+        number_k("Aliquota fiscale (%)", 0.0, 60.0, PIANO_DEFAULT["aliquota"], 0.5, "piano_aliquota")
+        number_k("Covenant: PFN/EBITDA massimo (x)", 0.0, 20.0, COVENANT_DEFAULT["pfn_ebitda_max"], 0.1, "cov_lev")
+        number_k("Covenant: DSCR minimo (x)", 0.0, 10.0, COVENANT_DEFAULT["dscr_min"], 0.05, "cov_dscr")
 
-    df_piano = pd.DataFrame(
-        [
-            {
-                "Anno": r["Anno"],
-                "Ricavi": fmt_eur(r["Ricavi"]),
-                "EBITDA": fmt_eur(r["EBITDA"]),
-                "Free Cash Flow": fmt_eur(r["FCF"]),
-                "PFN": fmt_eur(r["PFN"]),
-                "PFN/EBITDA": fmt_x(r["PFN/EBITDA"]),
-                "DSCR": fmt_x(r["DSCR"]) if r["DSCR"] is not None else "n.d.",
-            }
-            for r in piano
-        ]
-    )
-    show_df(df_piano)
-    st.caption(
-        "FCR = EBITDA − imposte − capex − interessi − variazione CCN; PFN(t) = PFN(t−1) − FCF. "
-        "Il rimborso del debito usa cassa e non modifica la PFN, ma incide sul DSCR "
-        "= (EBITDA − imposte − ΔCCN) / (interessi + rimborso)."
-    )
+    show_df(pd.DataFrame(
+        [{"Anno": r["Anno"], "Ricavi": fmt_eur(r["Ricavi"]), "EBITDA": fmt_eur(r["EBITDA"]),
+          "Free Cash Flow": fmt_eur(r["FCF"]), "PFN": fmt_eur(r["PFN"]), "PFN/EBITDA": fmt_x(r["PFN/EBITDA"]),
+          "DSCR": fmt_x(r["DSCR"]) if r["DSCR"] is not None else "n.d."} for r in piano]
+    ))
+    st.caption("FCF = EBITDA − imposte − capex − interessi − variazione CCN; PFN(t) = PFN(t−1) − FCF. "
+               "Il rimborso del debito usa cassa e non modifica la PFN, ma incide sul DSCR = (EBITDA − imposte − ΔCCN) / (interessi + rimborso).")
 
-# --- TAB 4 -------------------------------------------------------------------
-with tab4:
-    st.subheader("📑 Generazione Report per il Comitato di Credito")
-    if ss.get("dati_demo"):
-        st.warning("⚠️ I dati sono di esempio non verificati: il report lo riportera' esplicitamente.")
+    st.markdown("#### Verifica covenant")
+    cov_res = core.verifica_covenant(piano, cov)
+    show_df(pd.DataFrame(
+        [{"Anno": c["Anno"], "PFN/EBITDA": fmt_x(c["PFN/EBITDA"]), "Limite": fmt_x(c["Limite PFN/EBITDA"]),
+          "Leva": "✅ OK" if c["Esito leva"] == "OK" else "❌ SFORATO",
+          "DSCR": fmt_x(c["DSCR"]) if c["DSCR"] is not None else "n.d.", "Limite DSCR": fmt_x(c["Limite DSCR"]),
+          "Copertura DSCR": "✅ OK" if c["Esito DSCR"] == "OK" else "❌ SFORATO"} for c in cov_res]
+    ))
 
-    if st.button("🚀 Genera Report PDF", type="primary"):
-        if not active_key:
-            st.error("Inserisci la chiave API Gemini nella sidebar.")
+    st.markdown("#### Grafici")
+    gc1, gc2 = st.columns(2)
+    piani = {"Scenario corrente": piano}
+    if any(v != 0 for v in leve.values()):
+        piani["Base (nessuna leva)"] = res_base["piano"]
+    with gc1:
+        show_fig(charts.fig_pfn_ebitda(piani, soglie, cov["pfn_ebitda_max"], "dark",
+                                       anno_base=int(dati["anno_riferimento"]), base_val=ratio(scen["pfn"], scen["ebitda"])))
+    with gc2:
+        show_fig(charts.fig_dscr(piano, soglie, cov["dscr_min"], "dark"))
+    gc3, gc4 = st.columns(2)
+    with gc3:
+        show_fig(charts.fig_cascata(piano, scen["pfn"], "dark"))
+    with gc4:
+        show_fig(charts.fig_storico(ss["storico"], dati, piano, "dark"))
+
+# ============================== TAB 5: SCENARI ================================
+with tab_scen:
+    st.subheader("🔀 Confronto scenari")
+    st.caption("Salva la combinazione corrente di leve e ipotesi con un nome e confrontala con gli altri scenari.")
+    cs1, cs2 = st.columns([3, 1])
+    nome_sc = cs1.text_input("Nome scenario", placeholder="es. Prudente, Aumento di capitale, Ottimista", key="nome_scenario")
+    if cs2.button("➕ Salva scenario", width="stretch"):
+        n = (nome_sc or "").strip()
+        if not n:
+            st.error("Inserisci un nome.")
+        elif n in ("Base", "Corrente"):
+            st.error("Nome riservato.")
         else:
-            with st.spinner("Creazione del report in corso..."):
-                try:
-                    tabella_piano = "\n".join(
-                        f"- {r['Anno']}: ricavi {fmt_num(r['Ricavi'])} EUR, EBITDA {fmt_num(r['EBITDA'])} EUR, "
-                        f"FCF {fmt_num(r['FCF'])} EUR, PFN {fmt_num(r['PFN'])} EUR, "
-                        f"PFN/EBITDA {fmt_x(r['PFN/EBITDA'])}, "
-                        f"DSCR {fmt_x(r['DSCR']) if r['DSCR'] is not None else 'n.d.'}"
-                        for r in piano
-                    )
-                    prompt = (
-                        "Agisci come Risk Manager e redigi una relazione formale per il Comitato di Credito.\n"
-                        f"DATI ANNO BASE ({int(dati['anno_riferimento'])}): ricavi {fmt_num(dati['ricavi'])} EUR, "
-                        f"EBITDA {fmt_num(dati['ebitda'])} EUR, utile netto {fmt_num(dati['utile_netto'])} EUR, "
-                        f"totale attivo {fmt_num(dati['totale_attivo'])} EUR, patrimonio netto "
-                        f"{fmt_num(dati['patrimonio_netto'])} EUR, debiti finanziari "
-                        f"{fmt_num(dati['debiti_finanziari_totali'])} EUR, PFN {fmt_num(dati['pfn'])} EUR.\n"
-                        f"SCENARIO SIMULATO: EBITDA {fmt_num(scen['ebitda'])} EUR, PFN {fmt_num(scen['pfn'])} EUR, "
-                        f"PN {fmt_num(scen['pn'])} EUR, PFN/EBITDA {fmt_x(rating['pfn_ebitda'])}, "
-                        f"PFN/PN {fmt_x(rating['pfn_pn'])}, PN/Attivo {fmt_num(100 * rating['equity_ratio'], 1)}%, "
-                        f"giudizio del modello interno: {rating['classe']}.\n"
-                        f"PIANO TRIENNALE (crescita ricavi {piano_par['g_ricavi']}%, EBITDA {piano_par['g_ebitda']}%, "
-                        f"capex {fmt_num(piano_par['capex'])} EUR, tasso {piano_par['tasso']}%):\n{tabella_piano}\n\n"
-                        "Struttura: 1. Solvibilita' e struttura finanziaria. 2. Punti di forza e criticita'. "
-                        "3. Sostenibilita' del piano pluriennale (usa i numeri forniti). 4. Raccomandazioni. "
-                        "Usa SOLO i dati forniti, non inventare cifre. Precisa che e' una valutazione indicativa "
-                        "e non un rating regolamentare. Scrivi in italiano, in testo semplice senza markdown."
-                    )
-                    relazione = pulisci_testo_ia(ai_generate(active_key, prompt, temperature=0.3))
-                    pdf_bytes = genera_pdf_report(dati, scen, rating, piano, relazione, ss.get("dati_demo", False))
-                    ss["report"] = {"text": relazione, "pdf": pdf_bytes}
-                except Exception as e:
-                    st.error(f"Errore nella generazione del report: {e}")
+            ss["scenari"][n] = {"leve": {k: int(v) for k, v in leve.items()}, "piano_par": dict(piano_par)}
+            st.success(f"Scenario '{n}' salvato.")
 
-    # Fuori dall'if del bottone: sopravvive al rerun causato dal download
-    if ss.get("report"):
-        st.markdown("### 📄 Sintesi della Relazione")
-        st.text(ss["report"]["text"])
-        st.download_button(
-            label="📥 Scarica Report PDF",
-            data=ss["report"]["pdf"],
-            file_name="Report_Rating_FCR_General_Contractor.pdf",
-            mime="application/pdf",
-        )
-        st.caption(DISCLAIMER)
+    conf = {"Base": res_base}
+    if any(v != 0 for v in leve.values()):
+        conf["Corrente (non salvato)"] = res
+    for n, sc in ss["scenari"].items():
+        conf[n] = core.esegui_scenario(dati, sc["leve"], sc.get("piano_par", piano_par), soglie)
+
+    righe_c = []
+    for n, r in conf.items():
+        dscrs = [x["DSCR"] for x in r["piano"] if x["DSCR"] is not None]
+        lv = r["leve"]
+        desc = "; ".join(f"{lab} {v:+,.0f}".replace(",", ".") for lab, v in
+                         (("Debito", lv["delta_pfn"]), ("Capitale", lv["delta_pn"]), ("EBITDA", lv["delta_ebitda"])) if v) or "nessuna leva"
+        righe_c.append({"Scenario": n, "Leve": desc, "PFN/EBITDA a fine piano": fmt_x(r["piano"][-1]["PFN/EBITDA"]),
+                        "PFN a fine piano": fmt_eur(r["piano"][-1]["PFN"]),
+                        "DSCR minimo": fmt_x(min(dscrs)) if dscrs else "n.d.",
+                        "Punteggio": f"{r['rating']['punti']}/8", "Fascia": classe_breve(r["rating"]["classe"])})
+    show_df(pd.DataFrame(righe_c))
+    if len(conf) > 1:
+        show_fig(charts.fig_confronto(conf, soglie, "dark"))
+    else:
+        st.info("Modifica le leve nel simulatore e salva uno scenario per avviare il confronto.")
+
+    if ss["scenari"]:
+        st.markdown("#### Scenari salvati")
+        for n in list(ss["scenari"].keys()):
+            c1, c2, c3 = st.columns([4, 1, 1])
+            c1.write(f"**{n}**")
+            if c2.button("Carica", key=f"load_{n}"):
+                sc = ss["scenari"][n]
+                pend = {k: int(v) for k, v in sc["leve"].items()}
+                for k, v in sc.get("piano_par", piano_par).items():
+                    pend[f"piano_{k}"] = float(v)
+                ss["_pending"] = pend
+                st.rerun()
+            if c3.button("Elimina", key=f"del_{n}"):
+                ss["scenari"].pop(n)
+                st.rerun()
+
+# ============================== TAB 6: REPORT =================================
+with tab_rep:
+    st.subheader("📑 Report per il Comitato di Credito")
+    if ss.get("dati_demo"):
+        st.warning("⚠️ I dati sono di esempio non verificati: i documenti lo riporteranno esplicitamente.")
+
+    ctx = exports.costruisci_ctx(
+        dati, leve, piano_par, soglie, cov, ss["storico"], commesse_df_pulito(ss["commesse"]),
+        ss["scenari"], ss["dati_demo"], MODEL_NAME, ss.get("pratica_nome", ""),
+    )
+    st.caption(f"ID report corrente: **{ctx['report_id']}** (cambia al variare di dati, leve, ipotesi, soglie, scenari e commesse).")
+
+    usa_ai = st.checkbox("Includi la relazione scritta dall'AI", value=bool(active_key), disabled=not active_key)
+    if st.button("🚀 Genera Report PDF + Word", type="primary"):
+        with st.spinner("Creazione dei documenti in corso..."):
+            try:
+                avvisi = []
+                if usa_ai and active_key:
+                    testo, usato = ai_generate(active_key, prompt_relazione(ctx), temperature=0.3)
+                    relazione = pulisci_testo_ia(testo)
+                    ctx["modello"] = usato
+                    avvisi = core.numeri_sospetti(relazione, {k: v for k, v in ctx.items() if k not in ("commesse_df", "per_cliente")})
+                else:
+                    relazione = "Relazione non generata (funzione AI non utilizzata). Vedere tabelle e grafici."
+                    ctx["modello"] = "nessuno"
+                grafici = exports.grafici_report(ctx)
+                ss["report"] = {
+                    "text": relazione, "pdf": exports.genera_pdf(ctx, relazione, grafici),
+                    "docx": exports.genera_docx(ctx, relazione, grafici), "report_id": ctx["report_id"],
+                    "avvisi": avvisi, "modello": ctx["modello"],
+                }
+                try:
+                    storage.log_report(ss.get("pratica_nome", ""), ctx["report_id"], ctx["modello"], ctx["hash_dati"],
+                                       {"punti": rating["punti"], "classe": rating["classe"]})
+                except Exception:
+                    pass
+            except Exception as e:
+                st.error(f"Errore nella generazione del report: {e}")
+
+    rep = ss.get("report")
+    if rep:
+        if rep["report_id"] != ctx["report_id"]:
+            st.warning("⚠️ Dati o ipotesi sono cambiati dopo la generazione: rigenera i documenti per allinearli.")
+        if rep["avvisi"]:
+            st.warning("⚠️ La relazione cita numeri che non risultano nei dati di calcolo: verificali prima dell'uso → "
+                       + ", ".join(rep["avvisi"][:12]))
+        st.markdown("### 📄 Relazione")
+        st.text(rep["text"])
+        d1, d2 = st.columns(2)
+        d1.download_button("📥 Scarica PDF", rep["pdf"], file_name=f"Report_{rep['report_id']}.pdf", mime="application/pdf")
+        d2.download_button("📥 Scarica Word (modificabile)", rep["docx"], file_name=f"Report_{rep['report_id']}.docx",
+                           mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
+    st.markdown("### 📊 Excel con formule vive")
+    st.caption("Il foglio Input contiene le ipotesi (celle gialle); Piano, Rating e Commesse si ricalcolano modificandole.")
+    if st.button("Prepara file Excel"):
+        try:
+            ss["excel"] = {"bytes": exports.genera_excel(ctx), "report_id": ctx["report_id"]}
+        except Exception as e:
+            st.error(f"Errore nella generazione dell'Excel: {e}")
+    if ss.get("excel"):
+        st.download_button("📥 Scarica Excel", ss["excel"]["bytes"], file_name=f"Modello_{ss['excel']['report_id']}.xlsx",
+                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        if ss["excel"]["report_id"] != ctx["report_id"]:
+            st.warning("⚠️ L'Excel preparato non riflette le ultime modifiche: preparalo di nuovo.")
+
+    with st.expander("🗂️ Registro dei report generati (audit)"):
+        try:
+            reg = storage.elenco_report(ss.get("pratica_nome") or None)
+            if reg:
+                show_df(pd.DataFrame(reg))
+            else:
+                st.caption("Nessun report registrato per questa pratica.")
+        except Exception as e:
+            st.caption(f"Registro non disponibile: {e}")
+
+    st.caption(DISCLAIMER)
