@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- SISTEMA DI AUTENTICAZIONE CON PASSWORD E LOGO GRANDE E CENTRATO ---
+# --- SISTEMA DI AUTENTICAZIONE CON PASSWORD, LOGO CENTRATO E CARD UNIFORME ---
 def check_password():
     """Restituisce True se l'utente ha inserito la password corretta."""
     try:
@@ -29,40 +29,39 @@ def check_password():
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state or not st.session_state["password_correct"]:
-        st.markdown("<br>", unsafe_allow_html=True)
-        col1, col2, col3 = st.columns([1, 1.3, 1])
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1, 1.2, 1])
         with col2:
-            logo_path = "aetheris_labs_logo.jpg"
-            img_html = ""
-            if os.path.exists(logo_path):
-                # Utilizziamo base64 o tag img diretto se il file è nella stessa directory
-                img_html = f'<div style="text-align: center; margin-bottom: 20px;"><img src="app/static/{logo_path}" style="width: 220px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.4);" /></div>'
+            # Card di login pulita senza elementi sovrapposti
+            with st.container():
+                st.markdown("""
+                    <div style="
+                        background-color: #111827; 
+                        padding: 30px 25px; 
+                        border-radius: 16px; 
+                        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7); 
+                        border: 1px solid #1f2937;
+                        text-align: center;
+                    ">
+                """, unsafe_allow_html=True)
+                
+                logo_path = "aetheris_labs_logo.jpg"
+                if os.path.exists(logo_path):
+                    l_col1, l_col2, l_col3 = st.columns([1, 2, 1])
+                    with l_col2:
+                        st.image(logo_path, use_container_width=True)
+                
+                st.markdown("<h2 style='color: #f8fafc; margin-top: 15px; font-size: 1.4rem; text-align: center;'>FCR GENERAL CONTRACTOR</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='color: #38bdf8; font-size: 0.85rem; font-weight: 500; margin-bottom: 20px; text-align: center;'>Aetheris Labs — Area Riservata Protetta</p>", unsafe_allow_html=True)
+                
+                st.markdown("</div>", unsafe_allow_html=True)
             
-            # Se Streamlit non carica l'img statica direttamente via HTML puro in locale, usiamo il componente st.image pulito
-            st.markdown("""
-                <div style="
-                    background-color: #111827; 
-                    padding: 35px 30px; 
-                    border-radius: 16px; 
-                    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7); 
-                    border: 1px solid #1f2937; 
-                    text-align: center;
-                ">
-            """, unsafe_allow_html=True)
-            
-            if os.path.exists(logo_path):
-                # Logo grande e centrato senza colonne vuote
-                st.image(logo_path, width=220)
-            
-            st.markdown("<h2 style='color: #f8fafc; margin-top: 15px; font-size: 1.5rem;'>FCR GENERAL CONTRACTOR</h2>", unsafe_allow_html=True)
-            st.markdown("<p style='color: #38bdf8; font-size: 0.9rem; font-weight: 500; margin-bottom: 20px;'>Aetheris Labs — Area Riservata Protetta</p>", unsafe_allow_html=True)
-            
+            st.markdown("<br>", unsafe_allow_html=True)
             st.text_input("Password di Accesso:", type="password", on_change=password_entered, key="password_input")
             
             if "password_correct" in st.session_state and not st.session_state["password_correct"]:
                 st.error("😕 Password errata. Riprova.")
                 
-            st.markdown("</div>", unsafe_allow_html=True)
         return False
     else:
         return True
