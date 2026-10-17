@@ -103,9 +103,14 @@ class _PDF(FPDF):
         self.set_font("Helvetica", "", 7)
         self.set_text_color(*GRIGIO)
         self.set_y(-12)
-        self.cell(62, 5, "Documento riservato - uso interno", align="L")
-        self.cell(62, 5, f"Pagina {self.page_no()} di {{nb}}", align="C")
+        self.cell(58, 5, "Documento riservato - uso interno", align="L")
+        self.cell(58, 5, f"Pagina {self.page_no()} di {{nb}}", align="C")
         self.cell(62, 5, pdf_safe(f"Powered by Aetheris Labs | Modello AI: {self.ctx['modello']}"), align="R")
+        if os.path.exists(LOGO_PATH):
+            try:
+                self.image(LOGO_PATH, 190.5, self.h - 12.8, 7.5)
+            except Exception:
+                pass
 
 
 # ----------------------------------------------------------------------------
@@ -343,12 +348,12 @@ def genera_pdf(ctx, relazione, grafici=None):
     pdf.set_font("Helvetica", "", 7)
     pdf.set_text_color(*GRIGIO)
     pdf.multi_cell(130, 3.4, pdf_safe("Simulazione indicativa: non costituisce rating regolamentare, parere di merito creditizio ne' consulenza finanziaria."), **NL)
-    pdf.set_xy(150, 266)
+    pdf.set_xy(138, 270)
     pdf.set_font("Helvetica", "", 7)
     pdf.cell(30, 4, "Powered by", align="R")
     if os.path.exists(LOGO_PATH):
         try:
-            pdf.image(LOGO_PATH, 182, 263, 14)
+            pdf.image(LOGO_PATH, 170, 258, 26)
         except Exception:
             pass
 
