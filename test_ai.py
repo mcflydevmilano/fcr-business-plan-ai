@@ -59,3 +59,9 @@ def test_risposta_vuota(monkeypatch):
 
 def test_pulisci_testo():
     assert ai.pulisci_testo("## Titolo\n**grassetto** `x`") == "Titolo\ngrassetto x"
+
+
+def test_errore_quota():
+    assert ai.errore_quota(Exception("429 RESOURCE_EXHAUSTED. You exceeded your current quota"))
+    assert ai.errore_quota(Exception("RESOURCE_EXHAUSTED"))
+    assert not ai.errore_quota(Exception("403 PERMISSION_DENIED"))
