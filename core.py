@@ -71,6 +71,37 @@ DISCLAIMER = (
     "professionista prima di qualsiasi utilizzo decisionale."
 )
 
+LOGO_PATH = "aetheris_labs_logo.jpg"   # logo Aetheris Labs
+LOGO_FCR_PATH = "fcr_logo.png"          # logo FCR (PNG con trasparenza)
+
+PRIVACY_PUNTI = [
+    ("Dati trattati",
+     "L'applicazione elabora dati contabili e finanziari di imprese. Evitare di inserire dati personali di persone "
+     "fisiche (soci, amministratori, garanti, dipendenti) se non strettamente necessari."),
+    ("Elaborazione con intelligenza artificiale",
+     "Quando si usano le funzioni AI, i documenti caricati e i dati numerici vengono inviati ai server di Google "
+     "(servizio Gemini API) per estrarre i dati e redigere la relazione. Nel piano gratuito Google puo' utilizzare i "
+     "contenuti per migliorare i propri servizi; per i piani a pagamento valgono condizioni diverse. Verificare i "
+     "termini vigenti prima di caricare dati di clienti."),
+    ("Conservazione",
+     "I dati inseriti restano nella sessione del browser fino alla sua chiusura. Le pratiche salvate sono memorizzate "
+     "nel database dell'applicazione fino alla cancellazione manuale. I report generati non vengono conservati dal "
+     "sistema: il registro di audit riporta solo ID, data, modello AI e impronta (hash) dei dati."),
+    ("Responsabilita' dell'utente",
+     "Chi utilizza l'applicazione deve disporre di una base giuridica per il trattamento, informare gli interessati, "
+     "designare i fornitori come responsabili del trattamento, valutare gli eventuali trasferimenti di dati verso "
+     "Paesi extra-UE e adottare adeguate misure di sicurezza, ai sensi del Regolamento (UE) 2016/679 (GDPR)."),
+    ("Natura dell'informativa",
+     "Questa informativa ha finalita' di trasparenza e non costituisce consulenza legale: per la conformita' "
+     "consultare il proprio DPO o consulente privacy."),
+]
+PRIVACY_BREVE = (
+    "Privacy: i dati e i documenti elaborati con le funzioni AI sono inviati a Google (Gemini API); nel piano gratuito "
+    "Google puo' utilizzarli per migliorare i propri servizi. Evitare dati personali non necessari; l'utente e' "
+    "responsabile della base giuridica, dell'informativa agli interessati e della conformita' al GDPR (Reg. UE 2016/679). "
+    "Le pratiche salvate restano nel database dell'applicazione fino alla cancellazione manuale."
+)
+
 CLASSI = {
     "VERDE": "FASCIA VERDE - Rating Elevato / Bancabile",
     "GIALLA": "FASCIA GIALLA - Rating Neutro / Sotto Osservazione",
@@ -180,6 +211,8 @@ def normalizza_estrazione(raw):
         riga = {"anno": anno}
         for k in CAMPI_STORICO:
             riga[k] = to_float(item.get(k), 0.0) * scala
+        if not any(riga[k] for k in CAMPI_STORICO):
+            continue            # anno senza alcun dato: non e' uno storico utile
         storico.append(riga)
     storico = sorted({r["anno"]: r for r in storico}.values(), key=lambda r: r["anno"])
 
@@ -218,6 +251,12 @@ def valida_dati(d):
         w.append("L'utile netto supera i ricavi in valore assoluto: controlla le unita'.")
     if d["utile_netto"] > d["ebitda"] > 0:
         w.append("L'utile netto supera l'EBITDA: dato anomalo (salvo componenti straordinarie).")
+    if d["ricavi"] > 0 and d["pfn"] > 5 * d["ricavi"]:
+        w.append("La PFN supera 5 volte i ricavi: controlla le unita' dei valori (euro o migliaia?).")
+    if d["ricavi"] > 0 and 0 < d["ebitda"] < 0.01 * d["ricavi"]:
+        w.append("Il margine EBITDA e' inferiore all'1% dei ricavi: controlla le unita' (euro o migliaia?).")
+    if d["ricavi"] > 0 and d["ebitda"] > 0.6 * d["ricavi"]:
+        w.append("Il margine EBITDA supera il 60% dei ricavi: valore insolito, verifica il dato.")
     return w
 
 
@@ -521,3 +560,22 @@ def numeri_sospetti(testo, contesto, tolleranza=0.01):
             if grezzo not in sospetti:
                 sospetti.append(grezzo)
     return sospetti
+
+
+# ----------------------------------------------------------------------------
+# FORMATTAZIONE DEL DETTAGLIO PUNTEGGIO (condivisa da app e report)
+# ----------------------------------------------------------------------------
+def valore_dettaglio(d):
+    v = d["valore"]
+    if d["chiave"] == "equity_ratio":
+        return fmt_pct(100 * v)
+    if v is None:
+        return "n.d."
+    return fmt_x(v)
+
+
+def soglie_testo(d):
+    if d["chiave"] == "equity_ratio":
+        return f">= {fmt_pct(100 * d['verde'], 0)} / {fmt_pct(100 * d['giallo'], 0)}"
+    segno = "<" if d["verso"] == "min" else ">="
+    return f"{segno} {fmt_num(d['verde'], 2)} / {fmt_num(d['giallo'], 2)}"
