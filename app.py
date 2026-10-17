@@ -30,6 +30,7 @@ import core
 import exports
 import storage
 import theme
+import xbrl
 from core import (
     COLONNE_COMMESSE, COVENANT_DEFAULT, DATI_DEFAULT, DISCLAIMER, LEVE_DEFAULT, PIANO_DEFAULT,
     SOGLIE_DEFAULT, fmt_eur, fmt_num, fmt_pct, fmt_x, livello_classe, ratio, to_float,
@@ -451,21 +452,35 @@ tab_dati, tab_comm, tab_sim, tab_piano, tab_scen, tab_rep = st.tabs(
 
 # =============================== TAB 1: DATI ==================================
 with tab_dati:
-    st.subheader("Importazione Bilancio Aziendale (PDF o Excel)")
+    st.subheader("Importazione Bilancio Aziendale (XBRL, PDF o Excel)")
     if ss.get("dati_demo"):
         st.warning("⚠️ Stai usando **dati di esempio non verificati**. Carica un bilancio o inserisci i dati reali.")
 
-    mode = st.radio("Modalita' di caricamento:", ["Upload File (PDF o Excel)", "Inserimento Dati Manuale"])
+    mode = st.radio("Modalita' di caricamento:", ["Upload File (XBRL, PDF o Excel)", "Inserimento Dati Manuale"])
 
-    if mode == "Upload File (PDF o Excel)":
-        uploaded = st.file_uploader("Trascina qui il bilancio (.pdf, .xlsx, .xls)", type=["pdf", "xlsx", "xls"])
-        st.caption("I dati del bilancio vengono inviati al servizio Gemini. Verifica il piano utilizzato e la "
-                   "conformita' GDPR prima di caricare documenti di clienti.")
-        if uploaded and st.button("🚀 Estrai Dati Contabili con AI", type="primary"):
-            if not active_key:
-                st.error("Per usare l'AI inserisci la chiave API Gemini e accetta l'informativa privacy nella sidebar.")
-            elif uploaded.size > MAX_UPLOAD_MB * 1024 * 1024:
+    if mode == "Upload File (XBRL, PDF o Excel)":
+        uploaded = st.file_uploader("Trascina qui il bilancio (.pdf, .xlsx, .xls, oppure XBRL .xbrl / .xml / .zip)",
+                                    type=["pdf", "xlsx", "xls", "xbrl", "xml", "zip"])
+        st.caption("**XBRL** (il bilancio depositato al Registro Imprese): i dati sono gia' strutturati, vengono letti "
+                   "sul posto senza AI e **non lasciano il computer**. Per PDF ed Excel i dati vengono inviati al "
+                   "servizio Gemini: leggi l'informativa privacy nella barra laterale.")
+        e_xbrl = bool(uploaded) and uploaded.name.lower().endswith((".xbrl", ".xml", ".zip"))
+        etichetta = "📥 Importa bilancio XBRL" if e_xbrl else "🚀 Estrai Dati Contabili con AI"
+        if uploaded and st.button(etichetta, type="primary"):
+            if uploaded.size > MAX_UPLOAD_MB * 1024 * 1024:
                 st.error(f"File troppo grande (max {MAX_UPLOAD_MB} MB).")
+            elif e_xbrl:
+                try:
+                    raw_x, avvisi_x = xbrl.leggi(uploaded.getvalue(), uploaded.name)
+                    d_n, s_n, f_n = core.normalizza_estrazione(raw_x)
+                    ss["bozza"] = {"dati": d_n, "storico": s_n, "fonti": f_n, "origine": "xbrl", "avvisi": avvisi_x}
+                    ss["bozza_ver"] = ss.get("bozza_ver", 0) + 1
+                except xbrl.XbrlError as e:
+                    st.error(f"Importazione XBRL non riuscita: {e}")
+                except Exception as e:
+                    st.error(f"Errore durante la lettura del file XBRL: {e}")
+            elif not active_key:
+                st.error("Per usare l'AI inserisci la chiave API Gemini e accetta l'informativa privacy nella sidebar.")
             else:
                 name = uploaded.name.lower()
                 with st.spinner("Elaborazione dati contabili in corso..."):
@@ -520,8 +535,11 @@ with tab_dati:
     bozza = ss.get("bozza")
     if bozza:
         st.markdown("### ✍️ Verifica i dati estratti prima di applicarli")
-        st.caption("Confronta ogni valore con la fonte indicata dall'AI e correggi dove serve. "
-                   "I campi 'NON TROVATO' contengono valori di esempio da sostituire.")
+        _xb = bozza.get("origine") == "xbrl"
+        st.caption("Confronta ogni valore con la fonte indicata " + ("nel file XBRL" if _xb else "dall'AI")
+                   + " e correggi dove serve. I campi 'NON TROVATO' contengono valori di esempio da sostituire.")
+        for _a in bozza.get("avvisi", []):
+            st.info(_a)
         ver = ss.get("bozza_ver", 0)
         anno_b = st.number_input("Anno di riferimento", min_value=1990, max_value=2100,
                                  value=int(bozza["dati"]["anno_riferimento"]), step=1, key=f"bozza_anno_{ver}")
@@ -529,11 +547,11 @@ with tab_dati:
         df_b = pd.DataFrame(
             {"Campo": [ETICHETTE[k] for k in chiavi],
              "Valore": [float(bozza["dati"][k]) for k in chiavi],
-             "Fonte indicata dall'AI": [bozza["fonti"].get(k, "") for k in chiavi]},
+             "Fonte indicata": [bozza["fonti"].get(k, "") for k in chiavi]},
             index=chiavi,
         )
         ed_b = show_editor(
-            df_b, key=f"ed_bozza_{ver}", disabled=["Campo", "Fonte indicata dall'AI"],
+            df_b, key=f"ed_bozza_{ver}", disabled=["Campo", "Fonte indicata"],
             column_config={"Valore": st.column_config.NumberColumn(format="%.2f")},
         )
         st.markdown("**Esercizi precedenti rilevati (opzionale, modificabili):**")
