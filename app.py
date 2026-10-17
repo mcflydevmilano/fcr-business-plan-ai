@@ -29,6 +29,7 @@ import charts
 import core
 import exports
 import storage
+import theme
 from core import (
     COLONNE_COMMESSE, COVENANT_DEFAULT, DATI_DEFAULT, DISCLAIMER, LEVE_DEFAULT, PIANO_DEFAULT,
     SOGLIE_DEFAULT, fmt_eur, fmt_num, fmt_pct, fmt_x, livello_classe, ratio, to_float,
@@ -39,6 +40,7 @@ MAX_UPLOAD_MB = 20
 MAX_EXCEL_SHEETS = 8
 MAX_EXCEL_ROWS = 300
 LOGO_PATH = exports.LOGO_PATH
+FCR_URI = theme.logo_uri(core.LOGO_FCR_PATH)
 
 ETICHETTE = {
     "ricavi": "Ricavi delle vendite (EUR)",
@@ -54,45 +56,14 @@ COL_STORICO = ["anno", "ricavi", "ebitda", "patrimonio_netto", "pfn"]
 
 st.set_page_config(
     page_title="FCR General Contractor | AI Business Plan & Rating Platform",
-    page_icon="📊",
+    page_icon=core.LOGO_FCR_PATH if os.path.exists(core.LOGO_FCR_PATH) else "📊",
     layout="wide",
 )
 
 # ----------------------------------------------------------------------------
 # CSS (prima del login, cosi' si applica anche alla schermata di accesso)
 # ----------------------------------------------------------------------------
-st.markdown(
-    """
-<style>
-    .stApp { background-color: #0b0f19; color: #e2e8f0; font-family: 'Inter', sans-serif; }
-    [data-testid="stSidebar"] > div:first-child { padding-top: 1rem; }
-    [data-testid="stSidebar"] { background-color: #111827; border-right: 1px solid #1f2937; }
-    [data-testid="stSidebar"] img { border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-    h1, h2, h3 { color: #f8fafc; font-weight: 700; }
-    .stTabs [data-baseweb="tab"] {
-        background-color: #1e293b; border-radius: 8px 8px 0px 0px; color: #94a3b8;
-        padding: 10px 20px; font-weight: 600; border: none;
-    }
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #1e3a8a 0%, #0284c7 100%) !important;
-        color: #ffffff !important; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
-    }
-    .stButton > button, .stDownloadButton > button {
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white;
-        border-radius: 8px; padding: 0.6rem 1.2rem; font-weight: 600; border: none;
-        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4); transition: all 0.3s ease;
-    }
-    .stButton > button:hover, .stDownloadButton > button:hover {
-        transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
-    }
-    [data-testid="stMetricValue"] { font-size: 1.8rem; font-weight: 700; color: #38bdf8; }
-    .stTextInput input, .stNumberInput input {
-        background-color: #1e293b; color: white; border-radius: 6px; border: 1px solid #334155;
-    }
-</style>
-""",
-    unsafe_allow_html=True,
-)
+st.markdown(theme.CSS, unsafe_allow_html=True)
 
 
 # ----------------------------------------------------------------------------
@@ -185,7 +156,10 @@ def check_password():
     st.markdown("<br><br>", unsafe_allow_html=True)
     _, col2, _ = st.columns([1, 1.2, 1])
     with col2:
-        show_logo()
+        if FCR_URI:
+            st.markdown(theme.login_logo(FCR_URI), unsafe_allow_html=True)
+        else:
+            show_logo()
         st.markdown(
             "<h2 style='color:#f8fafc;margin-top:15px;font-size:1.4rem;text-align:center;'>FCR GENERAL CONTRACTOR</h2>",
             unsafe_allow_html=True,
@@ -401,10 +375,14 @@ def applica_payload(p, nome):
 # ----------------------------------------------------------------------------
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
-st.title("📊 FCR GENERAL CONTRACTOR — AI Business Plan & Rating")
 st.markdown(
-    "Piattaforma di Credit Risk Management e Pianificazione Strategica Pluriennale "
-    "(scoring indicativo ispirato ai criteri Basilea 3/4)."
+    theme.hero(
+        FCR_URI,
+        "FCR GENERAL CONTRACTOR — AI Business Plan & Rating",
+        "Piattaforma di Credit Risk Management e Pianificazione Strategica Pluriennale "
+        "(scoring indicativo ispirato ai criteri Basilea 3/4).",
+    ),
+    unsafe_allow_html=True,
 )
 
 with st.sidebar:
@@ -426,7 +404,7 @@ with st.sidebar:
     if st.button("💾 Salva pratica", width="stretch"):
         try:
             storage.salva_pratica(ss.get("pratica_nome", ""), payload_pratica())
-            st.success("Pratica salvata.")
+            st.toast("Pratica salvata", icon="✅")
         except Exception as e:
             st.error(f"Impossibile salvare: {e}")
     try:
@@ -451,9 +429,16 @@ with st.sidebar:
     st.markdown("---")
 
     user_api_key = st.text_input("Gemini API Key personale (opzionale)", value="", type="password")
-    active_key = user_api_key.strip() or SERVER_API_KEY
+    with st.expander("🔒 Privacy e trattamento dei dati"):
+        for _t, _x in core.PRIVACY_PUNTI:
+            st.markdown(f"**{_t}**  \n{_x}")
+    st.checkbox("Ho letto l'informativa privacy e ho titolo a trattare i dati caricati", key="privacy_ok")
+    _chiave = user_api_key.strip() or SERVER_API_KEY
+    active_key = _chiave if ss.get("privacy_ok") else ""
     if active_key:
         st.info("Motore AI attivo per estrazione dati e relazione.")
+    elif _chiave:
+        st.warning("Accetta l'informativa privacy per attivare le funzioni AI. Calcoli, grafici ed Excel restano disponibili.")
     else:
         st.warning("Nessuna chiave API: le funzioni AI non sono disponibili (grafici, Excel e calcoli si').")
 
@@ -478,7 +463,7 @@ with tab_dati:
                    "conformita' GDPR prima di caricare documenti di clienti.")
         if uploaded and st.button("🚀 Estrai Dati Contabili con AI", type="primary"):
             if not active_key:
-                st.error("Inserisci la chiave API Gemini nella sidebar.")
+                st.error("Per usare l'AI inserisci la chiave API Gemini e accetta l'informativa privacy nella sidebar.")
             elif uploaded.size > MAX_UPLOAD_MB * 1024 * 1024:
                 st.error(f"File troppo grande (max {MAX_UPLOAD_MB} MB).")
             else:
@@ -645,7 +630,7 @@ with tab_sim:
                   delta=None if (math.isinf(d2) or math.isnan(d2) or d2 == 0) else f"{d2:+.2f}x vs base", delta_color="inverse")
         m3.metric("DSCR (Anno 1)", fmt_x(rating["dscr"]) if rating["dscr"] is not None else "n.d.")
         m4.metric("Fascia", classe_breve(rating["classe"]))
-        st.info(f"**Posizionamento:** {rating['classe']}  \nPunteggio: {rating['punti']}/8")
+        st.markdown(theme.scorecard(rating["punti"], rating["classe"]), unsafe_allow_html=True)
 
     st.markdown("#### 🔍 Perche' questo punteggio")
     det = pd.DataFrame(
