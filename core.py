@@ -5,6 +5,7 @@ Contiene: formattazione italiana, normalizzazione/validazione dei dati, proiezio
 pluriennale con free cash flow, scoring con soglie configurabili, leva minima
 (funzione inversa), stress test, covenant, analisi del portafoglio commesse.
 """
+import os
 import copy
 import hashlib
 import json
@@ -71,8 +72,36 @@ DISCLAIMER = (
     "professionista prima di qualsiasi utilizzo decisionale."
 )
 
-LOGO_PATH = "aetheris_labs_logo.jpg"   # logo Aetheris Labs
-LOGO_FCR_PATH = "fcr_logo.png"          # logo FCR (PNG con trasparenza)
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _trova_file(candidati):
+    """Primo file esistente tra i candidati, cercato accanto ai .py e nella cartella corrente."""
+    for nome in candidati:
+        for base in (_BASE_DIR, os.getcwd()):
+            p = os.path.join(base, nome)
+            if os.path.isfile(p):
+                return p
+    # ultimo tentativo: qualsiasi PNG/JPG con "fcr" nel nome (per il logo FCR)
+    return None
+
+
+def _trova_logo_fcr():
+    p = _trova_file(["fcr_logo.png", "logo_fcr_new_2026.png", "logo_fcr.png", "fcr.png", "logo_fcr.jpg"])
+    if p:
+        return p
+    for base in (_BASE_DIR, os.getcwd()):
+        try:
+            for f in sorted(os.listdir(base)):
+                if "fcr" in f.lower() and f.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
+                    return os.path.join(base, f)
+        except OSError:
+            pass
+    return "fcr_logo.png"
+
+
+LOGO_PATH = _trova_file(["aetheris_labs_logo.jpg", "aetheris_labs_logo.png"]) or "aetheris_labs_logo.jpg"
+LOGO_FCR_PATH = _trova_logo_fcr()        # logo FCR (PNG con trasparenza)
 
 PRIVACY_PUNTI = [
     ("Dati trattati",
