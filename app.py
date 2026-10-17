@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- SISTEMA DI AUTENTICAZIONE CON PASSWORD E LOGO INTEGRATO ---
+# --- SISTEMA DI AUTENTICAZIONE CON PASSWORD, LOGO CENTRATO ED ANIMATO ---
 def check_password():
     """Restituisce True se l'utente ha inserito la password corretta."""
     try:
@@ -29,19 +29,30 @@ def check_password():
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state or not st.session_state["password_correct"]:
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<br><br>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1, 1.2, 1])
         with col2:
             st.markdown("""
-                <div style="background-color: #111827; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #1f2937; text-align: center;">
+                <div style="
+                    background-color: #111827; 
+                    padding: 40px 30px; 
+                    border-radius: 16px; 
+                    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); 
+                    border: 1px solid #1f2937; 
+                    text-align: center;
+                    animation: fadeIn 0.8s ease-in-out;
+                ">
             """, unsafe_allow_html=True)
             
             logo_path = "aetheris_labs_logo.jpg"
             if os.path.exists(logo_path):
-                st.image(logo_path, width=160)
+                # Centrare l'immagine usando le colonne di Streamlit
+                c1, c2, c3 = st.columns([1, 1.5, 1])
+                with c2:
+                    st.image(logo_path, use_container_width=True)
             
-            st.markdown("<h3 style='color: #f8fafc;'>FCR GENERAL CONTRACTOR</h3>", unsafe_allow_html=True)
-            st.markdown("<p style='color: #94a3b8;'>Aetheris Labs — Area Riservata Protetta</p>", unsafe_allow_html=True)
+            st.markdown("<h2 style='color: #f8fafc; margin-top: 15px; font-size: 1.6rem;'>FCR GENERAL CONTRACTOR</h2>", unsafe_allow_html=True)
+            st.markdown("<p style='color: #38bdf8; font-size: 0.95rem; font-weight: 500; margin-bottom: 25px;'>Aetheris Labs — Area Riservata Protetta</p>", unsafe_allow_html=True)
             
             st.text_input("Password di Accesso:", type="password", on_change=password_entered, key="password_input")
             
@@ -56,40 +67,81 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- STYLING CSS AVANZATO (DARK MODE INSTITUTIONAL / FINTECH) ---
+# --- STYLING CSS AVANZATO CON ANIMAZIONI (DARK MODE FINTECH) ---
 st.markdown("""
 <style>
+    /* Keyframe Animazioni */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulseGlow {
+        0% { box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
+        50% { box-shadow: 0 0 20px rgba(56, 189, 248, 0.5); }
+        100% { box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
+    }
+
+    /* Sfondo Generale */
     .stApp {
         background-color: #0b0f19;
         color: #e2e8f0;
         font-family: 'Inter', sans-serif;
     }
+
+    /* Rimozione dello spazio / banda superiore nella Sidebar */
+    [data-testid="stSidebar"] > div:first-child {
+        padding-top: 1.5rem;
+    }
+
     [data-testid="stSidebar"] {
         background-color: #111827;
         border-right: 1px solid #1f2937;
     }
+
+    /* Animazione Logo Sidebar al passaggio del mouse */
+    [data-testid="stSidebar"] img {
+        border-radius: 12px;
+        transition: transform 0.4s ease, box-shadow 0.4s ease;
+        margin: 0 auto;
+        display: block;
+    }
+    [data-testid="stSidebar"] img:hover {
+        transform: scale(1.03);
+        box-shadow: 0 8px 24px rgba(56, 189, 248, 0.35);
+    }
+
+    /* Testi e Titoli */
     h1, h2, h3 {
         color: #f8fafc;
         font-weight: 700;
     }
+
+    /* Tab con Animazione */
     .stTabs [data-baseweb="tab"] {
         background-color: #1e293b;
         border-radius: 8px 8px 0px 0px;
         color: #94a3b8;
-        padding: 10px 20px;
+        padding: 12px 24px;
         font-weight: 600;
         border: none;
+        transition: all 0.3s ease;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #38bdf8;
+        background-color: #334155;
     }
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #1e3a8a 0%, #0284c7 100%);
+        background: linear-gradient(135deg, #1e3a8a 0%, #0284c7 100%) !important;
         color: #ffffff !important;
-        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
     }
+
+    /* Bottoni Interattivi Animati */
     .stButton > button {
         background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
         color: white;
         border-radius: 8px;
-        padding: 0.6rem 1.2rem;
+        padding: 0.6rem 1.4rem;
         font-weight: 600;
         border: none;
         box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
@@ -97,18 +149,26 @@ st.markdown("""
     }
     .stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
+        box-shadow: 0 8px 22px rgba(37, 99, 235, 0.6);
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     }
+
+    /* Card Metriche con Bagliore */
     [data-testid="stMetricValue"] {
         font-size: 1.8rem;
         font-weight: 700;
         color: #38bdf8;
     }
+
     .stTextInput input, .stNumberInput input {
         background-color: #1e293b;
         color: white;
-        border-radius: 6px;
+        border-radius: 8px;
         border: 1px solid #334155;
+        transition: border 0.3s ease;
+    }
+    .stTextInput input:focus, .stNumberInput input:focus {
+        border-color: #38bdf8;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -130,22 +190,26 @@ except Exception:
 if api_key:
     genai.configure(api_key=api_key)
 
-# Barra Laterale con Branding Fisso e Logo Non Modificabile
+# Barra Laterale con Branding Fisso e Logo Centrato
 with st.sidebar:
     logo_path = "aetheris_labs_logo.jpg"
     if os.path.exists(logo_path):
-        st.image(logo_path, use_column_width=True)
+        # Centratura Logo Sidebar
+        sb_col1, sb_col2, sb_col3 = st.columns([1, 3, 1])
+        with sb_col2:
+            st.image(logo_path, use_container_width=True)
     else:
         st.warning("⚠️ Logo 'aetheris_labs_logo.jpg' non trovato.")
     
-    st.markdown("## **AETHERIS LABS**")
-    st.caption("Software, AI & Game Development Division")
+    st.markdown("<h3 style='text-align: center; color: #f8fafc; margin-top: 10px;'>AETHERIS LABS</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #94a3b8; font-size: 0.85rem;'>Software, AI & Game Development Division</p>", unsafe_allow_html=True)
     
     st.markdown("---")
-    st.markdown("### 🛠️ Sviluppato da")
-    st.markdown("**Ing. Lorenzo Di Ferdinando**")
-    st.markdown("*FCR General Contractor*")
+    st.markdown("<p style='text-align: center; margin-bottom: 2px;'>🛠️ <b>Sviluppato da</b></p>", unsafe_allow_html=True)
+    st.markdown("<h4 style='text-align: center; color: #38bdf8; margin: 0;'>Ing. Lorenzo Di Ferdinando</h4>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #94a3b8; font-size: 0.85rem;'>FCR General Contractor</p>", unsafe_allow_html=True)
     
+    st.markdown("<br>", unsafe_allow_html=True)
     user_api_key = st.text_input("Gemini API Key (Locale)", value=api_key, type="password")
     if user_api_key:
         genai.configure(api_key=user_api_key)
