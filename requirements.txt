@@ -9,3 +9,4 @@ python-docx
 google-genai
 # solo per i test:
 pytest
+Pillow
