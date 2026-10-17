@@ -41,3 +41,9 @@ def pulisci_testo(testo):
     t = re.sub(r"^\s{0,3}#{1,6}\s*", "", t, flags=re.MULTILINE)
     t = t.replace("**", "").replace("__", "")
     return t.strip()
+
+
+def errore_quota(e):
+    """True se l'errore indica quota/limite di richieste esaurito (HTTP 429)."""
+    t = str(e)
+    return "429" in t or "RESOURCE_EXHAUSTED" in t
