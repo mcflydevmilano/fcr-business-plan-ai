@@ -117,3 +117,44 @@ def test_annulla_estrazione_non_cambia_i_dati(at):
     _btn(at, "Annulla").click().run()
     assert at.session_state["financial_data"]["ricavi"] == 2_500_000
     assert at.session_state["dati_demo"] is True
+
+
+def test_quota_esaurita_genera_comunque_i_documenti(monkeypatch):
+    import tempfile
+    import ai
+    import storage
+    tmp = tempfile.mkdtemp()
+    monkeypatch.setenv("APP_PASSWORD", "segreta")
+    monkeypatch.setenv("GEMINI_API_KEY", "chiave-finta")
+    monkeypatch.setattr(storage, "DB_PATH", os.path.join(tmp, "t.db"))
+
+    def finta(*a, **k):
+        raise Exception("429 RESOURCE_EXHAUSTED. You exceeded your current quota")
+
+    monkeypatch.setattr(ai, "genera", finta)
+    app = AppTest.from_file(APP, default_timeout=120)
+    app.session_state["password_correct"] = True
+    app.run()
+    assert app.checkbox[0].value is True          # relazione AI attiva (c'e' una chiave)
+    _btn(app, "Genera Report PDF + Word").click().run()
+    assert not app.exception
+    rep = app.session_state["report"]
+    assert rep["quota"] is True and rep["pdf"][:4] == b"%PDF" and rep["docx"][:2] == b"PK"
+    assert any("quota giornaliera" in w.value for w in app.warning)
+    assert not any("429" in e.value for e in app.error)
+
+
+def test_errore_diverso_dalla_quota_resta_visibile(monkeypatch):
+    import tempfile
+    import ai
+    import storage
+    monkeypatch.setenv("APP_PASSWORD", "segreta")
+    monkeypatch.setenv("GEMINI_API_KEY", "chiave-finta")
+    monkeypatch.setattr(storage, "DB_PATH", os.path.join(tempfile.mkdtemp(), "t.db"))
+    monkeypatch.setattr(ai, "genera", lambda *a, **k: (_ for _ in ()).throw(Exception("403 PERMISSION_DENIED")))
+    app = AppTest.from_file(APP, default_timeout=120)
+    app.session_state["password_correct"] = True
+    app.run()
+    _btn(app, "Genera Report PDF + Word").click().run()
+    assert any("403" in e.value for e in app.error)
+    assert "report" not in app.session_state
