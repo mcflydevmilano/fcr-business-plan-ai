@@ -223,6 +223,19 @@ def ai_generate(api_key, contents, json_mode=False, temperature=0.2):
 pulisci_testo_ia = ai.pulisci_testo
 
 
+MSG_QUOTA_ESTRAZIONE = (
+    "⏳ La quota giornaliera gratuita di Gemini e' esaurita, quindi l'estrazione automatica non e' disponibile ora. "
+    "Puoi continuare subito scegliendo **Inserimento Dati Manuale** qui sopra, oppure riprovare piu' tardi "
+    "(di solito la quota si ripristina entro 24 ore). In alternativa attiva la fatturazione su Google AI Studio "
+    "o inserisci un'altra chiave API nella barra laterale."
+)
+MSG_QUOTA_REPORT = (
+    "⏳ La quota giornaliera gratuita di Gemini e' esaurita: **PDF e Word sono stati generati senza la relazione "
+    "scritta dall'AI** (contengono comunque tabelle, grafici, stress test, covenant e commesse). Per avere anche la "
+    "relazione puoi riprovare piu' tardi (la quota si ripristina di solito entro 24 ore), attivare la fatturazione "
+    "su Google AI Studio o inserire un'altra chiave API nella barra laterale."
+)
+
 PROMPT_ESTRAZIONE = (
     "Sei un analista fidi esperto. Dal bilancio fornito estrai i dati dell'ultimo esercizio e restituisci "
     "ESCLUSIVAMENTE un oggetto JSON con queste chiavi: anno_riferimento (intero), ricavi, ebitda, utile_netto, "
@@ -490,7 +503,10 @@ with tab_dati:
                     except json.JSONDecodeError:
                         st.error("Il modello non ha restituito un JSON valido. Riprova.")
                     except Exception as e:
-                        st.error(f"Errore durante l'elaborazione: {e}")
+                        if ai.errore_quota(e):
+                            st.error(MSG_QUOTA_ESTRAZIONE)
+                        else:
+                            st.error(f"Errore durante l'elaborazione: {e}")
     else:
         in_migliaia = st.checkbox("Gli importi che inserisco sono in migliaia di euro")
         col_a, col_b = st.columns(2)
@@ -807,23 +823,30 @@ with tab_rep:
     st.caption(f"ID report corrente: **{ctx['report_id']}** (cambia al variare di dati, leve, ipotesi, soglie, scenari e commesse).")
 
     usa_ai = st.checkbox("Includi la relazione scritta dall'AI", value=bool(active_key), disabled=not active_key)
+    st.caption("💡 Se togli la spunta ottieni comunque PDF e Word completi di tabelle, grafici, stress test, covenant e "
+               "commesse, ma senza il testo del parere dell'AI. Utile se la quota di Gemini e' esaurita o se non hai una chiave.")
     if st.button("🚀 Genera Report PDF + Word", type="primary"):
         with st.spinner("Creazione dei documenti in corso..."):
             try:
-                avvisi = []
+                avvisi, quota_esaurita, relazione = [], False, None
                 if usa_ai and active_key:
-                    testo, usato = ai_generate(active_key, prompt_relazione(ctx), temperature=0.3)
-                    relazione = pulisci_testo_ia(testo)
-                    ctx["modello"] = usato
-                    avvisi = core.numeri_sospetti(relazione, {k: v for k, v in ctx.items() if k not in ("commesse_df", "per_cliente")})
-                else:
+                    try:
+                        testo, usato = ai_generate(active_key, prompt_relazione(ctx), temperature=0.3)
+                        relazione = pulisci_testo_ia(testo)
+                        ctx["modello"] = usato
+                        avvisi = core.numeri_sospetti(relazione, {k: v for k, v in ctx.items() if k not in ("commesse_df", "per_cliente")})
+                    except Exception as e_ai:
+                        if not ai.errore_quota(e_ai):
+                            raise
+                        quota_esaurita = True
+                if relazione is None:
                     relazione = "Relazione non generata (funzione AI non utilizzata). Vedere tabelle e grafici."
                     ctx["modello"] = "nessuno"
                 grafici = exports.grafici_report(ctx)
                 ss["report"] = {
                     "text": relazione, "pdf": exports.genera_pdf(ctx, relazione, grafici),
                     "docx": exports.genera_docx(ctx, relazione, grafici), "report_id": ctx["report_id"],
-                    "avvisi": avvisi, "modello": ctx["modello"],
+                    "avvisi": avvisi, "modello": ctx["modello"], "quota": quota_esaurita,
                 }
                 try:
                     storage.log_report(ss.get("pratica_nome", ""), ctx["report_id"], ctx["modello"], ctx["hash_dati"],
@@ -835,6 +858,8 @@ with tab_rep:
 
     rep = ss.get("report")
     if rep:
+        if rep.get("quota"):
+            st.warning(MSG_QUOTA_REPORT)
         if rep["report_id"] != ctx["report_id"]:
             st.warning("⚠️ Dati o ipotesi sono cambiati dopo la generazione: rigenera i documenti per allinearli.")
         if rep["avvisi"]:
