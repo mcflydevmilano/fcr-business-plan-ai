@@ -10,11 +10,12 @@ import io
 import os
 
 from core import (
-    DISCLAIMER, SOGLIE_DEFAULT, fmt_eur, fmt_num, fmt_pct, fmt_x, ratio,
+    DISCLAIMER, LOGO_FCR_PATH, LOGO_PATH, PRIVACY_BREVE, PRIVACY_PUNTI, SOGLIE_DEFAULT,
+    fmt_eur, fmt_num, fmt_pct, fmt_x, ratio,
 )
+from core import soglie_testo as _soglie_testo, valore_dettaglio as _valore_dettaglio
 import charts
-
-LOGO_PATH = "aetheris_labs_logo.jpg"
+from pdf_report import genera_pdf, pdf_safe  # noqa: F401  (riesportati)
 
 
 # ----------------------------------------------------------------------------
@@ -41,248 +42,6 @@ def grafici_report(ctx):
     if ctx.get("per_cliente") is not None:
         out["commesse"] = charts.fig_png(charts.fig_commesse(ctx["per_cliente"], "light"))
     return out
-
-
-def _valore_dettaglio(d):
-    v = d["valore"]
-    if d["chiave"] == "equity_ratio":
-        return fmt_pct(100 * v)
-    if v is None:
-        return "n.d."
-    return fmt_x(v)
-
-
-def _soglie_testo(d):
-    if d["chiave"] == "equity_ratio":
-        return f">= {fmt_pct(100 * d['verde'], 0)} / {fmt_pct(100 * d['giallo'], 0)}"
-    segno = "<" if d["verso"] == "min" else ">="
-    return f"{segno} {fmt_num(d['verde'], 2)} / {fmt_num(d['giallo'], 2)}"
-
-
-# ----------------------------------------------------------------------------
-# PDF
-# ----------------------------------------------------------------------------
-def pdf_safe(text):
-    """Sostituisce i caratteri non latin-1 (i font core di FPDF non li supportano)."""
-    if text is None:
-        return ""
-    rep = {
-        "€": "EUR", "–": "-", "—": "-", "’": "'", "‘": "'", "“": '"', "”": '"',
-        "…": "...", "•": "-", "≥": ">=", "≤": "<=", "→": "->",
-    }
-    for k, v in rep.items():
-        text = text.replace(k, v)
-    return text.encode("latin-1", "replace").decode("latin-1")
-
-
-def genera_pdf(ctx, relazione, grafici=None):
-    from fpdf import FPDF
-    from fpdf.enums import XPos, YPos
-
-    grafici = grafici if grafici is not None else grafici_report(ctx)
-
-    class PDFReport(FPDF):
-        def header(self):
-            self.set_fill_color(15, 23, 42)
-            self.rect(0, 0, 210, 26, "F")
-            if os.path.exists(LOGO_PATH):
-                try:
-                    self.image(LOGO_PATH, 10, 4, 18)
-                except Exception:
-                    pass
-            self.set_font("Helvetica", "B", 10)
-            self.set_text_color(255, 255, 255)
-            self.set_xy(32, 6)
-            self.cell(0, 6, "FCR GENERAL CONTRACTOR - RISK MANAGEMENT REPORT", align="L")
-            self.set_font("Helvetica", "", 8)
-            self.set_xy(32, 13)
-            self.cell(0, 6, "Powered by Aetheris Labs | Lead Eng: Ing. Lorenzo Di Ferdinando", align="L")
-            self.set_y(32)
-
-        def footer(self):
-            self.set_y(-15)
-            self.set_font("Helvetica", "I", 7)
-            self.set_text_color(128, 128, 128)
-            self.cell(
-                0, 10,
-                pdf_safe(f"Pagina {self.page_no()} | ID report {ctx['report_id']} | {ctx['generato_il']} | "
-                         f"Modello AI: {ctx['modello']}"),
-                align="C",
-            )
-
-    pdf = PDFReport()
-    pdf.set_auto_page_break(auto=True, margin=18)
-    pdf.add_page()
-    nl = dict(new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-
-    def riga(cells, widths, aligns, fill=False, h=6):
-        for i, (txt, w, a) in enumerate(zip(cells, widths, aligns)):
-            last = i == len(cells) - 1
-            pdf.cell(w, h, pdf_safe(txt), border=1, align=a, fill=fill,
-                     new_x=XPos.LMARGIN if last else XPos.RIGHT, new_y=YPos.NEXT if last else YPos.TOP)
-
-    def titolo(txt):
-        if pdf.get_y() > 255:
-            pdf.add_page()
-        pdf.set_font("Helvetica", "B", 11)
-        pdf.set_text_color(15, 23, 42)
-        pdf.cell(0, 7, pdf_safe(txt), **nl)
-
-    def intestazione(cells, widths, aligns, size=8):
-        pdf.set_font("Helvetica", "B", size)
-        pdf.set_fill_color(30, 41, 59)
-        pdf.set_text_color(255, 255, 255)
-        riga(cells, widths, aligns, fill=True, h=7)
-        pdf.set_font("Helvetica", "", size)
-        pdf.set_text_color(0, 0, 0)
-
-    def immagine(nome, w=175):
-        png = grafici.get(nome)
-        if not png:
-            return
-        try:
-            from PIL import Image
-            with Image.open(io.BytesIO(png)) as im:
-                h = w * im.height / im.width
-        except Exception:
-            h = w * 0.5
-        if pdf.get_y() + h > 280:
-            pdf.add_page()
-        pdf.image(io.BytesIO(png), x=(210 - w) / 2, w=w)
-        pdf.ln(2)
-
-    base, scen, rating, piano = ctx["dati"], ctx["scen"], ctx["rating"], ctx["piano"]
-
-    pdf.set_font("Helvetica", "B", 15)
-    pdf.set_text_color(15, 23, 42)
-    pdf.cell(0, 8, "VALUTAZIONE DEL MERITO DI CREDITO E BUSINESS PLAN", **nl)
-    pdf.set_font("Helvetica", "I", 10)
-    pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 6, "Analisi indicativa, scoring prospettico e parere per il Comitato Fidi", **nl)
-    if ctx.get("pratica"):
-        pdf.cell(0, 6, pdf_safe(f"Pratica: {ctx['pratica']}"), **nl)
-    pdf.ln(2)
-
-    if ctx.get("dati_demo"):
-        pdf.set_font("Helvetica", "B", 9)
-        pdf.set_text_color(185, 28, 28)
-        pdf.multi_cell(0, 5, pdf_safe("ATTENZIONE: il report e' basato su dati di esempio non verificati."), **nl)
-        pdf.ln(1)
-
-    # 1. Sintesi
-    titolo(f"1. Sintesi Indicatori (anno base {int(base['anno_riferimento'])}) - Base vs Scenario")
-    w, al = [80, 50, 50], ["L", "R", "R"]
-    intestazione(["  Parametro", "Base  ", "Scenario  "], w, al, 9)
-    righe = [
-        ("Ricavi delle Vendite", fmt_eur(base["ricavi"]), fmt_eur(scen["ricavi"])),
-        ("EBITDA (MOL)", fmt_eur(base["ebitda"]), fmt_eur(scen["ebitda"])),
-        ("Patrimonio Netto", fmt_eur(base["patrimonio_netto"]), fmt_eur(scen["pn"])),
-        ("Posizione Finanziaria Netta", fmt_eur(base["pfn"]), fmt_eur(scen["pfn"])),
-        ("PFN / EBITDA", fmt_x(ratio(base["pfn"], base["ebitda"])), fmt_x(rating["pfn_ebitda"])),
-        ("PFN / Patrimonio Netto", fmt_x(ratio(base["pfn"], base["patrimonio_netto"])), fmt_x(rating["pfn_pn"])),
-        ("Patrimonio Netto / Totale Attivo",
-         fmt_pct(100 * base["patrimonio_netto"] / base["totale_attivo"]) if base["totale_attivo"] > 0 else "n.d.",
-         fmt_pct(100 * rating["equity_ratio"])),
-        ("DSCR (Anno 1 del piano)", "-", fmt_x(rating["dscr"]) if rating["dscr"] is not None else "n.d."),
-        ("Punteggio scoring (max 8)", "-", str(rating["punti"])),
-    ]
-    fill = False
-    for lab, a, b in righe:
-        pdf.set_fill_color(*((241, 245, 249) if fill else (255, 255, 255)))
-        riga(["  " + lab, a + "  ", b + "  "], w, al, fill=True)
-        fill = not fill
-    pdf.set_font("Helvetica", "B", 9)
-    pdf.cell(0, 7, pdf_safe("Giudizio stimato (scenario): " + rating["classe"]), **nl)
-    pdf.ln(2)
-
-    # Dettaglio punteggio
-    titolo("Dettaglio del punteggio (verde / giallo)")
-    wd, ad = [70, 35, 50, 25], ["L", "R", "R", "R"]
-    intestazione(["  Indicatore", "Valore  ", "Soglie  ", "Punti  "], wd, ad)
-    for d in rating["dettaglio"]:
-        riga(["  " + d["indicatore"], _valore_dettaglio(d) + "  ", _soglie_testo(d) + "  ", f"{d['punti']}/2  "], wd, ad)
-    pdf.ln(3)
-
-    # 2. Piano
-    titolo("2. Proiezioni Economico-Finanziarie Pluriennali (partendo dallo scenario)")
-    w2 = [34, 26, 26, 26, 26, 26, 26]
-    a2 = ["L"] + ["R"] * 6
-    intestazione(["  Anno", "Ricavi", "EBITDA", "FCF", "PFN", "PFN/EBITDA", "DSCR"], w2, a2)
-    for r in piano:
-        riga(["  " + r["Anno"], fmt_num(r["Ricavi"]), fmt_num(r["EBITDA"]), fmt_num(r["FCF"]), fmt_num(r["PFN"]),
-              fmt_x(r["PFN/EBITDA"]), fmt_x(r["DSCR"]) if r["DSCR"] is not None else "n.d."], w2, a2)
-    pdf.set_font("Helvetica", "I", 8)
-    pdf.set_text_color(100, 100, 100)
-    p = ctx["piano_par"]
-    pdf.multi_cell(
-        0, 4,
-        pdf_safe(f"Importi in EUR. Ipotesi: crescita ricavi {fmt_num(p['g_ricavi'], 1)}%, EBITDA {fmt_num(p['g_ebitda'], 1)}%, "
-                 f"capex {fmt_num(p['capex'])}, ammortamenti {fmt_num(p['amm'])}, rimborso annuo {fmt_num(p['rimborso'])}, "
-                 f"tasso {fmt_num(p['tasso'], 2)}%, aliquota {fmt_num(p['aliquota'], 1)}%, CCN {fmt_num(p['ccn_pct'], 0)}% "
-                 "della variazione dei ricavi. FCF = EBITDA - imposte - capex - interessi - variazione CCN."),
-        **nl,
-    )
-    pdf.ln(2)
-
-    # Grafici
-    if pdf.get_y() + 100 > 280:
-        pdf.add_page()
-    titolo("Grafici")
-    for nome in ("pfn_ebitda", "dscr", "cascata", "storico", "confronto"):
-        immagine(nome)
-
-    # Covenant
-    if ctx.get("cov_res"):
-        titolo("Verifica covenant")
-        wc, ac = [38, 28, 28, 24, 24, 24, 24], ["L"] + ["R"] * 6
-        intestazione(["  Anno", "PFN/EBITDA", "Limite", "Esito", "DSCR", "Limite", "Esito"], wc, ac)
-        for c in ctx["cov_res"]:
-            riga(["  " + c["Anno"], fmt_x(c["PFN/EBITDA"]), fmt_x(c["Limite PFN/EBITDA"]), c["Esito leva"],
-                  fmt_x(c["DSCR"]) if c["DSCR"] is not None else "n.d.", fmt_x(c["Limite DSCR"]), c["Esito DSCR"]], wc, ac)
-        pdf.ln(3)
-
-    # Stress test
-    if ctx.get("stress"):
-        titolo("Stress test")
-        ws, as_ = [76, 34, 28, 26, 26], ["L", "R", "R", "R", "R"]
-        intestazione(["  Caso", "PFN/EBITDA a3", "DSCR min", "Punti", "Fascia"], ws, as_)
-        for s in ctx["stress"]:
-            riga(["  " + s["Caso"], fmt_x(s["PFN/EBITDA anno 3"]),
-                  fmt_x(s["DSCR minimo"]) if s["DSCR minimo"] is not None else "n.d.", f"{s['Punteggio']}/8", s["Fascia"]], ws, as_)
-        pdf.ln(3)
-
-    # Commesse
-    k = ctx.get("commesse_kpi")
-    if k:
-        titolo("Portafoglio commesse")
-        wk, ak = [100, 80], ["L", "R"]
-        intestazione(["  Indicatore", "Valore  "], wk, ak)
-        voci = [
-            ("Numero commesse", str(k["n_commesse"])),
-            ("Importo totale contratti", fmt_eur(k["importo_totale"])),
-            ("Backlog residuo", fmt_eur(k["backlog"])),
-            ("Copertura ricavi (backlog / ricavi base)", fmt_x(k["copertura_ricavi"]) if k["copertura_ricavi"] is not None else "n.d."),
-            ("Produzione eseguita non fatturata (negativo = anticipi)", fmt_eur(k["da_fatturare"])),
-            ("Crediti verso clienti da commesse", fmt_eur(k["crediti"])),
-            ("Margine medio ponderato sul backlog", fmt_pct(k["margine_backlog_pct"])),
-            ("Concentrazione primo cliente / primi 3", f"{fmt_pct(k['top1_pct'], 0)} / {fmt_pct(k['top3_pct'], 0)}"),
-        ]
-        for a, b in voci:
-            riga(["  " + a, b + "  "], wk, ak)
-        pdf.ln(2)
-        immagine("commesse")
-
-    # Relazione
-    titolo("3. Relazione e Parere del Risk Management")
-    pdf.set_font("Helvetica", "", 9)
-    pdf.set_text_color(50, 50, 50)
-    pdf.multi_cell(0, 5, pdf_safe(relazione), **nl)
-    pdf.ln(4)
-
-    pdf.set_font("Helvetica", "I", 8)
-    pdf.set_text_color(100, 100, 100)
-    pdf.multi_cell(0, 4, pdf_safe("Avvertenza: " + DISCLAIMER), **nl)
-    return bytes(pdf.output())
 
 
 # ----------------------------------------------------------------------------
@@ -329,6 +88,11 @@ def genera_docx(ctx, relazione, grafici=None):
             doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     base, scen, rating, piano = ctx["dati"], ctx["scen"], ctx["rating"], ctx["piano"]
+    if os.path.exists(LOGO_FCR_PATH):
+        try:
+            doc.add_picture(LOGO_FCR_PATH, width=Cm(3.2))
+        except Exception:
+            pass
     doc.add_heading("Valutazione del merito di credito e business plan", level=0)
     doc.add_paragraph("FCR General Contractor - Risk Management Report (analisi indicativa per il Comitato Fidi)")
     if ctx.get("pratica"):
@@ -337,6 +101,11 @@ def genera_docx(ctx, relazione, grafici=None):
         p = doc.add_paragraph()
         r = p.add_run("ATTENZIONE: il report e' basato su dati di esempio non verificati.")
         r.bold = True
+
+    if ctx.get("avvisi_dati"):
+        doc.add_heading("Avvisi sulla qualita' dei dati", level=1)
+        for a in ctx["avvisi_dati"]:
+            doc.add_paragraph(a, style="List Bullet")
 
     doc.add_heading(f"1. Sintesi indicatori (anno base {int(base['anno_riferimento'])})", level=1)
     tabella(
@@ -411,6 +180,23 @@ def genera_docx(ctx, relazione, grafici=None):
     for blocco in (relazione or "").split("\n\n"):
         if blocco.strip():
             doc.add_paragraph(blocco.strip())
+    doc.add_heading("Metodologia e limiti", level=1)
+    doc.add_paragraph(
+        "Punteggio totale = somma dei punti dei quattro indicatori (massimo 8). Fascia verde: punteggio >= 7; gialla: da 4 a 6; "
+        "rossa: < 4, oppure patrimonio netto non positivo, oppure EBITDA non positivo. Le soglie sono ipotesi di lavoro "
+        "configurabili, non calibrate statisticamente su dati di insolvenza."
+    )
+    doc.add_paragraph(
+        "Piano: FCF = EBITDA - imposte - capex - interessi - variazione CCN; PFN(t) = PFN(t-1) - FCF. Il rimborso del debito "
+        "incide sul DSCR ma non sulla PFN. Il modello non considera stagionalita', garanzie, Centrale Rischi, rating di settore "
+        "ne' qualita' dei crediti."
+    )
+
+    doc.add_heading("Informativa sulla privacy e avvertenze", level=1)
+    for titolo_p, testo_p in PRIVACY_PUNTI:
+        p = doc.add_paragraph()
+        p.add_run(titolo_p + ". ").bold = True
+        p.add_run(testo_p)
     p = doc.add_paragraph()
     r = p.add_run("Avvertenza: " + DISCLAIMER)
     r.italic = True
@@ -677,6 +463,8 @@ def genera_excel(ctx):
         "I valori dello storico sono inseriti come numeri (non formule).",
         "",
         "AVVERTENZA: " + DISCLAIMER,
+        "",
+        PRIVACY_BREVE,
     ]
     if ctx.get("dati_demo"):
         righe_note.insert(2, "ATTENZIONE: dati di esempio non verificati.")
@@ -725,4 +513,5 @@ def costruisci_ctx(dati, leve, piano_par, soglie=None, covenant=None, storico=No
         "dati_demo": dati_demo, "report_id": core.hash_payload(firma, 10).upper(),
         "hash_dati": core.hash_payload(dati), "modello": modello,
         "generato_il": time.strftime("%d/%m/%Y %H:%M"), "pratica": pratica,
+        "avvisi_dati": core.valida_dati(dati),
     }
