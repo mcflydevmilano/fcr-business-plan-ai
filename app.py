@@ -13,7 +13,7 @@ Dipendenze (requirements.txt):
 Secrets / variabili d'ambiente:
     APP_PASSWORD     (obbligatoria)
     GEMINI_API_KEY   (opzionale: l'utente puo' inserirne una propria nella sidebar)
-    GEMINI_MODEL     (opzionale, default: gemini-2.5-flash)
+    GEMINI_MODEL     (opzionale, default: gemini-3.8-flash)
 """
 import hmac
 import io
@@ -372,7 +372,9 @@ if not check_password():
 # ----------------------------------------------------------------------------
 # AI (google-genai)
 # ----------------------------------------------------------------------------
-MODEL_NAME = get_secret("GEMINI_MODEL", "gemini-2.5-flash")
+MODEL_NAME = get_secret("GEMINI_MODEL", "gemini-3.8-flash")
+# Alias di ripiego se il modello principale non e' disponibile (errore 404)
+FALLBACK_MODELS = ["gemini-flash-latest"]
 SERVER_API_KEY = get_secret("GEMINI_API_KEY", "")
 
 
@@ -382,7 +384,17 @@ def ai_generate(api_key, contents, json_mode=False, temperature=0.2):
         temperature=temperature,
         response_mime_type="application/json" if json_mode else "text/plain",
     )
-    res = client.models.generate_content(model=MODEL_NAME, contents=contents, config=cfg)
+    res, last_err = None, None
+    for model in [MODEL_NAME] + [m for m in FALLBACK_MODELS if m != MODEL_NAME]:
+        try:
+            res = client.models.generate_content(model=model, contents=contents, config=cfg)
+            break
+        except Exception as e:
+            last_err = e
+            if "404" not in str(e) and "NOT_FOUND" not in str(e):
+                raise
+    if res is None:
+        raise last_err
     try:
         text = res.text
     except Exception:
