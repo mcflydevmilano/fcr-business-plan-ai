@@ -84,7 +84,7 @@ def test_main_dry_run_dal_database(monkeypatch, tmp_path, capsys):
 
 def test_pagina_calendario(monkeypatch):
     at = _nuovo(monkeypatch)
-    assert "Strumento 13" in " ".join(m.value for m in at.markdown)
+    assert "Calendario scadenze" in " ".join(m.value for m in at.markdown)
     _btn(at, "Apri Scadenzario").click().run()
     _btn(at, "Torna all'Hub").click().run()
     _btn(at, "Apri Calendario scadenze").click().run()

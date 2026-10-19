@@ -9,7 +9,7 @@ from test_hub_bp import _btn, _nuovo
 def test_hub_mostra_quattro_strumenti(monkeypatch):
     at = _nuovo(monkeypatch)
     t = " ".join(m.value for m in at.markdown)
-    assert "Strumento 3" in t and "Strumento 4" in t
+    assert "Cash Flow di cantiere" in t and "Computo e Preventivo" in t
     _btn(at, "Apri Cash Flow")
     _btn(at, "Apri Computo")
 
@@ -102,7 +102,7 @@ def test_nome_pratica_con_prefisso_riservato(monkeypatch):
 def test_hub_sei_strumenti_e_nuovi_moduli(monkeypatch):
     at = _nuovo(monkeypatch)
     t = " ".join(m.value for m in at.markdown)
-    assert "Strumento 5" in t and "Strumento 6" in t
+    assert "Scadenzario incassi" in t and "Cruscotto di direzione" in t
     _btn(at, "Apri Scadenzario").click().run()
     assert not at.exception and len(at.tabs) == 4
     assert any("Sì, questa settimana" in m.value or "va in negativo" in m.value or "Attenzione" in m.value for m in list(at.success) + list(at.warning) + list(at.error))
@@ -123,10 +123,10 @@ def test_cruscotto_legge_i_dati_della_sessione(monkeypatch):
 
 def test_report_scadenzario_e_cruscotto(monkeypatch):
     at = _nuovo(monkeypatch, modulo="sc")
-    at.button(key="sc_gen").click().run()
+    at.button(key="gen_sc").click().run()
     assert not at.exception and at.session_state["sc_rep"]["pdf"][:4] == b"%PDF"
     at2 = _nuovo(monkeypatch, modulo="dd")
-    at2.button(key="dd_gen").click().run()
+    at2.button(key="gen_dd").click().run()
     assert not at2.exception and at2.session_state["dd_rep"]["pdf"][:4] == b"%PDF"
 
 
@@ -140,3 +140,23 @@ def test_salva_e_riapri_scadenzario(monkeypatch):
     at.number_input(key="sc_fido").set_value(1.0).run()
     at.button(key="sv_apri_sc").click().run()
     assert not at.exception and at.number_input(key="sc_fido").value == 77000.0
+
+
+def test_backup_senza_password(monkeypatch):
+    import storage, auth, tempfile, os
+    p = os.path.join(tempfile.mkdtemp(), "b.db")
+    storage.salva_pratica("P1", {"a": 1}, path=p)
+    storage.salva_utente("mario", "HASH-SEGRETO", "utente", "admin", path=p)
+    bk = storage.esporta_backup(p)
+    assert bk["pratiche"][0]["nome"] == "P1" and bk["utenti"][0]["username"] == "mario"
+    assert "HASH-SEGRETO" not in str(bk)
+
+
+def test_modelli_excel_import_si_riimportano():
+    import cf, io, pandas as pd, ui_util
+    xl = ui_util.modello_excel(cf.COLONNE_CANTIERI, cf.ETICHETTE_COLONNE, cf.genera_portafoglio(3, 90000))
+    df = pd.read_excel(io.BytesIO(xl))
+    inv = {v.lower(): k for k, v in cf.ETICHETTE_COLONNE.items()}
+    df = df.rename(columns={c: inv.get(str(c).lower(), c) for c in df.columns})
+    puliti, _ = cf.normalizza_cantieri(cf.da_dataframe(df))
+    assert len(puliti) == 3 and puliti[0]["Contratto"] == 30000

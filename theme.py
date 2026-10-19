@@ -75,6 +75,9 @@ h3 { margin-top: .6rem; }
 
 /* ---------- hub ---------- */
 .hub-title { text-align: center; font-size: 2.1rem; font-weight: 800; color: var(--navy); margin: 6px 0 4px 0; letter-spacing: -.02em; }
+.hub-sez { margin: 30px 0 14px 0; padding-left: 14px; border-left: 4px solid var(--acc); }
+.hub-sez-t { font-size: 1.25rem; font-weight: 800; color: var(--navy); letter-spacing: -.01em; }
+.hub-sez-sub { color: var(--mut); font-size: .95rem; margin-top: 2px; }
 .hub-sub { text-align: center; color: var(--mut); font-size: 1.02rem; margin-bottom: 26px; }
 .hub-logo { display: block; margin: 0 auto 10px auto; width: 96px; filter: drop-shadow(0 8px 18px rgba(30,64,175,.25)); animation: float 6s ease-in-out infinite; }
 .hub-card { margin-bottom: 20px; position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 26px 26px 20px 26px; min-height: 400px;
@@ -358,6 +361,11 @@ def hub_header(uri_fcr):
     logo = f'<img class="hub-logo" src="{uri_fcr}" alt="FCR"/>' if uri_fcr else ""
     return (f'{logo}<div class="hub-title">FCR General Contractor &amp; Aetheris Labs</div>'
             f'<div class="hub-sub">Seleziona lo strumento operativo che desideri utilizzare</div>')
+
+
+def hub_sezione(titolo, sotto=""):
+    s = f'<div class="hub-sez-sub">{_e(sotto)}</div>' if sotto else ""
+    return f'<div class="hub-sez"><div class="hub-sez-t">{_e(titolo)}</div>{s}</div>'
 
 
 def hub_card(numero, icona, titolo, descrizione, voci, tags, variante=""):
