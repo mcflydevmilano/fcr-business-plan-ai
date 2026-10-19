@@ -31,6 +31,8 @@ import core
 import exports
 import storage
 import bp_ui
+import cf_ui
+import pv_ui
 import theme
 import xbrl
 from core import (
@@ -373,7 +375,7 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",)}
 
 
 def vai_a(modulo):
@@ -507,11 +509,50 @@ if MODULO is None:
         )
         if st.button("Apri Business Plan Studio  →", key="hub_bp", width="stretch"):
             vai_a("bp")
+    _c3, _c4 = st.columns(2, gap="large")
+    with _c3:
+        st.markdown(
+            theme.hub_card(
+                "Strumento 3", "🏗️", "Cash Flow di cantiere",
+                "Liquidità del portafoglio cantieri: quando incassi, quando paghi, quanto fido ti serve.",
+                ["Portafoglio di decine di cantieri con anticipo, SAL e saldo",
+                 "Cassa mese per mese, scoperto, interessi e fido",
+                 "Stress test: incassi in ritardo, costi maggiori, avvii slittati",
+                 "Dossier PDF ed Excel con formule vive"],
+                ["Liquidità", "Stress test", "PDF + Excel"], "cf",
+            ),
+            unsafe_allow_html=True,
+        )
+        if st.button("Apri Cash Flow di cantiere  →", key="hub_cf", width="stretch"):
+            vai_a("cf")
+    with _c4:
+        st.markdown(
+            theme.hub_card(
+                "Strumento 4", "🧮", "Computo e Preventivo",
+                "Dal computo metrico al prezzo al cliente, con il margine sempre sotto controllo.",
+                ["Voci con costi di materiali, manodopera e noli",
+                 "Spese generali, utile, sconto, sicurezza e IVA",
+                 "Sconto massimo concedibile e rischio aumento costi",
+                 "Preventivo PDF per il cliente e invio al Cash Flow"],
+                ["Computo", "Margine", "PDF cliente"], "pv",
+            ),
+            unsafe_allow_html=True,
+        )
+        if st.button("Apri Computo e Preventivo  →", key="hub_pv", width="stretch"):
+            vai_a("pv")
     st.caption("Le simulazioni sono indicative e non costituiscono rating regolamentare, parere di credito o consulenza.")
     st.stop()
 
 if MODULO == "bp":
     bp_ui.render(ai_generate, active_key, FCR_URI, ai, audit)
+    st.stop()
+
+if MODULO == "cf":
+    cf_ui.render(FCR_URI, audit)
+    st.stop()
+
+if MODULO == "pv":
+    pv_ui.render(ai_generate, active_key, FCR_URI, ai, audit)
     st.stop()
 
 # ----------------------------------------------------------------------------

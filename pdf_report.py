@@ -55,7 +55,7 @@ class _PDF(FPDF):
         self.set_margins(12, 28, 12)
         self.set_auto_page_break(True, margin=20)
         self.alias_nb_pages()
-        self.set_title("FCR General Contractor - Report di valutazione")
+        self.set_title((ctx or {}).get("titolo_documento", "FCR General Contractor - Report di valutazione"))
         self.set_author("FCR General Contractor / Aetheris Labs")
 
     def header(self):
@@ -105,9 +105,9 @@ class _PDF(FPDF):
         self.set_font("Helvetica", "", 7)
         self.set_text_color(*GRIGIO)
         self.set_y(-12)
-        self.cell(58, 5, "Documento riservato - uso interno", align="L")
+        self.cell(58, 5, self.ctx.get("footer_sx", "Documento riservato - uso interno"), align="L")
         self.cell(58, 5, f"Pagina {self.page_no()} di {{nb}}", align="C")
-        self.cell(62, 5, pdf_safe(f"Powered by Aetheris Labs | Modello AI: {self.ctx['modello']}"), align="R")
+        self.cell(62, 5, pdf_safe(self.ctx.get("footer_dx") or f"Powered by Aetheris Labs | Modello AI: {self.ctx['modello']}"), align="R")
         if os.path.exists(LOGO_PATH):
             try:
                 self.image(LOGO_PATH, 190.5, self.h - 12.8, 7.5)

@@ -77,7 +77,7 @@ h3 { margin-top: .6rem; }
 .hub-title { text-align: center; font-size: 2.1rem; font-weight: 800; color: var(--navy); margin: 6px 0 4px 0; letter-spacing: -.02em; }
 .hub-sub { text-align: center; color: var(--mut); font-size: 1.02rem; margin-bottom: 26px; }
 .hub-logo { display: block; margin: 0 auto 10px auto; width: 96px; filter: drop-shadow(0 8px 18px rgba(30,64,175,.25)); animation: float 6s ease-in-out infinite; }
-.hub-card { margin-bottom: 20px; position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 26px 26px 20px 26px; min-height: 360px;
+.hub-card { margin-bottom: 20px; position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 26px 26px 20px 26px; min-height: 400px;
   box-shadow: var(--shadow); overflow: hidden; animation: fadeUp .6s ease both; transition: transform .28s ease, box-shadow .28s ease, border-color .28s ease; }
 .hub-card::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--acc), #38bdf8); }
 .hub-card.bp::before { background: linear-gradient(90deg, #0f766e, #14b8a6); }
@@ -94,6 +94,16 @@ h3 { margin-top: .6rem; }
 .hub-card li::before { content: "✓"; position: absolute; left: 0; top: 4px; width: 18px; height: 18px; border-radius: 50%; background: #dbeafe; color: var(--acc);
   font-size: .72rem; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 .hub-card.bp li::before { background: #ccfbf1; color: #0f766e; }
+.hub-card.cf::before { background: linear-gradient(90deg, #c2410c, #fb923c); }
+.hub-card.cf:hover { border-color: #fed7aa; box-shadow: 0 2px 4px rgba(15,23,42,.06), 0 14px 34px rgba(194,65,12,.16); }
+.hub-card.cf .hub-badge { background: #fff7ed; }
+.hub-card.cf .hub-num { color: #c2410c; }
+.hub-card.cf li::before { background: #ffedd5; color: #c2410c; }
+.hub-card.pv::before { background: linear-gradient(90deg, #6d28d9, #a78bfa); }
+.hub-card.pv:hover { border-color: #ddd6fe; box-shadow: 0 2px 4px rgba(15,23,42,.06), 0 14px 34px rgba(109,40,217,.16); }
+.hub-card.pv .hub-badge { background: #f5f3ff; }
+.hub-card.pv .hub-num { color: #6d28d9; }
+.hub-card.pv li::before { background: #ede9fe; color: #6d28d9; }
 .hub-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .hub-tag { font-size: .68rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--panel2); color: var(--mut); border: 1px solid var(--line); }
 

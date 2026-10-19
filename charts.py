@@ -339,3 +339,123 @@ def fig_tornado(righe, etichetta_metrica, tema="light", max_righe=8):
     ax.set_xlabel(f"Scostamento di {etichetta_metrica} rispetto al caso base ({fmt_num(base, 2) if abs(base) < 100 else fmt_num(base)})", fontsize=8)
     ax.set_title("Sensibilita': quali ipotesi pesano di piu'", fontsize=10, loc="left")
     return fig
+
+
+# ----------------------------------------------------------------------------
+# CASH FLOW DI CANTIERE E PREVENTIVO
+# ----------------------------------------------------------------------------
+def fig_cf_mensile(mesi, fido=None, tema="light"):
+    """Incassi (barre verdi, in alto), pagamenti e costi generali (barre rosse, in basso) e cassa finale (linea)."""
+    fig, (ax,) = _nuova(tema, w=7.6, h=4.2)
+    t = _t(tema)
+    xs = [r["Mese"] for r in mesi]
+    ax.bar(xs, [r["Incassi"] for r in mesi], color=VERDE, width=0.62, label="Incassi")
+    ax.bar(xs, [-(r["Pagamenti"] + r["Costi generali"]) for r in mesi], color=ROSSO, width=0.62, alpha=0.85, label="Pagamenti e costi generali")
+    ax.plot(xs, [r["Cassa finale"] for r in mesi], color=SERIE[0], marker="o", markersize=3.5, linewidth=2, label="Cassa di fine mese")
+    if fido:
+        ax.axhline(-fido, color=GIALLO, linestyle="--", linewidth=1.3, label=f"Limite del fido ({fmt_num(fido / 1000)}k)")
+    ax.axhline(0, color=t["fg"], linewidth=0.8)
+    ax.set_xticks(xs if len(xs) <= 24 else xs[::2])
+    ax.set_xlabel("Mese", fontsize=8)
+    _k(ax)
+    ax.set_title("Incassi, pagamenti e cassa mese per mese", fontsize=10, loc="left")
+    _legenda(ax, tema, loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=4)
+    return fig
+
+
+def fig_cf_stress(risultati, fido=None, tema="light"):
+    """Cassa di fine mese nei diversi casi di stress."""
+    fig, (ax,) = _nuova(tema, w=7.6, h=4.8)
+    t = _t(tema)
+    for i, (nome, o) in enumerate(risultati.items()):
+        xs = [r["Mese"] for r in o["mesi"]]
+        ax.plot(xs, [r["Cassa finale"] for r in o["mesi"]], linewidth=2.4 if i == 0 else 1.5, color=SERIE[i % len(SERIE)], label=nome,
+                linestyle="-" if i == 0 else "--")
+    if fido:
+        ax.axhline(-fido, color=GIALLO, linestyle=":", linewidth=1.4, label="Limite del fido")
+    ax.axhline(0, color=t["fg"], linewidth=0.8)
+    ax.set_xlabel("Mese", fontsize=8)
+    _k(ax)
+    ax.set_title("Cassa di fine mese: caso base e stress test", fontsize=10, loc="left")
+    _legenda(ax, tema, loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=2)
+    return fig
+
+
+def fig_cf_crediti(mesi, tema="light"):
+    """Crediti netti verso clienti e debiti verso fornitori nel tempo (esposizione del capitale circolante)."""
+    fig, (ax,) = _nuova(tema, w=7.6, h=3.2)
+    xs = [r["Mese"] for r in mesi]
+    ax.fill_between(xs, [r["Crediti netti"] for r in mesi], color=SERIE[1], alpha=0.35, label="Crediti netti verso clienti")
+    ax.plot(xs, [r["Crediti netti"] for r in mesi], color=SERIE[1], linewidth=2)
+    ax.fill_between(xs, [r["Debiti fornitori"] for r in mesi], color=SERIE[3], alpha=0.25, label="Debiti verso fornitori")
+    ax.plot(xs, [r["Debiti fornitori"] for r in mesi], color=SERIE[3], linewidth=2)
+    ax.axhline(0, color=_t(tema)["fg"], linewidth=0.8)
+    ax.set_xlabel("Mese", fontsize=8)
+    _k(ax)
+    ax.set_title("Crediti e debiti di cantiere (capitale circolante)", fontsize=10, loc="left")
+    _legenda(ax, tema, loc="upper left")
+    return fig
+
+
+def fig_pv_composizione(k, tema="light"):
+    """Da dove nasce il prezzo: costi diretti, spese generali, utile, oneri di sicurezza (e sconto concesso)."""
+    fig, (ax,) = _nuova(tema, w=7.6, h=2.4)
+    t = _t(tema)
+    parti = [("Costi diretti", k["costi_diretti"], SERIE[0]), ("Spese generali", k["spese_generali"], SERIE[3]),
+             ("Utile", max(0.0, k["utile"]), VERDE), ("Oneri sicurezza", k["oneri_sicurezza"], SERIE[1])]
+    tot = sum(v for _, v, _ in parti) or 1.0
+    sx = 0.0
+    for nome, v, col in parti:
+        ax.barh(0, v, left=sx, color=col, height=0.5, label=f"{nome} ({fmt_num(v / tot * 100, 0)}%)")
+        if v / tot > 0.06:
+            ax.text(sx + v / 2, 0, f"{fmt_num(v / 1000)}k", ha="center", va="center", fontsize=8, color="#ffffff", fontweight="bold")
+        sx += v
+    ax.set_yticks([])
+    ax.grid(axis="y", visible=False)
+    ax.spines["left"].set_visible(False)
+    _k_x(ax)
+    ax.set_title("Composizione dell'imponibile", fontsize=10, loc="left")
+    leg = ax.legend(frameon=False, fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.28), ncol=4)
+    for txt in leg.get_texts():
+        txt.set_color(t["fg"])
+    return fig
+
+
+def _k_x(ax):
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{fmt_num(v / 1000)}k"))
+    ax.grid(axis="x", color="#cbd5e1", alpha=0.5, linewidth=0.6)
+
+
+def fig_pv_categorie(categorie, tema="light"):
+    """Costo e prezzo per categoria di lavorazione."""
+    fig, (ax,) = _nuova(tema, w=7.6, h=3.2)
+    t = _t(tema)
+    cats = sorted(categorie, key=lambda c: c["Prezzo"])
+    ys = range(len(cats))
+    ax.barh([y + 0.2 for y in ys], [c["Costo"] for c in cats], height=0.38, color=SERIE[0], label="Costo diretto")
+    ax.barh([y - 0.2 for y in ys], [c["Prezzo"] for c in cats], height=0.38, color=VERDE, label="Prezzo al cliente")
+    ax.set_yticks(list(ys))
+    ax.set_yticklabels([c["Categoria"] for c in cats], fontsize=8, color=t["fg"])
+    ax.grid(axis="y", visible=False)
+    _k_x(ax)
+    ax.set_title("Costi e prezzi per categoria", fontsize=10, loc="left")
+    _legenda(ax, tema, loc="lower right")
+    return fig
+
+
+def fig_pv_sensibilita(righe, tema="light"):
+    """Margine al variare dei costi diretti, a prezzo invariato."""
+    fig, (ax,) = _nuova(tema, w=7.6, h=3.0)
+    t = _t(tema)
+    xs = [(f"{r['Variazione costi %']:+.0f}%" if abs(r['Variazione costi %']) > 1e-9 else "0%") for r in righe]
+    ys = [r["Margine %"] for r in righe]
+    ax.bar(xs, ys, color=[VERDE if y >= 0 else ROSSO for y in ys], width=0.55)
+    for x, y in zip(xs, ys):
+        ax.text(x, y + (0.4 if y >= 0 else -0.4), f"{fmt_num(y, 1)}%", ha="center", va="bottom" if y >= 0 else "top", fontsize=8, color=t["fg"])
+    ax.axhline(0, color=t["fg"], linewidth=0.8)
+    lo, hi = min(ys + [0]), max(ys + [0])
+    ax.set_ylim(lo - (hi - lo) * 0.18 - 0.5, hi + (hi - lo) * 0.18 + 0.5)
+    ax.set_xlabel("Variazione dei costi diretti rispetto al computo", fontsize=8)
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}%"))
+    ax.set_title("Margine se i costi aumentano (prezzo al cliente invariato)", fontsize=10, loc="left")
+    return fig
