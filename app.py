@@ -42,6 +42,7 @@ import mz_ui
 import og_ui
 import ca_ui
 import hub
+import ora_meteo
 import pv_ui
 import theme
 import ui_util
@@ -404,6 +405,7 @@ with st.sidebar:
     st.markdown(theme.sidebar_brand(AETH_URI), unsafe_allow_html=True)
     if not AETH_URI:
         st.caption("Logo Aetheris non trovato: carica aetheris_labs_logo.jpg accanto ad app.py.")
+    ora_meteo.render_sidebar()
     _u = ss["utente"]
     st.markdown(f"<div style='font-size:.82rem;color:#475569;text-align:center'>👤 <b>{_u['username']}</b> · {_u['ruolo']}</div>", unsafe_allow_html=True)
     _ca, _cb = st.columns(2)
