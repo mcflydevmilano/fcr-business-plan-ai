@@ -89,3 +89,23 @@ def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente="
                 st.rerun()
         else:
             st.caption("Nessun salvataggio per questo modulo.")
+
+
+def modello_excel(colonne, etichette, esempi):
+    """Excel di esempio da scaricare, con intestazioni e qualche riga, per preparare un import."""
+    import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Modello"
+    for j, c in enumerate(colonne, start=1):
+        cell = ws.cell(row=1, column=j, value=etichette.get(c, c))
+        cell.font, cell.fill = Font(color="FFFFFF", bold=True), PatternFill("solid", fgColor="1E293B")
+        ws.column_dimensions[cell.column_letter].width = max(14, len(str(etichette.get(c, c))) + 4)
+    for i, r in enumerate(esempi, start=2):
+        for j, c in enumerate(colonne, start=1):
+            ws.cell(row=i, column=j, value=r.get(c))
+    bio = io.BytesIO()
+    wb.save(bio)
+    return bio.getvalue()

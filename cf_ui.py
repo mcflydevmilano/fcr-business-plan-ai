@@ -1,5 +1,4 @@
 """cf_ui.py - Interfaccia del modulo Cash Flow di cantiere."""
-import io
 
 import pandas as pd
 import streamlit as st
@@ -9,7 +8,7 @@ import cf_report
 import charts
 import theme
 from core import fmt_num
-from ui_util import pannello_archivio, sostituisci_tabella, tabella_modificabile
+from ui_util import modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile
 
 ss = st.session_state
 
@@ -88,6 +87,8 @@ def render(fcr_uri, audit=None, utente=""):
                     ss["cf_demo"] = False
                     audit("cf_genera", f"{int(n)} cantieri, {tot:.0f} EUR")
                     st.rerun()
+        st.download_button("📥 Scarica il modello Excel per l'import", modello_excel(cf.COLONNE_CANTIERI, cf.ETICHETTE_COLONNE, cf.genera_portafoglio(3, 150000, 1, 3, 3, 50, 50, 30, 75.0)),
+                           file_name="modello_cantieri.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         up = st.file_uploader("…oppure importa da Excel/CSV (colonne: " + ", ".join(cf.COLONNE_CANTIERI) + ")", type=["xlsx", "csv"], key="up_cf")
         if up is not None and st.button("Importa il file"):
             try:

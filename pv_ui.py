@@ -10,7 +10,7 @@ import pv
 import pv_report
 import theme
 from core import fmt_num
-from ui_util import pannello_archivio, sostituisci_tabella, tabella_modificabile
+from ui_util import modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile
 
 ss = st.session_state
 
@@ -108,6 +108,8 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None, utente=""):
                     if c2.button("Scarta"):
                         ss.pop("pv_prop", None)
                         st.rerun()
+        st.download_button("📥 Scarica il modello Excel per l'import", modello_excel(pv.COLONNE_VOCI, pv.ETICHETTE_VOCI, ESEMPIO[:3]),
+                           file_name="modello_computo.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         up = st.file_uploader("Importa un computo da Excel/CSV (colonne: Descrizione, Quantità, Materiali, Manodopera…)", type=["xlsx", "csv"], key="up_pv")
         if up is not None and st.button("Importa il file", key="imp_pv"):
             try:
