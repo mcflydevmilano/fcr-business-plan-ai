@@ -17,7 +17,7 @@ def at(monkeypatch):
     import storage
     monkeypatch.setattr(storage, "DB_PATH", os.path.join(tmp, "test.db"))
     app = AppTest.from_file(APP, default_timeout=120)
-    app.session_state["password_correct"] = True
+    app.session_state["utente"] = {"username": "tester", "ruolo": "admin", "origine": "app_password"}
     app.session_state["active_module"] = "credit"
     return app.run()
 
@@ -33,14 +33,64 @@ def test_login_richiesto(monkeypatch):
     monkeypatch.setenv("APP_PASSWORD", "segreta")
     app = AppTest.from_file(APP, default_timeout=60).run()
     assert not app.exception
-    assert len(app.text_input) == 1 and "Password" in app.text_input[0].label
+    assert [t.label for t in app.text_input] == ["Nome utente", "Password"]
     assert len(app.tabs) == 0
 
 
-def test_senza_password_configurata_si_ferma(monkeypatch):
-    monkeypatch.delenv("APP_PASSWORD", raising=False)
+def test_login_con_utente_e_password(monkeypatch):
+    monkeypatch.setenv("APP_PASSWORD", "segreta")
+    import storage
+    monkeypatch.setattr(storage, "DB_PATH", os.path.join(tempfile.mkdtemp(), "l.db"))
     app = AppTest.from_file(APP, default_timeout=60).run()
-    assert any("APP_PASSWORD" in e.value for e in app.error)
+    app.text_input(key="login_user").set_value("admin")
+    app.text_input(key="login_pw").set_value("sbagliata")
+    app.button[0].click().run()
+    assert any("Credenziali non valide" in e.value for e in app.error)
+    app.text_input(key="login_user").set_value("admin")
+    app.text_input(key="login_pw").set_value("segreta")
+    app.button[0].click().run()
+    assert not app.exception and app.session_state["utente"]["username"] == "admin"
+    assert any("Strumento 1" in m.value for m in app.markdown)
+
+
+def test_utente_revocato_perde_l_accesso(monkeypatch):
+    monkeypatch.setenv("APP_PASSWORD", "segreta")
+    import auth
+    import storage
+    monkeypatch.setattr(storage, "DB_PATH", os.path.join(tempfile.mkdtemp(), "r.db"))
+    auth.crea_utente("luca", "Password-Lunga-1")
+    app = AppTest.from_file(APP, default_timeout=60)
+    app.session_state["utente"] = {"username": "luca", "ruolo": "utente", "origine": "db"}
+    app.run()
+    assert not app.exception and any("Strumento 1" in m.value for m in app.markdown)
+    storage.aggiorna_utente("luca", attivo=0)
+    app.run()
+    assert [t.label for t in app.text_input] == ["Nome utente", "Password"]
+
+
+def test_pannello_admin_solo_per_admin(monkeypatch):
+    monkeypatch.setenv("APP_PASSWORD", "segreta")
+    import storage
+    monkeypatch.setattr(storage, "DB_PATH", os.path.join(tempfile.mkdtemp(), "a.db"))
+    app = AppTest.from_file(APP, default_timeout=60)
+    app.session_state["utente"] = {"username": "luca", "ruolo": "utente", "origine": "db"}
+    app.session_state["active_module"] = "admin"
+    import auth
+    auth.crea_utente("luca", "Password-Lunga-1")
+    app.run()
+    assert any("riservato agli amministratori" in e.value for e in app.error)
+    app2 = AppTest.from_file(APP, default_timeout=60)
+    app2.session_state["utente"] = {"username": "admin", "ruolo": "admin", "origine": "app_password"}
+    app2.session_state["active_module"] = "admin"
+    app2.run()
+    assert not app2.exception and len(app2.tabs) == 2
+
+
+def test_senza_utenti_configurati_si_ferma(monkeypatch):
+    monkeypatch.delenv("APP_PASSWORD", raising=False)
+    monkeypatch.delenv("users", raising=False)
+    app = AppTest.from_file(APP, default_timeout=60).run()
+    assert any("Configurazione mancante" in e.value for e in app.error)
 
 
 def test_avvio_senza_eccezioni(at):
@@ -134,7 +184,7 @@ def test_quota_esaurita_genera_comunque_i_documenti(monkeypatch):
 
     monkeypatch.setattr(ai, "genera", finta)
     app = AppTest.from_file(APP, default_timeout=120)
-    app.session_state["password_correct"] = True
+    app.session_state["utente"] = {"username": "tester", "ruolo": "admin", "origine": "app_password"}
     app.session_state["active_module"] = "credit"
     app.session_state["privacy_ok"] = True
     app.run()
@@ -156,7 +206,7 @@ def test_errore_diverso_dalla_quota_resta_visibile(monkeypatch):
     monkeypatch.setattr(storage, "DB_PATH", os.path.join(tempfile.mkdtemp(), "t.db"))
     monkeypatch.setattr(ai, "genera", lambda *a, **k: (_ for _ in ()).throw(Exception("403 PERMISSION_DENIED")))
     app = AppTest.from_file(APP, default_timeout=120)
-    app.session_state["password_correct"] = True
+    app.session_state["utente"] = {"username": "tester", "ruolo": "admin", "origine": "app_password"}
     app.session_state["active_module"] = "credit"
     app.session_state["privacy_ok"] = True
     app.run()
@@ -172,7 +222,7 @@ def test_ai_bloccata_senza_accettare_privacy(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "chiave-finta")
     monkeypatch.setattr(storage, "DB_PATH", os.path.join(tempfile.mkdtemp(), "t.db"))
     app = AppTest.from_file(APP, default_timeout=120)
-    app.session_state["password_correct"] = True
+    app.session_state["utente"] = {"username": "tester", "ruolo": "admin", "origine": "app_password"}
     app.session_state["active_module"] = "credit"
     app.run()
     assert not app.exception

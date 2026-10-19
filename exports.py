@@ -186,6 +186,7 @@ def genera_docx(ctx, relazione, grafici=None):
         "rossa: < 4, oppure patrimonio netto non positivo, oppure EBITDA non positivo. Le soglie sono ipotesi di lavoro "
         "configurabili, non calibrate statisticamente su dati di insolvenza."
     )
+    doc.add_paragraph(f"Profilo di soglie: {ctx.get('profilo_soglie', 'n.d.')}. {ctx.get('validazione_soglie', '')}")
     doc.add_paragraph(
         "Piano: FCF = EBITDA - imposte - capex - interessi - variazione CCN; PFN(t) = PFN(t-1) - FCF. Il rimborso del debito "
         "incide sul DSCR ma non sulla PFN. Il modello non considera stagionalita', garanzie, Centrale Rischi, rating di settore "
@@ -482,7 +483,7 @@ def genera_excel(ctx):
 # COSTRUZIONE DEL CONTESTO (usata da app e test)
 # ----------------------------------------------------------------------------
 def costruisci_ctx(dati, leve, piano_par, soglie=None, covenant=None, storico=None, commesse_df=None,
-                   scenari_salvati=None, dati_demo=False, modello="n.d.", pratica=""):
+                   scenari_salvati=None, dati_demo=False, modello="n.d.", pratica="", validazione=None):
     """Calcola tutto cio' che serve ai report a partire dagli input."""
     import time
     import core
@@ -500,7 +501,7 @@ def costruisci_ctx(dati, leve, piano_par, soglie=None, covenant=None, storico=No
 
     firma = {
         "dati": dati, "leve": leve, "piano": piano_par, "soglie": soglie, "cov": covenant,
-        "storico": storico or [], "scenari": scenari_salvati or {},
+        "storico": storico or [], "scenari": scenari_salvati or {}, "valid": validazione or {},
         "commesse": commesse_df.to_dict("records") if commesse_df is not None else [],
     }
     return {
@@ -514,4 +515,5 @@ def costruisci_ctx(dati, leve, piano_par, soglie=None, covenant=None, storico=No
         "hash_dati": core.hash_payload(dati), "modello": modello,
         "generato_il": time.strftime("%d/%m/%Y %H:%M"), "pratica": pratica,
         "avvisi_dati": core.valida_dati(dati),
+        "profilo_soglie": core.nome_profilo(soglie), "validazione_soglie": core.testo_validazione(validazione),
     }

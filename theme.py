@@ -153,6 +153,11 @@ h3 { margin-top: .6rem; }
 .stButton > button:hover::after, .stDownloadButton > button:hover::after { animation: sweep .8s ease; }
 .stButton > button:active, .stDownloadButton > button:active { transform: translateY(0) scale(.98); }
 .stButton > button:disabled { background: #cbd5e1; box-shadow: none; color: #fff !important; }
+/* pulsanti di invio dei form (login, nuovo utente, cambio password) */
+[data-testid="stFormSubmitButton"] > button, [data-testid="stBaseButton-primaryFormSubmit"], [data-testid="stBaseButton-secondaryFormSubmit"] {
+  background: var(--acc) !important; color: #fff !important; border: none !important; border-radius: 10px; font-weight: 600; box-shadow: 0 2px 8px rgba(30,64,175,.28); }
+[data-testid="stFormSubmitButton"] > button p, [data-testid="stFormSubmitButton"] > button span { color: #fff !important; }
+[data-testid="stFormSubmitButton"] > button:hover { background: #1d4ed8 !important; transform: translateY(-2px); }
 /* pulsanti secondari (es. Annulla, Torna all'Hub) */
 [data-testid="stSidebar"] .stButton > button { background: #ffffff; color: var(--acc) !important; border: 1px solid #bfdbfe; box-shadow: none; }
 [data-testid="stSidebar"] .stButton > button p { color: var(--acc) !important; }

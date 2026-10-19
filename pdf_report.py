@@ -537,6 +537,8 @@ def genera_pdf(ctx, relazione, grafici=None):
     paragrafo("Punteggio totale = somma dei punti dei quattro indicatori (massimo 8). Fascia verde: punteggio pari o superiore a 7; "
               "gialla: da 4 a 6; rossa: inferiore a 4, oppure patrimonio netto non positivo, oppure EBITDA non positivo. "
               "Le soglie sono ipotesi di lavoro configurabili e non derivano da una calibrazione statistica su dati di insolvenza.", 8.5)
+    pdf.ln(1)
+    paragrafo(f"Profilo di soglie applicato: {ctx.get('profilo_soglie', 'n.d.')}. {ctx.get('validazione_soglie', '')}", 8.5, GRIGIO)
     pdf.ln(1.5)
     paragrafo("Piano: FCF = EBITDA - imposte - capex - interessi - variazione del capitale circolante; PFN(t) = PFN(t-1) - FCF. "
               "Il rimborso del debito non riduce la PFN (utilizza cassa) ma incide sul DSCR = (EBITDA - imposte - variazione CCN) / "

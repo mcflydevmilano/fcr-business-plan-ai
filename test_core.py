@@ -173,3 +173,35 @@ def test_numeri_sospetti():
     ko = "I ricavi sono 2.500.000 EUR ma la PFN e' 1.234.567 EUR."
     assert core.numeri_sospetti(ko, ctx) == ["1.234.567"]
     assert core.numeri_sospetti("PFN di 600 mila euro e 2,5 milioni di ricavi", ctx) == []
+
+
+# ----------------------------- profili di soglie per settore -----------------------------
+def test_profili_settore_coerenti_e_riconosciuti():
+    import core
+    for nome, prof in core.PROFILI_SOGLIE.items():
+        assert set(prof) == set(core.SOGLIE_DEFAULT), nome
+        for k, (v, g) in prof.items():
+            assert (v <= g) if core.VERSO[k] == "min" else (v >= g), (nome, k)
+        assert core.nome_profilo(prof) == nome
+    assert core.nome_profilo({**core.SOGLIE_DEFAULT, "dscr": (1.5, 1.0)}) == "Personalizzato"
+
+
+def test_import_profilo_json_valido_e_non_valido():
+    import json
+    import pytest
+    import core
+    ok = core.profilo_json("Benchmark X", core.PROFILI_SOGLIE["Edilizia e costruzioni"], "fonte test")
+    nome, fonte, s = core.parse_profilo_soglie(ok)
+    assert nome == "Benchmark X" and fonte == "fonte test" and s == core.PROFILI_SOGLIE["Edilizia e costruzioni"]
+    for bad in ("non json", "{}", json.dumps({"soglie": {"pfn_ebitda": [1, 2]}}),
+                json.dumps({"soglie": {**{k: list(v) for k, v in core.SOGLIE_DEFAULT.items()}, "dscr": [1.0, 1.3]}}),
+                json.dumps({"soglie": {**{k: list(v) for k, v in core.SOGLIE_DEFAULT.items()}, "pfn_pn": ["a", 2]}})):
+        with pytest.raises(ValueError):
+            core.parse_profilo_soglie(bad)
+
+
+def test_testo_validazione():
+    import core
+    assert "NON validate" in core.testo_validazione({})
+    t = core.testo_validazione({"da": "Dott. Rossi", "data": "01/11/2026", "fonte": "Cerved"})
+    assert "Dott. Rossi" in t and "01/11/2026" in t and "Cerved" in t

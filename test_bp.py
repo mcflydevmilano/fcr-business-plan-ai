@@ -25,7 +25,7 @@ def test_mutuo_italiano_e_tasso_zero():
 
 
 def test_conto_economico_e_cassa_coerenti():
-    o = bp.calcola_bp({})
+    o = bp.calcola_bp({"fisco": "semplice"})
     q = o["params"]
     cassa = q["equity"] + q["mutuo"] - q["capex"]
     prev_r = 0.0
@@ -54,7 +54,7 @@ def test_orizzonte_da_3_a_5_anni_e_ammortamento_limitato():
 
 
 def test_nessuna_imposta_in_perdita_e_avvisi():
-    o = bp.calcola_bp({"ricavi_y1": 400_000, "cv_pct": 70, "personale": 300_000, "costi_fissi": 100_000})
+    o = bp.calcola_bp({"ricavi_y1": 400_000, "cv_pct": 70, "personale": 300_000, "costi_fissi": 100_000, "fisco": "semplice"})
     assert o["anni"][0]["EBITDA"] < 0
     assert o["anni"][0]["Imposte"] == 0
     assert any("EBITDA dell'anno 1" in a for a in o["avvisi"])
@@ -85,3 +85,59 @@ def test_normalizza_assunzioni_limiti_e_alias():
     assert mot == {"capex": "stima"} and note == "Verificare"
     with pytest.raises(ValueError):
         bp.normalizza_assunzioni("testo")
+
+
+# ----------------------------- fisco dettagliato, scenari, sensibilita' -----------------------------
+def test_ires_irap_e_riporto_perdite():
+    # anno 1 in perdita, poi utile: le perdite si riportano e riducono l'IRES (max 80% del reddito), l'IRAP resta dovuta
+    p = {"fisco": "dettagliato", "n_anni": 4, "ricavi_y1": 600_000, "crescita": 80, "cv_pct": 50, "personale": 250_000,
+         "costi_fissi": 100_000, "capex": 0, "mutuo": 0, "equity": 0, "ccn_pct": 0, "anni_amm": 5}
+    o = bp.calcola_bp(p)
+    r = o["anni"]
+    assert r[0]["Utile ante imposte"] < 0 and r[0]["IRES"] == 0
+    assert r[0]["Perdite fiscali residue"] == pytest.approx(-r[0]["Utile ante imposte"])
+    persa = r[0]["Perdite fiscali residue"]
+    pool = persa
+    for x in r[1:]:
+        if x["Utile ante imposte"] > 0:
+            uso = min(pool, 0.8 * x["Utile ante imposte"])
+            assert x["Perdite utilizzate"] == pytest.approx(uso)
+            assert x["IRES"] == pytest.approx((x["Utile ante imposte"] - uso) * 0.24)
+            pool -= uso
+        assert x["IRAP"] == pytest.approx(max(0, x["EBIT"] + x["Personale"]) * 0.039)
+        assert x["Imposte"] == pytest.approx(x["IRES"] + x["IRAP"])
+    # senza riporto l'IRES e' piu' alta
+    senza = bp.calcola_bp({**p, "riporto": False})
+    assert sum(x["IRES"] for x in senza["anni"]) > sum(x["IRES"] for x in r)
+
+
+def test_irap_dovuta_anche_in_perdita_e_deduzione_personale():
+    p = {"fisco": "dettagliato", "ricavi_y1": 500_000, "cv_pct": 50, "personale": 150_000, "costi_fissi": 80_000, "capex": 0,
+         "mutuo": 0, "equity": 0}
+    base = bp.calcola_bp(p)["anni"][0]
+    assert base["IRAP"] == pytest.approx((base["EBIT"] + 150_000) * 0.039)
+    ded = bp.calcola_bp({**p, "irap_ded_pers": 100})["anni"][0]
+    assert ded["IRAP"] == pytest.approx(max(0, ded["EBIT"]) * 0.039)
+
+
+def test_scenari_ordinati_e_base_invariata():
+    sc = bp.calcola_scenari({})
+    assert list(sc) == ["Pessimistico", "Base", "Ottimistico"]
+    assert sc["Base"]["anni"] == bp.calcola_bp({})["anni"]
+    peg, bas, ott = (sc[n]["anni"][-1]["EBITDA"] for n in ("Pessimistico", "Base", "Ottimistico"))
+    assert peg < bas < ott
+    q = bp.applica_scenario({"ricavi_y1": 1_000_000, "tasso": 4.0}, {"ricavi_pct": -20, "tasso_pp": 1.5})
+    assert q["ricavi_y1"] == pytest.approx(800_000) and q["tasso"] == pytest.approx(5.5)
+    # lo scenario "Base" passato dall'utente viene ignorato (resta quello corrente)
+    assert bp.calcola_scenari({}, {"Base": {"ricavi_pct": 50}})["Base"]["anni"] == bp.calcola_bp({})["anni"]
+    assert len(bp.confronto_scenari(sc)) == 3
+
+
+def test_sensibilita_tornado_e_griglia():
+    r = bp.sensibilita({}, "cassa_minima")
+    assert r and all(a["Impatto"] >= b["Impatto"] for a, b in zip(r, r[1:]))
+    ric = next(x for x in r if x["chiave"] == "ricavi_y1")
+    assert ric["Con valore maggiore"] >= ric["Con valore minore"]
+    assert bp.sensibilita({"mutuo": 0}, "dscr_min") == []            # DSCR non definito senza finanziamento
+    g = bp.griglia({}, "ricavi_y1", [1e6, 2e6], "cv_pct", [50, 60], "utile_cum")
+    assert len(g) == 2 and len(g[0]) == 2 and g[0][1] > g[0][0] and g[0][0] > g[1][0]

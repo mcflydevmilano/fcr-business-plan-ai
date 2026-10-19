@@ -19,7 +19,7 @@ def _nuovo(monkeypatch, chiave=False, modulo=None):
     else:
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     app = AppTest.from_file(APP, default_timeout=120)
-    app.session_state["password_correct"] = True
+    app.session_state["utente"] = {"username": "tester", "ruolo": "admin", "origine": "app_password"}
     if modulo:
         app.session_state["active_module"] = modulo
     if chiave:
@@ -52,7 +52,7 @@ def test_apre_i_due_moduli_e_torna_all_hub(monkeypatch):
     _btn(at, "Torna all'Hub").click().run()
     assert len(at.tabs) == 0
     _btn(at, "Apri Business Plan Studio").click().run()
-    assert not at.exception and len(at.tabs) == 4
+    assert not at.exception and len(at.tabs) == 5
 
 
 def test_credit_risk_ricorda_le_leve_dopo_il_giro_nell_hub(monkeypatch):
