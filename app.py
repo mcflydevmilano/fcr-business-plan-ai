@@ -499,7 +499,6 @@ if MODULO == "admin":
 if MODULO is None:
     st.markdown(theme.hub_header(FCR_URI), unsafe_allow_html=True)
     hub.render(vai_a)
-    st.caption("Le simulazioni sono indicative e non costituiscono rating regolamentare, parere di credito o consulenza.")
     st.stop()
 
 if MODULO == "bp":

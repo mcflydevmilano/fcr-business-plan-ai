@@ -144,17 +144,21 @@ def numero(sigla):
 
 def _scheda(sigla, vai_a):
     c = CARDS[sigla]
-    st.markdown(
-        theme.hub_card(numero(sigla), c["icona"], c["titolo"], c["desc"], c["voci"], c["tag"],
-                       "" if sigla == "credit" else sigla),
-        unsafe_allow_html=True,
-    )
-    if st.button(f"Apri {c['bottone']}  →", key=f"hub_{sigla}", width="stretch"):
-        vai_a(sigla)
+    with st.container(key=f"hubc_{sigla}"):      # il contenitore permette di allineare l'altezza delle schede in riga
+        st.markdown(
+            theme.hub_card(numero(sigla), c["icona"], c["titolo"], c["desc"], c["voci"], c["tag"],
+                           "" if sigla == "credit" else sigla),
+            unsafe_allow_html=True,
+        )
+        if st.button(f"Apri {c['bottone']}  →", key=f"hub_{sigla}", width="stretch"):
+            vai_a(sigla)
+
+
+NOTA = "Le simulazioni sono indicative e non costituiscono rating regolamentare, parere di credito o consulenza."
 
 
 def render(vai_a):
-    for titolo, sotto, sigle in GRUPPI:
+    for n, (titolo, sotto, sigle) in enumerate(GRUPPI):
         st.markdown(theme.hub_sezione(titolo, sotto), unsafe_allow_html=True)
         for i in range(0, len(sigle), 2):
             riga = sigle[i:i + 2]
@@ -165,3 +169,5 @@ def render(vai_a):
             for col, s in zip(cols, riga):
                 with col:
                     _scheda(s, vai_a)
+        if n == 0:                                   # l'avvertenza riguarda la parte finanziaria: sta subito sotto
+            st.caption(NOTA)

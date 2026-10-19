@@ -75,6 +75,11 @@ h3 { margin-top: .6rem; }
 
 /* ---------- hub ---------- */
 .hub-title { text-align: center; font-size: 2.1rem; font-weight: 800; color: var(--navy); margin: 6px 0 4px 0; letter-spacing: -.02em; }
+[data-testid="stColumn"]:has([class*="st-key-hubc_"]) > div, [data-testid="stColumn"]:has([class*="st-key-hubc_"]) > div > div { height: 100%; }
+[class*="st-key-hubc_"] { height: 100%; display: flex; flex-direction: column; }
+[class*="st-key-hubc_"] > div:first-child { flex: 1 1 auto; display: flex; flex-direction: column; }
+[class*="st-key-hubc_"] > div:first-child div:has(.hub-card) { flex: 1 1 auto; height: 100%; }
+[class*="st-key-hubc_"] .hub-card { height: calc(100% - 20px); box-sizing: border-box; }
 .hub-sez { margin: 30px 0 14px 0; padding-left: 14px; border-left: 4px solid var(--acc); }
 .hub-sez-t { font-size: 1.25rem; font-weight: 800; color: var(--navy); letter-spacing: -.01em; }
 .hub-sez-sub { color: var(--mut); font-size: .95rem; margin-top: 2px; }
@@ -353,7 +358,6 @@ def sidebar_brand(uri_aeth):
     return (f'<div class="brand">{logo}<div class="b-name">AETHERIS LABS</div>'
             f'<div class="b-sub">Software, AI &amp; Game Development Division</div>'
             f'<div class="b-dev">Sviluppato da</div><div class="b-who">Ing. Lorenzo Di Ferdinando</div>'
-            f'<div class="b-who b-who2">Dott. Claudio Arosio</div>'
             f'<div class="b-co">FCR General Contractor</div></div>')
 
 
