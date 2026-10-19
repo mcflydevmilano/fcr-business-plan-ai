@@ -6,10 +6,11 @@ import streamlit as st
 
 import charts
 import sc
+import fatture
 import sc_report
 import theme
 from core import fmt_num
-from ui_util import modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile
+from ui_util import importa_dati, sola_lettura, modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile
 
 ss = st.session_state
 
@@ -64,6 +65,55 @@ def _applica(p, nome):
     ss["_pending"] = {"sc_" + k: v for k, v in (p.get("params") or {}).items() if k in PARAM_CHIAVI}
 
 
+def _importa_xml(audit):
+    """Fatture elettroniche (FatturaPA) -> righe dello scadenzario."""
+    if sola_lettura():
+        st.caption("Importazione non disponibile per il ruolo «lettore».")
+        return
+    st.caption("Carica i file .xml (o .xml.p7m) scaricati dal cassetto fiscale o dal portale delle fatture: le fatture emesse diventano incassi, "
+               "quelle ricevute pagamenti. Ogni rata di pagamento diventa una riga con la sua scadenza.")
+    up = st.file_uploader("Fatture elettroniche", type=["xml", "p7m"], accept_multiple_files=True, key="xml_fatture")
+    if not up:
+        return
+    lette, nomi = [], []
+    for f in up:
+        try:
+            lette.append(fatture.leggi_fattura(f.getvalue()))
+            nomi.append(f.name)
+        except ValueError as e:
+            st.error(f"{f.name}: {e}")
+    if not lette:
+        return
+    prob = fatture.piva_probabile(lette) or ""
+    if not ss.get("xml_piva") and prob:
+        ss["xml_piva"] = prob
+    piva = st.text_input("Partita IVA della tua azienda", key="xml_piva", help="Serve a distinguere le fatture che hai emesso da quelle che hai ricevuto. Proposta in base ai file caricati.")
+    if not piva.strip():
+        st.info("Scrivi la tua partita IVA per continuare.")
+        return
+    righe, avvisi = fatture.righe_scadenzario(lette, piva, nomi)
+    demo = bool(ss.get("sc_demo"))
+    esistenti = [] if demo else ss["sc_df"].to_dict("records")
+    nuove, doppie = fatture.senza_duplicati(righe, esistenti)
+    for a in avvisi[:8]:
+        st.warning(a)
+    if doppie:
+        st.caption(f"{doppie} righe già presenti nello scadenzario: saltate.")
+    if not nuove:
+        st.info("Nessuna riga nuova da importare.")
+        return
+    st.dataframe(pd.DataFrame(nuove, columns=sc.COLONNE_DOC), hide_index=True, width="stretch")
+    st.caption("Il cantiere non è nelle fatture: puoi compilarlo dopo nella tabella. Le righe importate risultano non ancora pagate/incassate.")
+    if demo:
+        st.caption("I dati di esempio verranno sostituiti.")
+    if st.button(f"Importa {len(nuove)} righe", key="xml_importa"):
+        base = pd.DataFrame(columns=sc.COLONNE_DOC) if demo else ss["sc_df"]
+        sostituisci_tabella("sc_df", pd.concat([base, pd.DataFrame(nuove, columns=sc.COLONNE_DOC)], ignore_index=True))
+        ss["sc_demo"] = False
+        audit("sc_import_xml", f"{len(nuove)} righe da {len(lette)} file")
+        st.rerun()
+
+
 def _df(df):
     st.dataframe(df, hide_index=True, width="stretch")
 
@@ -90,25 +140,18 @@ def render(fcr_uri, audit=None, utente=""):
                 st.rerun()
         st.download_button("📥 Scarica il modello Excel per l'import", modello_excel(sc.COLONNE_DOC, sc.ETICHETTE_DOC, _esempio().head(3).to_dict("records")),
                            file_name="modello_scadenzario.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        up = st.file_uploader("Importa da Excel/CSV (colonne: " + ", ".join(sc.COLONNE_DOC) + ")", type=["xlsx", "csv"], key="up_sc")
-        if up is not None and st.button("Importa il file", key="imp_sc"):
-            try:
-                d = pd.read_csv(up, sep=None, engine="python") if up.name.lower().endswith(".csv") else pd.read_excel(up)
-                inv = {v.lower(): k for k, v in sc.ETICHETTE_DOC.items()}
-                inv.update({k.lower(): k for k in sc.COLONNE_DOC})
-                d = d.rename(columns={c: inv.get(str(c).strip().lower(), c) for c in d.columns})
-                docs, av = sc.normalizza_documenti(sc.da_dataframe(d))
-                if not docs:
-                    st.error("Nessun documento valido nel file (servono almeno Tipo, Scadenza e Importo).")
-                else:
-                    sostituisci_tabella("sc_df", pd.DataFrame(docs, columns=sc.COLONNE_DOC))
-                    ss["sc_demo"] = False
-                    audit("sc_import", up.name)
-                    for x in av[:5]:
-                        st.warning(x)
-                    st.rerun()
-            except Exception as e:
-                st.error(f"File non leggibile: {e}")
+        with st.expander("🧾 Importa fatture elettroniche (XML)"):
+            _importa_xml(audit)
+        with st.expander("📂 Importa dall'export del gestionale o del commercialista"):
+            tipo_fisso = st.radio("Tipo dei documenti nel file", ["Leggi dalla colonna Tipo", "Sono tutti incassi (fatture attive)", "Sono tutti pagamenti (fatture passive)"], key="sc_tipo_file")
+
+            def _imposta_tipo(df):
+                if tipo_fisso.startswith("Sono tutti incassi"):
+                    df["Tipo"] = "Attiva"
+                elif tipo_fisso.startswith("Sono tutti pagamenti"):
+                    df["Tipo"] = "Passiva"
+                return df
+            importa_dati("sc_df", sc.COLONNE_DOC, sc.ETICHETTE_DOC, "sc", 1, audit, sc.SINONIMI_DOC, dopo=lambda: ss.__setitem__("sc_demo", False), trasforma=_imposta_tipo)
         st.subheader("Documenti aperti e chiusi di recente")
         st.caption("Tipo «Attiva» = fattura emessa a un cliente (da incassare); «Passiva» = fattura di un fornitore (da pagare). Importi IVA inclusa. "
                    "In «Già incassato / pagato» metti quanto è già stato regolato: il residuo conta solo quello che resta.")

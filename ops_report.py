@@ -167,3 +167,41 @@ def report_og(out, ris, ass, nome=""):
                               {"nome": "Risorse", "intest": ["Risorsa", "Ruolo", "Costo orario", "Ore al mese"], "righe": [[r["Risorsa"], r["Ruolo"], r["Costo_orario"], r["Ore_mese"]] for r in ris]},
                               {"nome": "Assegnazioni", "intest": ["Risorsa", "Commessa", "Dal", "Al", "Ore al mese"], "righe": [[a["Risorsa"], a["Commessa"], a["Dal"], a["Al"] or None, a["Ore_mese"]] for a in ass]}])
     return pdf, x, ctx["report_id"]
+
+
+# ----------------------------------------------------------------------------- RAPPORTINI
+def report_rp(out, rapp, segn, nome=""):
+    k, q = out["kpi"], out["params"]
+    ctx = rep_gen.costruisci_ctx("Rapportini di cantiere", "Giornale e segnalazioni", nome, {"k": k, "n": nome, "o": str(q["oggi"])})
+    cant, seg = out["cantieri"], out["segnalazioni"]
+    ultimi = sorted(rapp, key=lambda r: r["Data"], reverse=True)[:25]
+    sez = []
+    if cant:
+        sez.append({"titolo": "Situazione dei cantieri", "grafico": png(charts.fig_rp_ore(cant, "light")),
+                    "tabella": (["Cantiere", "Ultimo rapp.", "Gg senza", "Rapp.", "Ore", "Pres. medie", "Segn. aperte", "Stato"],
+                                [(c["Cantiere"][:22], fd(c["Ultimo rapportino"]), str(c["Giorni lavorativi senza rapportino"]), str(c["Rapportini"]), N(c["Ore"], 0), N(c["Presenze medie"], 1),
+                                  str(c["Segnalazioni aperte"]), ST[c["Stato"]]) for c in cant])})
+    if seg:
+        sez.append({"titolo": "Segnalazioni aperte", "pagina": True,
+                    "tabella": (["Data", "Cantiere", "Tipo", "Gravità", "Descrizione", "Resp.", "Scadenza", "Stato"],
+                                [(fd(s["Data"]), s["Cantiere"][:16], s["Tipo"][:14], s["Gravita"], s["Descrizione"][:44], s["Responsabile"][:12], fd(s["Scadenza"]), s["Stato"]) for s in seg])})
+    if ultimi:
+        sez.append({"titolo": "Ultimi rapportini", "tabella": (["Data", "Cantiere", "Compilato da", "Meteo", "Pres.", "Ore", "Lavorazioni"],
+                                                              [(fd(r["Data"]), r["Cantiere"][:16], r["Compilato_da"][:12], r["Meteo"][:10], N(r["Presenti"], 0), N(r["Ore"], 0), r["Lavorazioni"][:48]) for r in ultimi])})
+    sez.append({"titolo": "Punti di attenzione", "testo": ["- " + a for a in _finale(out, "")]})
+    sez.append({"titolo": "Metodo e limiti", "testo": ["Un cantiere risulta «in ritardo» quando non ha rapportini da più di %d giorni lavorativi (lun-ven; i festivi non sono esclusi), «critico» oltre il doppio. "
+                                                        "Sono considerati attivi i cantieri con un rapportino negli ultimi %d giorni. Le ore sono il totale dichiarato dal capocantiere." % (q["giorni_senza_rapporto"], q["finestra_gg"])]})
+    n_bad, n_warn = sum(1 for c in cant if c["Stato"] == "bad") + k["segn_alte"], sum(1 for c in cant if c["Stato"] == "warn") + k["segn_in_scadenza"]
+    pdf = rep_gen.genera_pdf(ctx, "Rapportini di cantiere", "Giornale e segnalazioni", f"Situazione al {q['oggi'].strftime('%d/%m/%Y')} (ultimi {q['finestra_gg']} giorni)",
+                             [("CANTIERI", str(k["cantieri_attivi"])), ("RAPPORTINI", str(k["rapportini"]))],
+                             [("Rapportini", str(k["rapportini"]), f"{N(k['ore'], 0)} ore lavorate", "info"),
+                              ("Cantieri senza rapportino", str(k["cantieri_senza_rapporto"]), "oltre la soglia di giorni", "warn" if k["cantieri_senza_rapporto"] else "ok"),
+                              ("Segnalazioni aperte", str(k["segn_aperte"]), f"{k['segn_alte']} di gravità alta", "bad" if k["segn_alte"] else ("warn" if k["segn_aperte"] else "ok")),
+                              ("Segnalazioni scadute", str(k["segn_scadute"]), f"{k['segn_in_scadenza']} in scadenza", "bad" if k["segn_scadute"] else "ok")],
+                             _esito(n_bad, n_warn, max(1, k["cantieri_attivi"] + k["segn_aperte"]), "Cantieri e segnalazioni"), sez)
+    x = rep_gen.genera_excel([{"nome": "Rapportini", "intest": ["Data", "Cantiere", "Compilato da", "Meteo", "Persone presenti", "Ore lavorate", "Lavorazioni", "Mezzi", "Note"],
+                               "righe": [[r["Data"], r["Cantiere"], r["Compilato_da"], r["Meteo"], r["Presenti"], r["Ore"], r["Lavorazioni"], r["Mezzi"], r["Note"]] for r in sorted(rapp, key=lambda r: r["Data"])],
+                               "totali": [4, 5]},
+                              {"nome": "Segnalazioni", "intest": ["Data", "Cantiere", "Tipo", "Gravità", "Descrizione", "Responsabile", "Scadenza", "Stato"],
+                               "righe": [[s["Data"], s["Cantiere"], s["Tipo"], s["Gravita"], s["Descrizione"], s["Responsabile"], s["Scadenza"], s["Stato"]] for s in segn]}])
+    return pdf, x, ctx["report_id"]

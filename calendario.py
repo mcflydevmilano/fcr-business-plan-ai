@@ -8,13 +8,14 @@ import hashlib
 import fo
 import ga
 import mz
+import rp
 import sc
 import sx
 from sc import data_da
 
-MODULI_CALENDARIO = ("sc", "ga", "fo", "sx", "mz")
-NOMI_MODULO = {"sc": "Scadenzario", "ga": "Gare e offerte", "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi"}
-CATEGORIE = ["Incasso", "Pagamento", "Gara", "Documento gara", "Documento fornitore", "Formazione / idoneità", "Documento di cantiere", "Mezzo"]
+MODULI_CALENDARIO = ("sc", "ga", "fo", "sx", "mz", "rp")
+NOMI_MODULO = {"sc": "Scadenzario", "ga": "Gare e offerte", "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "rp": "Rapportini di cantiere"}
+CATEGORIE = ["Incasso", "Pagamento", "Gara", "Documento gara", "Documento fornitore", "Formazione / idoneità", "Documento di cantiere", "Mezzo", "Segnalazione"]
 
 
 def _stato(giorni, preavviso):
@@ -72,6 +73,12 @@ def eventi(payloads, oggi=None, orizzonte_gg=60, categorie=None):
         for x in scad:
             if x["Scadenza"]:
                 ev.append(_ev(data_da(x["Scadenza"]), oggi, "mz", "Mezzo", f"{x['Documento']} - {x['Mezzo']}", "", None, prev))
+    if p.get("rp"):
+        segn, _ = rp.normalizza_segn(p["rp"].get("segn"))
+        prev = int((p["rp"].get("params") or {}).get("preavviso_gg", rp.RP_DEFAULT["preavviso_gg"]))
+        for x in segn:
+            if x["Stato"] != "Chiusa" and x["Scadenza"]:
+                ev.append(_ev(data_da(x["Scadenza"]), oggi, "rp", "Segnalazione", f"{x['Descrizione'][:70]} ({x['Cantiere']})", f"gravità {x['Gravita'].lower()} - {x['Responsabile']}".strip(" -"), None, prev))
     if categorie:
         ev = [e for e in ev if e["Categoria"] in categorie]
     ev = [e for e in ev if e["Giorni"] <= orizzonte_gg]

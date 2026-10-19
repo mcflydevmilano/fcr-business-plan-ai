@@ -606,3 +606,20 @@ def fig_mz_costi(det, tema="light"):
     ax.set_title("Costo dei mezzi: imputato e non assorbito (12 mesi)", fontsize=10, loc="left")
     _legenda(ax, tema, loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2)
     return fig
+
+
+def fig_rp_ore(cantieri, tema="light"):
+    """Ore lavorate per cantiere nella finestra di osservazione (barre orizzontali, colore = rapportini regolari o in ritardo)."""
+    cantieri = [c for c in cantieri if c["Ore"] > 0] or cantieri
+    n = max(1, len(cantieri))
+    fig, (ax,) = _nuova(tema, w=7.2, h=max(2.2, 0.5 * n + 1.2))
+    t = _t(tema)
+    col = {"ok": VERDE, "warn": GIALLO, "bad": ROSSO}
+    for i, c in enumerate(cantieri):
+        ax.barh(i, c["Ore"], height=0.55, color=col.get(c["Stato"], SERIE[0]))
+    ax.set_yticks(range(n))
+    ax.set_yticklabels([c["Cantiere"][:26] for c in cantieri], fontsize=8, color=t["fg"])
+    ax.invert_yaxis()
+    ax.set_xlabel("ore lavorate (colore: verde rapportini regolari, giallo/rosso in ritardo)", fontsize=8)
+    ax.set_title("Ore lavorate per cantiere", fontsize=10, loc="left")
+    return fig

@@ -14,6 +14,7 @@ import fo
 import sx
 import mz
 import og
+import rp
 import bp
 from core import fmt_num
 
@@ -125,6 +126,18 @@ def metriche_og(payload, oggi=None):
     if oggi is not None:
         p["oggi"] = oggi
     out = og.calcola_og(ris, ass, p)
+    return {"kpi": out["kpi"], "avvisi": out["avvisi"]}
+
+
+def metriche_rp(payload, oggi=None):
+    rapp, _ = rp.normalizza_rapp(payload.get("rapp"))
+    segn, _ = rp.normalizza_segn(payload.get("segn"))
+    if not rapp and not segn:
+        return None
+    p = dict(payload.get("params") or {})
+    if oggi is not None:
+        p["oggi"] = oggi
+    out = rp.calcola_rp(rapp, segn, p)
     return {"kpi": out["kpi"], "avvisi": out["avvisi"]}
 
 
@@ -294,6 +307,14 @@ def semafori(m, soglie=None):
         if sto != "ok":
             azioni.append((sto, "Organico: nei mesi di sovraccarico servono più risorse; nei mesi scarichi ci sono ore ferme da riempire."))
 
+    if m.get("rp"):
+        k = m["rp"]["kpi"]
+        str_ = "bad" if (k["segn_alte"] or k["segn_scadute"]) else ("warn" if k["cantieri_senza_rapporto"] or k["segn_aperte"] else "ok")
+        righe.append(_riga("Cantieri", "Segnalazioni gravi o scadute", str(k["segn_alte"] + k["segn_scadute"]), str_,
+                           f"{k['segn_aperte']} segnalazioni aperte · {k['cantieri_senza_rapporto']} cantieri senza rapportino"))
+        if str_ != "ok":
+            azioni.append((str_, "Cantieri: chiudi le segnalazioni gravi o scadute e fatti mandare i rapportini mancanti."))
+
     pres = [r["Stato"] for r in righe if r["Stato"] != "nd"]
     if not pres:
         generale = "nd"
@@ -310,7 +331,7 @@ def conteggio(righe):
     return c
 
 
-MODULI_METRICHE = ("sc", "cf", "pv", "sl", "ga", "fo", "sx", "mz", "og", "credit", "bp")
+MODULI_METRICHE = ("sc", "cf", "pv", "sl", "ga", "fo", "sx", "mz", "og", "rp", "credit", "bp")
 
 
 def metriche_da_payload(m, payload, oggi=None):

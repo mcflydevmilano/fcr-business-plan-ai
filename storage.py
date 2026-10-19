@@ -14,6 +14,12 @@ import time
 DB_PATH = os.environ.get("FCR_DB_PATH", "fcr_pratiche.db")
 
 
+def _now_ms():
+    """Timestamp con i millisecondi, per riconoscere due salvataggi ravvicinati."""
+    t = time.time()
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(t)) + f".{int(t * 1000) % 1000:03d}"
+
+
 def _now():
     return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
 
@@ -111,7 +117,7 @@ def _db(path=None):
         con.close()
 
 
-MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl", "ga", "fo", "sx", "mz", "og")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
+MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl", "ga", "fo", "sx", "mz", "og", "rp")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
 
 
 MAX_VERSIONI = 20          # versioni precedenti conservate per ogni salvataggio
@@ -126,24 +132,46 @@ def _chiave(nome, modulo="credit"):
     return nome
 
 
-def salva_pratica(nome, payload, path=None, autore="", modulo="credit"):
+class ConflittoSalvataggio(Exception):
+    """Il salvataggio esiste gia' ed e' stato modificato da qualcun altro (o non e' quello che si era aperto)."""
+
+    def __init__(self, autore="", aggiornato=""):
+        super().__init__(f"salvataggio modificato da {autore or 'un altro utente'} il {aggiornato}")
+        self.autore, self.aggiornato = autore, aggiornato
+
+
+def meta_pratica(nome, path=None, modulo="credit"):
+    """{aggiornato, autore} del salvataggio, oppure None."""
+    with _db(path) as con:
+        r = con.execute("SELECT aggiornato, autore FROM pratiche WHERE nome=?", (_chiave(nome, modulo),)).fetchone()
+    return {"aggiornato": r[0], "autore": r[1] or ""} if r else None
+
+
+def salva_pratica(nome, payload, path=None, autore="", modulo="credit", atteso=None):
+    """Salva (o sostituisce) un salvataggio e restituisce il suo nuovo timestamp.
+    `atteso`: timestamp del salvataggio che l'utente aveva aperto ('' = nessuno). Se non e' None e il salvataggio esistente e' diverso
+    (qualcun altro l'ha modificato, o il nome esiste gia' ed e' un'altra cosa) solleva ConflittoSalvataggio e non scrive nulla."""
     nome = _chiave(nome, modulo)
     if not nome:
         raise ValueError("Il nome non puo' essere vuoto.")
     testo = json.dumps(payload, ensure_ascii=False, default=str)
     with _db(path) as con:
         esiste = con.execute("SELECT payload, aggiornato, autore FROM pratiche WHERE nome=?", (nome,)).fetchone()
+        if esiste and atteso is not None and esiste[1] != atteso:
+            raise ConflittoSalvataggio(esiste[2] or "", esiste[1])
+        adesso = _now_ms()
         if esiste:
             if esiste[0] != testo:                                   # conserva la versione che sta per essere sostituita
                 con.execute("INSERT INTO pratiche_storico (nome, salvato, autore, payload) VALUES (?,?,?,?)", (nome, esiste[1], esiste[2] or "", esiste[0]))
                 con.execute("DELETE FROM pratiche_storico WHERE nome=? AND id NOT IN "
                             "(SELECT id FROM pratiche_storico WHERE nome=? ORDER BY id DESC LIMIT ?)", (nome, nome, MAX_VERSIONI))
-            con.execute("UPDATE pratiche SET aggiornato=?, payload=?, autore=? WHERE nome=?", (_now(), testo, autore, nome))
+            con.execute("UPDATE pratiche SET aggiornato=?, payload=?, autore=? WHERE nome=?", (adesso, testo, autore, nome))
         else:
             con.execute(
                 "INSERT INTO pratiche (nome, creato, aggiornato, payload, autore) VALUES (?,?,?,?,?)",
-                (nome, _now(), _now(), testo, autore),
+                (nome, adesso, adesso, testo, autore),
             )
+    return adesso
 
 
 def elenca_pratiche(path=None, modulo="credit"):

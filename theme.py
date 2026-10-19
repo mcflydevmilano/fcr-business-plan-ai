@@ -147,6 +147,11 @@ h3 { margin-top: .6rem; }
 .hub-card.og .hub-badge { background: #f0fdfa; }
 .hub-card.og .hub-num { color: #0f766e; }
 .hub-card.og li::before { background: #ccfbf1; color: #0f766e; }
+.hub-card.rp::before { background: linear-gradient(90deg, #4338ca, #a5b4fc); }
+.hub-card.rp:hover { border-color: #c7d2fe; box-shadow: 0 2px 4px rgba(15,23,42,.06), 0 14px 34px rgba(67,56,202,.16); }
+.hub-card.rp .hub-badge { background: #eef2ff; }
+.hub-card.rp .hub-num { color: #4338ca; }
+.hub-card.rp li::before { background: #e0e7ff; color: #4338ca; }
 .hub-card.ca::before { background: linear-gradient(90deg, #0369a1, #38bdf8); }
 .hub-card.ca:hover { border-color: #bae6fd; box-shadow: 0 2px 4px rgba(15,23,42,.06), 0 14px 34px rgba(3,105,161,.16); }
 .hub-card.ca .hub-badge { background: #f0f9ff; }
@@ -277,7 +282,7 @@ hr { border-color: var(--line); }
 
 .st-key-hub_top { display: none; }
 @media (max-width: 700px) {
-  .st-key-hub_top { display: block !important; }
+  .st-key-hub_top { display: block !important; margin-left: 46px; max-width: 100px; }
   .hero { gap: 12px; } .hero-logo { width: 62px; } .hero-title { font-size: 1.35rem; }
   .hub-title { font-size: 1.5rem; } .score-num { font-size: 2.8rem; }
 }
