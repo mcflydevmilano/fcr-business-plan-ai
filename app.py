@@ -19,7 +19,6 @@ import json
 import math
 import os
 
-import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 from google.genai import types
@@ -29,6 +28,7 @@ import charts
 import core
 import exports
 import storage
+import bp_ui
 import theme
 import xbrl
 from core import (
@@ -41,7 +41,8 @@ MAX_UPLOAD_MB = 20
 MAX_EXCEL_SHEETS = 8
 MAX_EXCEL_ROWS = 300
 LOGO_PATH = exports.LOGO_PATH
-FCR_URI = theme.logo_uri(core.LOGO_FCR_PATH)
+FCR_URI = theme.logo_uri(core.LOGO_FCR_PATH, 260)
+AETH_URI = theme.logo_uri(core.LOGO_PATH, 560, senza_sfondo=True)
 
 ETICHETTE = {
     "ricavi": "Ricavi delle vendite (EUR)",
@@ -56,7 +57,7 @@ ETICHETTE = {
 COL_STORICO = ["anno", "ricavi", "ebitda", "patrimonio_netto", "pfn"]
 
 st.set_page_config(
-    page_title="FCR General Contractor | AI Business Plan & Rating Platform",
+    page_title="FCR General Contractor & Aetheris Labs | Financial Suite",
     page_icon=core.LOGO_FCR_PATH if os.path.exists(core.LOGO_FCR_PATH) else "📊",
     layout="wide",
 )
@@ -82,18 +83,6 @@ def get_secret(name, default=None):
     return os.environ.get(name, default)
 
 
-def show_logo(col_ratio=(1, 2.2, 1)):
-    if not os.path.exists(LOGO_PATH):
-        return False
-    _, mid, _ = st.columns(list(col_ratio))
-    with mid:
-        try:
-            st.image(LOGO_PATH, width="stretch")
-        except Exception:
-            st.image(LOGO_PATH, use_container_width=True)
-    return True
-
-
 def show_df(df):
     try:
         st.dataframe(df, width="stretch", hide_index=True)
@@ -109,8 +98,8 @@ def show_editor(df, **kw):
 
 
 def show_fig(fig):
-    st.pyplot(fig, clear_figure=True)
-    plt.close(fig)
+    """Mostra il grafico a dimensione naturale (non stirato a tutta larghezza) in alta risoluzione."""
+    st.image(charts.fig_png(fig, 120))
 
 
 def slider_k(label, mn, mx, default, step, key):
@@ -157,19 +146,7 @@ def check_password():
     st.markdown("<br><br>", unsafe_allow_html=True)
     _, col2, _ = st.columns([1, 1.2, 1])
     with col2:
-        if FCR_URI:
-            st.markdown(theme.login_logo(FCR_URI), unsafe_allow_html=True)
-        else:
-            show_logo()
-        st.markdown(
-            "<h2 style='color:#f8fafc;margin-top:15px;font-size:1.4rem;text-align:center;'>FCR GENERAL CONTRACTOR</h2>",
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            "<p style='color:#38bdf8;font-size:0.85rem;font-weight:500;margin-bottom:25px;text-align:center;'>"
-            "Aetheris Labs — Area Riservata Protetta</p>",
-            unsafe_allow_html=True,
-        )
+        st.markdown(theme.login_header(FCR_URI, AETH_URI), unsafe_allow_html=True)
         if attempts >= MAX_LOGIN_ATTEMPTS:
             st.error("Troppi tentativi. Ricarica la pagina piu' tardi.")
         else:
@@ -376,59 +353,64 @@ def applica_payload(p, nome):
 # ----------------------------------------------------------------------------
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
-st.markdown(
-    theme.hero(
-        FCR_URI,
-        "FCR GENERAL CONTRACTOR — AI Business Plan & Rating",
-        "Piattaforma di Credit Risk Management e Pianificazione Strategica Pluriennale "
-        "(scoring indicativo ispirato ai criteri Basilea 3/4).",
-    ),
-    unsafe_allow_html=True,
-)
+MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",)}
+
+
+def vai_a(modulo):
+    """Cambia modulo ripristinando i valori dei widget che Streamlit altrimenti dimentica."""
+    if MODULO in PREFISSI_STATO:
+        pf = PREFISSI_STATO[MODULO]
+        ss["_snap_" + MODULO] = {k: v for k, v in ss.items() if isinstance(k, str) and k.startswith(pf)}
+    ss["active_module"] = modulo
+    if modulo in PREFISSI_STATO and ss.get("_snap_" + modulo):
+        ss["_pending"] = dict(ss["_snap_" + modulo])
+    st.rerun()
+
 
 with st.sidebar:
-    if not show_logo((1, 2.5, 1)):
-        st.warning("⚠️ Logo non trovato.")
-    st.markdown("<h3 style='text-align:center;color:#f8fafc;margin-top:10px;'>AETHERIS LABS</h3>", unsafe_allow_html=True)
-    st.markdown(
-        "<p style='text-align:center;color:#94a3b8;font-size:0.85rem;'>Software, AI & Game Development Division</p>",
-        unsafe_allow_html=True,
-    )
+    st.markdown(theme.sidebar_brand(AETH_URI), unsafe_allow_html=True)
+    if not AETH_URI:
+        st.caption("Logo Aetheris non trovato: carica aetheris_labs_logo.jpg accanto ad app.py.")
     st.markdown("---")
-    st.markdown("<p style='text-align:center;margin-bottom:2px;'>🛠️ <b>Sviluppato da</b></p>", unsafe_allow_html=True)
-    st.markdown("<h4 style='text-align:center;color:#38bdf8;margin:0;'>Ing. Lorenzo Di Ferdinando</h4>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center;color:#94a3b8;font-size:0.85rem;'>FCR General Contractor</p>", unsafe_allow_html=True)
-    st.markdown("---")
+    if MODULO is not None:
+        if st.button("🏠 Torna all'Hub Principale", width="stretch"):
+            vai_a(None)
+        st.markdown("---")
 
-    st.markdown("#### 📁 Pratica")
-    st.text_input("Nome pratica", key="pratica_nome", placeholder="es. Rossi Costruzioni 2025")
-    if st.button("💾 Salva pratica", width="stretch"):
+if MODULO == "credit":
+    with st.sidebar:
+        st.markdown("#### 📁 Pratica")
+        st.text_input("Nome pratica", key="pratica_nome", placeholder="es. Rossi Costruzioni 2025")
+        if st.button("💾 Salva pratica", width="stretch"):
+            try:
+                storage.salva_pratica(ss.get("pratica_nome", ""), payload_pratica())
+                st.toast("Pratica salvata", icon="✅")
+            except Exception as e:
+                st.error(f"Impossibile salvare: {e}")
         try:
-            storage.salva_pratica(ss.get("pratica_nome", ""), payload_pratica())
-            st.toast("Pratica salvata", icon="✅")
+            elenco = storage.elenca_pratiche()
         except Exception as e:
-            st.error(f"Impossibile salvare: {e}")
-    try:
-        elenco = storage.elenca_pratiche()
-    except Exception as e:
-        elenco = []
-        st.error(f"Database non disponibile: {e}")
-    if elenco:
-        scelta = st.selectbox("Pratiche salvate", [p["nome"] for p in elenco],
-                              format_func=lambda n: f"{n}  ({next(p['aggiornato'] for p in elenco if p['nome'] == n)[:16]})")
-        c1, c2 = st.columns(2)
-        if c1.button("📂 Carica", width="stretch"):
-            payload = storage.carica_pratica(scelta)
-            if payload:
-                applica_payload(payload, scelta)
+            elenco = []
+            st.error(f"Database non disponibile: {e}")
+        if elenco:
+            scelta = st.selectbox("Pratiche salvate", [p["nome"] for p in elenco],
+                                  format_func=lambda n: f"{n}  ({next(p['aggiornato'] for p in elenco if p['nome'] == n)[:16]})")
+            c1, c2 = st.columns(2)
+            if c1.button("📂 Carica", width="stretch"):
+                payload = storage.carica_pratica(scelta)
+                if payload:
+                    applica_payload(payload, scelta)
+                    st.rerun()
+            if c2.button("🗑️ Elimina", width="stretch"):
+                storage.elimina_pratica(scelta)
                 st.rerun()
-        if c2.button("🗑️ Elimina", width="stretch"):
-            storage.elimina_pratica(scelta)
-            st.rerun()
-    st.caption("Il database e' un file locale: su hosting con disco temporaneo (es. Streamlit Cloud) i salvataggi "
-               "si perdono al riavvio. Imposta FCR_DB_PATH su un volume persistente.")
-    st.markdown("---")
+        st.caption("Il database e' un file locale: su hosting con disco temporaneo (es. Streamlit Cloud) i salvataggi "
+                   "si perdono al riavvio. Imposta FCR_DB_PATH su un volume persistente.")
+        st.markdown("---")
 
+
+with st.sidebar:
     user_api_key = st.text_input("Gemini API Key personale (opzionale)", value="", type="password")
     with st.expander("🔒 Privacy e trattamento dei dati"):
         for _t, _x in core.PRIVACY_PUNTI:
@@ -442,6 +424,62 @@ with st.sidebar:
         st.warning("Accetta l'informativa privacy per attivare le funzioni AI. Calcoli, grafici ed Excel restano disponibili.")
     else:
         st.warning("Nessuna chiave API: le funzioni AI non sono disponibili (grafici, Excel e calcoli si').")
+
+# ----------------------------------------------------------------------------
+# HUB E ROUTING TRA I DUE MODULI
+# ----------------------------------------------------------------------------
+if MODULO is None:
+    st.markdown(theme.hub_header(FCR_URI), unsafe_allow_html=True)
+    _c1, _c2 = st.columns(2, gap="large")
+    with _c1:
+        st.markdown(
+            theme.hub_card(
+                "Strumento 1", "📊", "Credit Risk & Rating Basilea 3/4",
+                "Analisi di bilancio, scoring indicativo, simulatore What-If e dossier per il Comitato Fidi.",
+                ["Import bilancio XBRL, PDF o Excel (con AI)",
+                 "Scoring PFN/EBITDA, PFN/PN, equity ratio e DSCR",
+                 "Simulatore di leve, stress test e covenant",
+                 "Report PDF, Word ed Excel con formule vive"],
+                ["Rating", "Stress test", "PDF + Excel + Word"],
+            ),
+            unsafe_allow_html=True,
+        )
+        if st.button("Apri Credit Risk & Rating  →", key="hub_credit", width="stretch"):
+            vai_a("credit")
+    with _c2:
+        st.markdown(
+            theme.hub_card(
+                "Strumento 2", "🚀", "Business Plan Studio (3-5 anni)",
+                "Pianificazione industriale e finanziaria di nuove iniziative: conto economico, mutuo e cash flow.",
+                ["Wizard AI che propone le assunzioni dal testo del progetto",
+                 "Conto economico previsionale fino al risultato netto",
+                 "Piano di ammortamento del mutuo, cash flow e DSCR",
+                 "Dossier PDF del business plan"],
+                ["Wizard AI", "Mutuo", "Cash flow"], "bp",
+            ),
+            unsafe_allow_html=True,
+        )
+        if st.button("Apri Business Plan Studio  →", key="hub_bp", width="stretch"):
+            vai_a("bp")
+    st.caption("Le simulazioni sono indicative e non costituiscono rating regolamentare, parere di credito o consulenza.")
+    st.stop()
+
+if MODULO == "bp":
+    bp_ui.render(ai_generate, active_key, FCR_URI, ai)
+    st.stop()
+
+# ----------------------------------------------------------------------------
+# MODULO 1: CREDIT RISK & RATING
+# ----------------------------------------------------------------------------
+st.markdown(
+    theme.hero(
+        FCR_URI,
+        "Credit Risk & Rating",
+        "Valutazione del merito di credito e pianificazione pluriennale "
+        "(scoring indicativo ispirato ai criteri Basilea 3/4).",
+    ),
+    unsafe_allow_html=True,
+)
 
 # ----------------------------------------------------------------------------
 # TABS
@@ -624,7 +662,7 @@ with tab_comm:
         m2[2].metric("Primi 3 clienti", fmt_pct(kpi_c["top3_pct"], 0))
         if kpi_c["top1_pct"] > 40:
             st.warning("⚠️ Forte concentrazione su un solo cliente: rischio di dipendenza.")
-        show_fig(charts.fig_commesse(per_cli, "dark"))
+        show_fig(charts.fig_commesse(per_cli, "light"))
 
 # ============================ TAB 3: SIMULATORE ===============================
 with tab_sim:
@@ -749,15 +787,15 @@ with tab_piano:
     if any(v != 0 for v in leve.values()):
         piani["Base (nessuna leva)"] = res_base["piano"]
     with gc1:
-        show_fig(charts.fig_pfn_ebitda(piani, soglie, cov["pfn_ebitda_max"], "dark",
+        show_fig(charts.fig_pfn_ebitda(piani, soglie, cov["pfn_ebitda_max"], "light",
                                        anno_base=int(dati["anno_riferimento"]), base_val=ratio(scen["pfn"], scen["ebitda"])))
     with gc2:
-        show_fig(charts.fig_dscr(piano, soglie, cov["dscr_min"], "dark"))
+        show_fig(charts.fig_dscr(piano, soglie, cov["dscr_min"], "light"))
     gc3, gc4 = st.columns(2)
     with gc3:
-        show_fig(charts.fig_cascata(piano, scen["pfn"], "dark"))
+        show_fig(charts.fig_cascata(piano, scen["pfn"], "light"))
     with gc4:
-        show_fig(charts.fig_storico(ss["storico"], dati, piano, "dark"))
+        show_fig(charts.fig_storico(ss["storico"], dati, piano, "light"))
 
 # ============================== TAB 5: SCENARI ================================
 with tab_scen:
@@ -793,7 +831,7 @@ with tab_scen:
                         "Punteggio": f"{r['rating']['punti']}/8", "Fascia": classe_breve(r["rating"]["classe"])})
     show_df(pd.DataFrame(righe_c))
     if len(conf) > 1:
-        show_fig(charts.fig_confronto(conf, soglie, "dark"))
+        show_fig(charts.fig_confronto(conf, soglie, "light"))
     else:
         st.info("Modifica le leve nel simulatore e salva uno scenario per avviare il confronto.")
 
