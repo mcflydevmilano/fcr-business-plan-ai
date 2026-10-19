@@ -55,6 +55,7 @@ h3 { margin-top: .6rem; }
 .brand .b-sub { font-size: .74rem; color: var(--mut); margin-top: 2px; line-height: 1.35; }
 .brand .b-dev { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); font-size: .7rem; color: var(--mut); letter-spacing: .06em; text-transform: uppercase; }
 .brand .b-who { font-size: .98rem; font-weight: 700; color: var(--acc); margin-top: 2px; }
+.b-who2 { margin-top: 2px; }
 .brand .b-co { font-size: .78rem; color: var(--mut); }
 
 /* ---------- hero ---------- */
@@ -277,6 +278,7 @@ def sidebar_brand(uri_aeth):
     return (f'<div class="brand">{logo}<div class="b-name">AETHERIS LABS</div>'
             f'<div class="b-sub">Software, AI &amp; Game Development Division</div>'
             f'<div class="b-dev">Sviluppato da</div><div class="b-who">Ing. Lorenzo Di Ferdinando</div>'
+            f'<div class="b-who b-who2">Dott. Claudio Arosio</div>'
             f'<div class="b-co">FCR General Contractor</div></div>')
 
 

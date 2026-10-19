@@ -1,6 +1,6 @@
 """
 FCR General Contractor - AI Business Plan & Rating Platform
-Aetheris Labs - Ing. Lorenzo Di Ferdinando
+Aetheris Labs - Ing. Lorenzo Di Ferdinando, Dott. Claudio Arosio
 
 File dell'applicazione (interfaccia). La logica sta in:
     core.py      calcoli, scoring, scenari, stress test, covenant, commesse
