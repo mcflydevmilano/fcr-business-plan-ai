@@ -9,12 +9,12 @@ File dell'applicazione (interfaccia). La logica sta in:
     storage.py   salvataggio pratiche e registro dei report (SQLite)
 
 Secrets / variabili d'ambiente:
-    APP_PASSWORD     (obbligatoria)
+    [users.nome]     accessi per utente: hash = "..." (da make_hash.py) e ruolo = "admin" | "utente"   (consigliato)
+    APP_PASSWORD     (solo compatibilita': password unica per l'utente "admin")
     GEMINI_API_KEY   (opzionale: l'utente puo' inserirne una propria nella sidebar)
     GEMINI_MODEL     (opzionale, default: gemini-3.8-flash)
     FCR_DB_PATH      (opzionale, percorso del database delle pratiche)
 """
-import hmac
 import json
 import math
 import os
@@ -23,7 +23,9 @@ import pandas as pd
 import streamlit as st
 from google.genai import types
 
+import admin_ui
 import ai
+import auth
 import charts
 import core
 import exports
@@ -36,7 +38,6 @@ from core import (
     SOGLIE_DEFAULT, fmt_eur, fmt_num, fmt_pct, fmt_x, livello_classe, ratio, to_float,
 )
 
-MAX_LOGIN_ATTEMPTS = 5
 MAX_UPLOAD_MB = 20
 MAX_EXCEL_SHEETS = 8
 MAX_EXCEL_ROWS = 300
@@ -122,41 +123,55 @@ def classe_breve(classe):
 # ----------------------------------------------------------------------------
 # AUTENTICAZIONE
 # ----------------------------------------------------------------------------
-def check_password():
-    expected = get_secret("APP_PASSWORD")
-    if not expected:
-        st.error("⚠️ Configurazione mancante: imposta APP_PASSWORD nei secrets o nelle variabili d'ambiente.")
+def _utenti_secrets():
+    cfg = get_secret("users")
+    if isinstance(cfg, str):                      # variabile d'ambiente: JSON {"mario": "hash"} o {"mario": {"hash":..., "ruolo":...}}
+        try:
+            cfg = json.loads(cfg)
+        except ValueError:
+            cfg = {}
+    return auth.utenti_da_secrets(cfg)
+
+
+UTENTI_SECRETS = _utenti_secrets()
+APP_PASSWORD = get_secret("APP_PASSWORD")
+
+
+def audit(azione, dettaglio=""):
+    storage.log_evento((ss.get("utente") or {}).get("username", ""), azione, dettaglio)
+
+
+def check_login():
+    if not UTENTI_SECRETS and not APP_PASSWORD:
+        st.error("⚠️ Configurazione mancante: aggiungi almeno un utente nei secrets (sezione [users.nome] con hash e ruolo) "
+                 "oppure, in modo transitorio, APP_PASSWORD.")
         return False
-    if ss.get("password_correct"):
-        return True
-
-    attempts = ss.get("login_attempts", 0)
-
-    def password_entered():
-        given = ss.pop("password_input", "")
-        if ss.get("login_attempts", 0) >= MAX_LOGIN_ATTEMPTS:
-            return
-        if hmac.compare_digest(given.encode("utf-8"), str(expected).encode("utf-8")):
-            ss["password_correct"] = True
-            ss["login_attempts"] = 0
-        else:
-            ss["password_correct"] = False
-            ss["login_attempts"] = ss.get("login_attempts", 0) + 1
-
+    u = ss.get("utente")
+    if u:
+        if auth.ancora_valido(u, UTENTI_SECRETS):
+            return True
+        ss.clear()                                # accesso revocato mentre la sessione era aperta
+        st.warning("Il tuo accesso non e' piu' valido. Accedi di nuovo.")
     st.markdown("<br><br>", unsafe_allow_html=True)
     _, col2, _ = st.columns([1, 1.2, 1])
     with col2:
         st.markdown(theme.login_header(FCR_URI, AETH_URI), unsafe_allow_html=True)
-        if attempts >= MAX_LOGIN_ATTEMPTS:
-            st.error("Troppi tentativi. Ricarica la pagina piu' tardi.")
-        else:
-            st.text_input("Password di Accesso:", type="password", on_change=password_entered, key="password_input")
-            if ss.get("password_correct") is False:
-                st.error("😕 Password errata. Riprova.")
+        with st.form("login_form"):
+            nome = st.text_input("Nome utente", key="login_user")
+            pw = st.text_input("Password", type="password", key="login_pw")
+            invia = st.form_submit_button("Accedi", type="primary", width="stretch")
+        if invia:
+            utente, errore = auth.autentica(nome, pw, UTENTI_SECRETS, APP_PASSWORD)
+            if utente:
+                ss["utente"] = utente
+                st.rerun()
+            st.error(errore)
+        if APP_PASSWORD and not UTENTI_SECRETS:
+            st.caption("Modalita' compatibilita': accesso come utente `admin` con la password condivisa.")
     return False
 
 
-if not check_password():
+if not check_login():
     st.stop()
 
 
@@ -315,6 +330,7 @@ dati = ss["financial_data"]
 leve = {k: ss.get(k, 0) for k in LEVE_DEFAULT}
 piano_par = {k: ss.get(f"piano_{k}", v) for k, v in PIANO_DEFAULT.items()}
 soglie = {k: (ss.get(f"soglia_{k}_v", v[0]), ss.get(f"soglia_{k}_g", v[1])) for k, v in SOGLIE_DEFAULT.items()}
+_valid = {"da": ss.get("soglia_valid_da", ""), "data": ss.get("soglia_valid_data", ""), "fonte": ss.get("soglia_fonte", "")}
 cov = {
     "pfn_ebitda_max": ss.get("cov_lev", COVENANT_DEFAULT["pfn_ebitda_max"]),
     "dscr_min": ss.get("cov_dscr", COVENANT_DEFAULT["dscr_min"]),
@@ -330,6 +346,7 @@ def payload_pratica():
         "commesse": commesse_df_pulito(ss["commesse"]).to_dict("records"),
         "scenari": ss["scenari"], "leve": leve, "piano_par": piano_par,
         "soglie": {k: list(v) for k, v in soglie.items()}, "covenant": cov, "dati_demo": ss["dati_demo"],
+        "validazione": _valid,
     }
 
 
@@ -345,6 +362,8 @@ def applica_payload(p, nome):
     for k, (v, g) in SOGLIE_DEFAULT.items():
         s = p.get("soglie", {}).get(k, [v, g])
         pend[f"soglia_{k}_v"], pend[f"soglia_{k}_g"] = float(s[0]), float(s[1])
+    vz = p.get("validazione", {})
+    pend["soglia_valid_da"], pend["soglia_valid_data"], pend["soglia_fonte"] = vz.get("da", ""), vz.get("data", ""), vz.get("fonte", "")
     c = p.get("covenant", COVENANT_DEFAULT)
     pend["cov_lev"], pend["cov_dscr"] = float(c["pfn_ebitda_max"]), float(c["dscr_min"])
     ss["_pending"] = pend
@@ -372,6 +391,26 @@ with st.sidebar:
     st.markdown(theme.sidebar_brand(AETH_URI), unsafe_allow_html=True)
     if not AETH_URI:
         st.caption("Logo Aetheris non trovato: carica aetheris_labs_logo.jpg accanto ad app.py.")
+    _u = ss["utente"]
+    st.markdown(f"<div style='font-size:.82rem;color:#475569;text-align:center'>👤 <b>{_u['username']}</b> · {_u['ruolo']}</div>", unsafe_allow_html=True)
+    _ca, _cb = st.columns(2)
+    if _u["ruolo"] == "admin" and _ca.button("👥 Utenti", key="btn_admin", width="stretch"):
+        vai_a("admin")
+    if _cb.button("Esci", key="btn_logout", width="stretch"):
+        audit("logout")
+        ss.clear()
+        st.rerun()
+    if _u["origine"] == "db":
+        with st.expander("🔑 Account · cambia password"):
+            with st.form("form_pw", clear_on_submit=True):
+                _p0 = st.text_input("Password attuale", type="password")
+                _p1 = st.text_input("Nuova password", type="password")
+                if st.form_submit_button("Cambia password"):
+                    try:
+                        auth.cambia_password(_u["username"], _p0, _p1)
+                        st.success("Password aggiornata.")
+                    except ValueError as _e:
+                        st.error(str(_e))
     st.markdown("---")
     if MODULO is not None:
         if st.button("🏠 Torna all'Hub Principale", width="stretch"):
@@ -384,7 +423,8 @@ if MODULO == "credit":
         st.text_input("Nome pratica", key="pratica_nome", placeholder="es. Rossi Costruzioni 2025")
         if st.button("💾 Salva pratica", width="stretch"):
             try:
-                storage.salva_pratica(ss.get("pratica_nome", ""), payload_pratica())
+                storage.salva_pratica(ss.get("pratica_nome", ""), payload_pratica(), autore=ss["utente"]["username"])
+                audit("pratica_salvata", ss.get("pratica_nome", ""))
                 st.toast("Pratica salvata", icon="✅")
             except Exception as e:
                 st.error(f"Impossibile salvare: {e}")
@@ -395,15 +435,17 @@ if MODULO == "credit":
             st.error(f"Database non disponibile: {e}")
         if elenco:
             scelta = st.selectbox("Pratiche salvate", [p["nome"] for p in elenco],
-                                  format_func=lambda n: f"{n}  ({next(p['aggiornato'] for p in elenco if p['nome'] == n)[:16]})")
+                                  format_func=lambda n: next(f"{p['nome']}  ({p['aggiornato'][:16]}" + (f", {p['autore']}" if p['autore'] else "") + ")" for p in elenco if p['nome'] == n))
             c1, c2 = st.columns(2)
             if c1.button("📂 Carica", width="stretch"):
                 payload = storage.carica_pratica(scelta)
+                audit("pratica_caricata", scelta)
                 if payload:
                     applica_payload(payload, scelta)
                     st.rerun()
             if c2.button("🗑️ Elimina", width="stretch"):
                 storage.elimina_pratica(scelta)
+                audit("pratica_eliminata", scelta)
                 st.rerun()
         st.caption("Il database e' un file locale: su hosting con disco temporaneo (es. Streamlit Cloud) i salvataggi "
                    "si perdono al riavvio. Imposta FCR_DB_PATH su un volume persistente.")
@@ -428,6 +470,10 @@ with st.sidebar:
 # ----------------------------------------------------------------------------
 # HUB E ROUTING TRA I DUE MODULI
 # ----------------------------------------------------------------------------
+if MODULO == "admin":
+    admin_ui.render(ss["utente"], UTENTI_SECRETS, audit)
+    st.stop()
+
 if MODULO is None:
     st.markdown(theme.hub_header(FCR_URI), unsafe_allow_html=True)
     _c1, _c2 = st.columns(2, gap="large")
@@ -465,7 +511,7 @@ if MODULO is None:
     st.stop()
 
 if MODULO == "bp":
-    bp_ui.render(ai_generate, active_key, FCR_URI, ai)
+    bp_ui.render(ai_generate, active_key, FCR_URI, ai, audit)
     st.stop()
 
 # ----------------------------------------------------------------------------
@@ -513,6 +559,7 @@ with tab_dati:
                     d_n, s_n, f_n = core.normalizza_estrazione(raw_x)
                     ss["bozza"] = {"dati": d_n, "storico": s_n, "fonti": f_n, "origine": "xbrl", "avvisi": avvisi_x}
                     ss["bozza_ver"] = ss.get("bozza_ver", 0) + 1
+                    audit("import_xbrl", uploaded.name)
                 except xbrl.XbrlError as e:
                     st.error(f"Importazione XBRL non riuscita: {e}")
                 except Exception as e:
@@ -538,6 +585,7 @@ with tab_dati:
                         d_n, s_n, f_n = core.normalizza_estrazione(json.loads(raw_txt))
                         ss["bozza"] = {"dati": d_n, "storico": s_n, "fonti": f_n}
                         ss["bozza_ver"] = ss.get("bozza_ver", 0) + 1
+                        audit("import_ai", uploaded.name)
                     except json.JSONDecodeError:
                         st.error("Il modello non ha restituito un JSON valido. Riprova.")
                     except Exception as e:
@@ -704,8 +752,35 @@ with tab_sim:
     show_df(det)
     st.caption("Verde: punteggio ≥ 7 su 8. Rossa: punteggio < 4, oppure patrimonio netto ≤ 0, oppure EBITDA ≤ 0.")
 
-    with st.expander("⚙️ Soglie di scoring personalizzabili (calibrazione)"):
-        st.caption("Le soglie predefinite sono ipotesi di lavoro: calibrale sulla politica di rischio o sui dati storici.")
+    with st.expander("⚙️ Soglie di scoring per settore (calibrazione)"):
+        st.caption("I profili sono ipotesi di lavoro ragionate, NON benchmark ufficiali (Cerved, Istat, Banca d'Italia). "
+                   "Prima di usarli per decisioni vanno validati da un esperto, oppure sostituiti con benchmark reali importati da file.")
+        st.markdown(f"**Profilo in uso:** {core.nome_profilo(soglie)}")
+        cp1, cp2 = st.columns([3, 1])
+        prof_sel = cp1.selectbox("Profilo di settore", list(core.PROFILI_SOGLIE), key="profilo_sel", label_visibility="collapsed")
+        if cp2.button("Applica", key="profilo_applica", width="stretch"):
+            ss["_pending"] = {f"soglia_{k}_{i}": float(core.PROFILI_SOGLIE[prof_sel][k][j])
+                              for k in SOGLIE_DEFAULT for j, i in enumerate(("v", "g"))}
+            st.rerun()
+        up = st.file_uploader("Importa benchmark da file JSON", type=["json"], key="profilo_file",
+                              help='Formato: {"nome": "...", "fonte": "...", "soglie": {"pfn_ebitda": [2.5, 4.5], "pfn_pn": [1.0, 2.0], "equity_ratio": [0.25, 0.15], "dscr": [1.3, 1.0]}}')
+        if up is not None and ss.get("_profilo_file_id") != (up.name, up.size):
+            try:
+                _n, _f, _s = core.parse_profilo_soglie(up.getvalue().decode("utf-8"))
+                ss["_pending"] = {f"soglia_{k}_{i}": float(_s[k][j]) for k in SOGLIE_DEFAULT for j, i in enumerate(("v", "g"))}
+                ss["_pending"]["soglia_fonte"] = _f or _n
+                ss["_profilo_file_id"] = (up.name, up.size)
+                st.rerun()
+            except ValueError as _e:
+                st.error(str(_e))
+        st.download_button("📥 Scarica le soglie correnti (JSON)", core.profilo_json(core.nome_profilo(soglie), soglie, ss.get("soglia_fonte", "")),
+                           file_name="soglie_rating.json", mime="application/json")
+        st.markdown("**Validazione** (compare nei report)")
+        cv1, cv2 = st.columns(2)
+        cv1.text_input("Validate da (nome e qualifica)", key="soglia_valid_da", placeholder="es. Dott. Rossi, commercialista")
+        cv2.text_input("Data validazione", key="soglia_valid_data", placeholder="gg/mm/aaaa")
+        st.text_input("Fonte / benchmark utilizzato", key="soglia_fonte", placeholder="es. Cerved Industry Forecast 2025, ATECO 41-43")
+        st.caption(core.testo_validazione(_valid))
         nomi_s = {"pfn_ebitda": "PFN / EBITDA (minore = meglio)", "pfn_pn": "PFN / PN (minore = meglio)",
                   "equity_ratio": "PN / Attivo (decimale, maggiore = meglio)", "dscr": "DSCR (maggiore = meglio)"}
         for k, lab in nomi_s.items():
@@ -859,7 +934,7 @@ with tab_rep:
 
     ctx = exports.costruisci_ctx(
         dati, leve, piano_par, soglie, cov, ss["storico"], commesse_df_pulito(ss["commesse"]),
-        ss["scenari"], ss["dati_demo"], MODEL_NAME, ss.get("pratica_nome", ""),
+        ss["scenari"], ss["dati_demo"], MODEL_NAME, ss.get("pratica_nome", ""), _valid,
     )
     st.caption(f"ID report corrente: **{ctx['report_id']}** (cambia al variare di dati, leve, ipotesi, soglie, scenari e commesse).")
 
@@ -889,6 +964,7 @@ with tab_rep:
                     "docx": exports.genera_docx(ctx, relazione, grafici), "report_id": ctx["report_id"],
                     "avvisi": avvisi, "modello": ctx["modello"], "quota": quota_esaurita,
                 }
+                audit("report_credit", f"{ctx['report_id']} pratica={ss.get('pratica_nome', '')}")
                 try:
                     storage.log_report(ss.get("pratica_nome", ""), ctx["report_id"], ctx["modello"], ctx["hash_dati"],
                                        {"punti": rating["punti"], "classe": rating["classe"]})
@@ -918,6 +994,7 @@ with tab_rep:
     if st.button("Prepara file Excel"):
         try:
             ss["excel"] = {"bytes": exports.genera_excel(ctx), "report_id": ctx["report_id"]}
+            audit("excel_credit", ctx["report_id"])
         except Exception as e:
             st.error(f"Errore nella generazione dell'Excel: {e}")
     if ss.get("excel"):
