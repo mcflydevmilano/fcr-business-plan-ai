@@ -8,8 +8,9 @@ import cf
 import core
 import pv
 import sc
+import sl
 import bp
-from core import fmt_num, to_float
+from core import fmt_num
 
 DD_DEFAULT = {
     "margine_target": 15.0,       # margine lordo % del portafoglio considerato "buono"
@@ -44,6 +45,20 @@ def metriche_sc(payload, oggi=None):
         p["oggi"] = oggi
     out = sc.calcola_sc(docs, p)
     return {"kpi": out["kpi"], "avvisi": out["avvisi"], "solleciti": sc.solleciti(docs, out["params"]["oggi"])}
+
+
+def metriche_sl(payload, oggi=None):
+    com, _ = sl.normalizza_commesse(payload.get("commesse"))
+    if not com:
+        return None
+    nomi = {c["Commessa"] for c in com}
+    sal, _ = sl.normalizza_sal(payload.get("sal"), nomi)
+    cos, _ = sl.normalizza_costi(payload.get("costi"), nomi)
+    p = dict(payload.get("params") or {})
+    if oggi is not None:
+        p["oggi"] = oggi
+    out = sl.calcola_sl(com, sal, cos, p)
+    return {"kpi": out["kpi"], "avvisi": out["avvisi"], "commesse": out["commesse"]}
 
 
 def metriche_pv(payload):
@@ -159,6 +174,25 @@ def semafori(m, soglie=None):
                            f"Cassa minima {fmt_num(k['cassa_minima'])} €" + (f" · {m['bp']['nome']}" if m["bp"].get("nome") else "")))
         if st9 in ("warn", "bad"):
             azioni.append((st9, "Il business plan copre poco il servizio del debito: rivedi investimento, mutuo o ricavi."))
+
+    if m.get("sl"):
+        k = m["sl"]["kpi"]
+        gap = k["margine_atteso_pct"] - k["margine_finale_pct"]
+        st10 = "bad" if k["margine_finale"] < 0 or gap > sl.TOLL_WARN else ("warn" if gap > sl.TOLL_OK else "ok")
+        righe.append(_riga("Margine", "Margine a finire delle commesse", f"{fmt_num(k['margine_finale_pct'], 1)}%", st10,
+                           f"Preventivato {fmt_num(k['margine_atteso_pct'], 1)}% · {k['n_commesse']} commesse, avanzamento {fmt_num(k['avanzamento'], 0)}%"))
+        if st10 != "ok":
+            azioni.append((st10, "Le commesse in corso chiuderanno con meno margine del preventivato: controlla costi e varianti non fatturate."))
+        n_crit = k["n_bad"]
+        st11 = "bad" if n_crit else ("warn" if k["n_warn"] else "ok")
+        righe.append(_riga("Commesse", "Commesse in sofferenza", str(n_crit), st11, f"{k['n_warn']} da tenere d'occhio su {k['n_commesse']}"))
+        if n_crit:
+            nomi = ", ".join(d["Commessa"] for d in m["sl"].get("commesse", []) if d["Stato"] == "bad")
+            azioni.append(("bad", "Commesse critiche" + (f" ({nomi})" if nomi else "") + ": verifica subito costi a finire e rinegozia varianti o prezzi."))
+        if k["da_fatturare"] > 0:
+            st12 = "warn"
+            righe.append(_riga("Crediti", "Lavori eseguiti da fatturare", f"{fmt_num(k['da_fatturare'])} €", st12, "Emetti il prossimo SAL: è liquidità che aspetta"))
+            azioni.append(("warn", f"Hai {fmt_num(k['da_fatturare'])} € di lavori eseguiti non ancora fatturati: emetti i SAL."))
 
     pres = [r["Stato"] for r in righe if r["Stato"] != "nd"]
     if not pres:

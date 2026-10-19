@@ -1,7 +1,4 @@
 """dd_ui.py - Cruscotto di direzione: semafori di margine, cassa, crediti e rating dai moduli della suite."""
-import datetime as dt
-
-import pandas as pd
 import streamlit as st
 
 import bp_ui
@@ -10,6 +7,7 @@ import dd
 import dd_report
 import pv_ui
 import sc_ui
+import sl_ui
 import storage
 import theme
 
@@ -17,7 +15,7 @@ ss = st.session_state
 
 MODULI = [("sc", "Scadenzario", "Cassa, crediti e debiti"), ("cf", "Cash Flow di cantiere", "Liquidità e margine dei cantieri"),
           ("pv", "Computo e Preventivo", "Margine del preventivo"), ("credit", "Credit Risk & Rating", "Rating indicativo"),
-          ("bp", "Business Plan Studio", "DSCR del piano")]
+          ("bp", "Business Plan Studio", "DSCR del piano"), ("sl", "SAL e contabilità lavori", "Margine a finire delle commesse")]
 SESSIONE = "Dati della sessione"
 NESSUNO = "Non usare"
 
@@ -29,13 +27,15 @@ def _sessione_disponibile(m):
         return "cf_df" in ss
     if m == "pv":
         return "pv_df" in ss
+    if m == "sl":
+        return "sl_com" in ss
     if m == "bp":
         return any(isinstance(k, str) and k.startswith("bp_") for k in ss)
     return False                              # il rating si legge dalle pratiche salvate
 
 
 def _payload_sessione(m):
-    return {"sc": sc_ui._raccogli, "cf": cf_ui._raccogli, "pv": pv_ui._raccogli, "bp": bp_ui._raccogli}[m]()
+    return {"sc": sc_ui._raccogli, "cf": cf_ui._raccogli, "pv": pv_ui._raccogli, "bp": bp_ui._raccogli, "sl": sl_ui._raccogli}[m]()
 
 
 def _elenco_salvati(m):
@@ -53,6 +53,8 @@ def _calcola(m, payload):
             return dd.metriche_cf(payload)
         if m == "pv":
             return dd.metriche_pv(payload)
+        if m == "sl":
+            return dd.metriche_sl(payload)
         if m == "credit":
             return dd.metriche_credit(payload)
         return dd.metriche_bp(payload)
@@ -77,7 +79,7 @@ def render(fcr_uri, audit=None):
                 continue
             if scelta == SESSIONE:
                 payload = _payload_sessione(m)
-                demo = (m in ("sc", "cf") and ss.get(f"{m}_demo"))
+                demo = (m in ("sc", "cf", "sl") and ss.get(f"{m}_demo"))
                 fonti[nome] = "dati della sessione" + (" (esempio)" if demo else "")
             else:
                 payload = storage.carica_pratica(scelta, modulo=m)
@@ -94,7 +96,7 @@ def render(fcr_uri, audit=None):
     righe, gen, azioni = dd.semafori(metriche, soglie)
     c = dd.conteggio(righe)
     titolo = {"ok": "Tutto sotto controllo", "warn": "Alcuni punti di attenzione", "bad": "Servono interventi", "nd": "Dati insufficienti"}[gen]
-    st.markdown(theme.semaforo_generale(gen, titolo, f"{c['ok']} in regola · {c['warn']} da tenere d'occhio · {c['bad']} critici · {c['nd']} senza dati"), unsafe_allow_html=True)
+    st.markdown(theme.semaforo_generale(gen, titolo, f"{c['ok']} in regola · {c['warn']} da tenere d'occhio · {c['bad']} {'critico' if c['bad'] == 1 else 'critici'} · {c['nd']} senza dati"), unsafe_allow_html=True)
     st.markdown(theme.semafori_html(righe), unsafe_allow_html=True)
     st.subheader("Cosa fare")
     if azioni:

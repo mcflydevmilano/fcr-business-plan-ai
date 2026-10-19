@@ -34,12 +34,13 @@ import bp_ui
 import cf_ui
 import dd_ui
 import sc_ui
+import sl_ui
 import pv_ui
 import theme
 import xbrl
 from core import (
     COLONNE_COMMESSE, COVENANT_DEFAULT, DATI_DEFAULT, DISCLAIMER, LEVE_DEFAULT, PIANO_DEFAULT,
-    SOGLIE_DEFAULT, fmt_eur, fmt_num, fmt_pct, fmt_x, livello_classe, ratio, to_float,
+    SOGLIE_DEFAULT, fmt_eur, fmt_num, fmt_pct, fmt_x, ratio, to_float,
 )
 
 MAX_UPLOAD_MB = 20
@@ -377,7 +378,7 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "dd": ("dd_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "dd": ("dd_",)}
 
 
 def vai_a(modulo):
@@ -576,6 +577,22 @@ if MODULO is None:
         )
         if st.button("Apri Cruscotto di direzione  →", key="hub_dd", width="stretch"):
             vai_a("dd")
+    _c7, _ = st.columns(2, gap="large")
+    with _c7:
+        st.markdown(
+            theme.hub_card(
+                "Strumento 7", "📐", "SAL e contabilità lavori",
+                "Le commesse in corso: stati di avanzamento, costi e margine a finire.",
+                ["SAL con anticipo, ritenute e IVA",
+                 "Margine a finire con il metodo del valore maturato",
+                 "Invio dei SAL e dei costi allo Scadenzario",
+                 "Dossier PDF ed Excel con formule vive"],
+                ["SAL", "Margine a finire", "PDF + Excel"], "sl",
+            ),
+            unsafe_allow_html=True,
+        )
+        if st.button("Apri SAL e contabilità  →", key="hub_sl", width="stretch"):
+            vai_a("sl")
     st.caption("Le simulazioni sono indicative e non costituiscono rating regolamentare, parere di credito o consulenza.")
     st.stop()
 
@@ -589,6 +606,10 @@ if MODULO == "cf":
 
 if MODULO == "sc":
     sc_ui.render(FCR_URI, audit, ss["utente"]["username"])
+    st.stop()
+
+if MODULO == "sl":
+    sl_ui.render(FCR_URI, audit, ss["utente"]["username"])
     st.stop()
 
 if MODULO == "dd":

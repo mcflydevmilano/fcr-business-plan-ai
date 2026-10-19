@@ -9,7 +9,7 @@ import sc
 import sc_report
 import theme
 from core import fmt_num
-from ui_util import pannello_archivio, sostituisci_tabella, tabella_modificabile
+from ui_util import modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile
 
 ss = st.session_state
 
@@ -88,6 +88,8 @@ def render(fcr_uri, audit=None, utente=""):
                 sostituisci_tabella("sc_df", pd.DataFrame(columns=sc.COLONNE_DOC))
                 ss["sc_demo"] = False
                 st.rerun()
+        st.download_button("📥 Scarica il modello Excel per l'import", modello_excel(sc.COLONNE_DOC, sc.ETICHETTE_DOC, _esempio().head(3).to_dict("records")),
+                           file_name="modello_scadenzario.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         up = st.file_uploader("Importa da Excel/CSV (colonne: " + ", ".join(sc.COLONNE_DOC) + ")", type=["xlsx", "csv"], key="up_sc")
         if up is not None and st.button("Importa il file", key="imp_sc"):
             try:

@@ -109,6 +109,11 @@ h3 { margin-top: .6rem; }
 .hub-card.sc .hub-badge { background: #ecfeff; }
 .hub-card.sc .hub-num { color: #0e7490; }
 .hub-card.sc li::before { background: #cffafe; color: #0e7490; }
+.hub-card.sl::before { background: linear-gradient(90deg, #4d7c0f, #a3e635); }
+.hub-card.sl:hover { border-color: #d9f99d; box-shadow: 0 2px 4px rgba(15,23,42,.06), 0 14px 34px rgba(77,124,15,.16); }
+.hub-card.sl .hub-badge { background: #f7fee7; }
+.hub-card.sl .hub-num { color: #4d7c0f; }
+.hub-card.sl li::before { background: #ecfccb; color: #4d7c0f; }
 .hub-card.dd::before { background: linear-gradient(90deg, #be123c, #fb7185); }
 .hub-card.dd:hover { border-color: #fecdd3; box-shadow: 0 2px 4px rgba(15,23,42,.06), 0 14px 34px rgba(190,18,60,.16); }
 .hub-card.dd .hub-badge { background: #fff1f2; }

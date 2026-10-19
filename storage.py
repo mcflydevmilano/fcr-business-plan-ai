@@ -106,7 +106,7 @@ def _db(path=None):
         con.close()
 
 
-MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
+MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
 
 
 def _chiave(nome, modulo="credit"):
@@ -114,7 +114,7 @@ def _chiave(nome, modulo="credit"):
     if modulo in MODULI_ARCHIVIO:
         return f"{modulo}|{nome}" if nome else ""
     if any(nome.startswith(m + "|") for m in MODULI_ARCHIVIO):
-        raise ValueError("Il nome non puo' iniziare con 'bp|', 'cf|', 'pv|' o 'sc|' (prefissi riservati).")
+        raise ValueError("Il nome non puo' iniziare con 'bp|', 'cf|', 'pv|', 'sc|' o 'sl|' (prefissi riservati).")
     return nome
 
 
@@ -261,3 +261,18 @@ def aggiorna_utente(username, path=None, **campi):
 def elimina_utente(username, path=None):
     with _db(path) as con:
         con.execute("DELETE FROM utenti WHERE username=?", (username,))
+
+
+def esporta_backup(path=None):
+    """Copia di tutti i dati (pratiche, utenti SENZA hash delle password, report, registro) in un dizionario JSON-serializzabile."""
+    out = {"generato": _now(), "database": "postgresql" if (not path and _url_db()) else "sqlite"}
+    with _db(path) as con:
+        out["pratiche"] = [dict(zip(("nome", "creato", "aggiornato", "autore", "payload"), r)) for r in
+                           con.execute("SELECT nome, creato, aggiornato, autore, payload FROM pratiche ORDER BY nome")]
+        out["utenti"] = [dict(zip(("username", "ruolo", "attivo", "creato", "ultimo_accesso", "creato_da"), r)) for r in
+                         con.execute("SELECT username, ruolo, attivo, creato, ultimo_accesso, creato_da FROM utenti ORDER BY username")]
+        out["report_log"] = [dict(zip(("pratica", "report_id", "creato", "modello", "hash_dati"), r)) for r in
+                             con.execute("SELECT pratica, report_id, creato, modello, hash_dati FROM report_log ORDER BY id")]
+        out["audit_log"] = [dict(zip(("ts", "utente", "azione", "dettaglio"), r)) for r in
+                            con.execute("SELECT ts, utente, azione, dettaglio FROM audit_log ORDER BY id")]
+    return out

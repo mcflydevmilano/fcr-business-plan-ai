@@ -495,3 +495,45 @@ def fig_sc_fasce(fasce, tema="light"):
     ax.set_title("Anzianita' dei documenti aperti", fontsize=10, loc="left")
     _legenda(ax, tema, loc="upper right")
     return fig
+
+
+# ----------------------------------------------------------------------------
+# SAL E CONTABILITA' LAVORI
+# ----------------------------------------------------------------------------
+_STATO_COL = {"ok": VERDE, "warn": GIALLO, "bad": ROSSO}
+
+
+def fig_sl_margini(commesse, tema="light"):
+    """Margine preventivato (grigio) e margine finale previsto (colorato per stato) per ogni commessa."""
+    n = max(1, len(commesse))
+    fig, (ax,) = _nuova(tema, w=7.4, h=max(2.6, 0.62 * n + 1.4))
+    t = _t(tema)
+    ys = list(range(n))
+    for i, d in enumerate(commesse):
+        ax.barh(i + 0.2, d["Margine atteso %"], height=0.36, color="#94a3b8", label="Margine preventivato" if i == 0 else None)
+        ax.barh(i - 0.2, d["Margine finale %"], height=0.36, color=_STATO_COL.get(d["Stato"], SERIE[0]), label="Margine finale previsto" if i == 0 else None)
+    ax.set_yticks(ys)
+    ax.set_yticklabels([d["Commessa"][:24] for d in commesse], fontsize=8, color=t["fg"])
+    ax.invert_yaxis()
+    ax.axvline(0, color=t["fg"], linewidth=0.9)
+    ax.grid(axis="x", color=t["grid"], alpha=0.5, linewidth=0.6)
+    ax.grid(axis="y", visible=False)
+    ax.set_xlabel("% sul contratto", fontsize=8)
+    ax.set_title("Margine: preventivato e previsto a fine lavori", fontsize=10, loc="left")
+    _legenda(ax, tema, loc="lower right")
+    return fig
+
+
+def fig_sl_commessa(d, tema="light"):
+    """Per una commessa: costi preventivati, valore maturato (EV), costi sostenuti e costi a finire attesi."""
+    fig, (ax,) = _nuova(tema, w=6.6, h=3.0)
+    voci = [("Costi\npreventivati", d["Costi preventivati"], "#94a3b8"), ("Valore\nmaturato (EV)", d["EV"], SERIE[0]),
+            ("Costi\nsostenuti", d["Costi sostenuti"], SERIE[1]), ("Costi a finire\nattesi (EAC)", d["Costi a finire (EAC)"], _STATO_COL.get(d["Stato"], SERIE[2]))]
+    ax.bar(range(len(voci)), [v[1] for v in voci], color=[v[2] for v in voci], width=0.55)
+    for i, v in enumerate(voci):
+        ax.text(i, v[1], fmt_num(v[1] / 1000) + "k", ha="center", va="bottom", fontsize=8, color=_t(tema)["fg"])
+    ax.set_xticks(range(len(voci)))
+    ax.set_xticklabels([v[0] for v in voci], fontsize=8, color=_t(tema)["fg"])
+    _k(ax)
+    ax.set_title(f"{d['Commessa']}: costi e valore maturato", fontsize=10, loc="left")
+    return fig
