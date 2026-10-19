@@ -69,12 +69,14 @@ class _PDF(FPDF):
         self.set_xy(29, 7)
         self.set_font("Helvetica", "B", 10)
         self.set_text_color(*NAVY)
-        self.cell(110, 5, "FCR GENERAL CONTRACTOR - AI Business Plan & Rating", **dict(new_x=XPos.RIGHT, new_y=YPos.TOP))
+        self.cell(110, 5, self.ctx.get("header_titolo", "FCR GENERAL CONTRACTOR - AI Business Plan & Rating"),
+                  **dict(new_x=XPos.RIGHT, new_y=YPos.TOP))
         self.set_xy(29, 13)
         self.set_font("Helvetica", "", 7.5)
         self.set_text_color(*GRIGIO)
         pratica = self.ctx.get("pratica") or "-"
-        self.cell(110, 4, pdf_safe(f"Report di valutazione del merito di credito | Pratica: {pratica}"))
+        self.cell(110, 4, pdf_safe(self.ctx.get("header_sub")
+                                   or f"Report di valutazione del merito di credito | Pratica: {pratica}"))
         self.set_xy(130, 8)
         self.set_font("Helvetica", "B", 8)
         self.set_text_color(*NAVY)
@@ -114,16 +116,10 @@ class _PDF(FPDF):
 
 
 # ----------------------------------------------------------------------------
-def genera_pdf(ctx, relazione, grafici=None):
-    if grafici is None:
-        import exports
-        grafici = exports.grafici_report(ctx)
-    pdf = _PDF(ctx)
-    base, scen, rating, piano = ctx["dati"], ctx["scen"], ctx["rating"], ctx["piano"]
-    livello = core.livello_classe(rating["classe"])
-    colore_classe = TONO[livello]
+def _strumenti(pdf, grafici):
+    """Funzioni di disegno condivise dai report (credit risk e business plan)."""
+    from types import SimpleNamespace
 
-    # ---------- helper di disegno -------------------------------------------------
     def spazio(h):
         if pdf.get_y() + h > 277:
             pdf.add_page()
@@ -226,6 +222,24 @@ def genera_pdf(ctx, relazione, grafici=None):
         spazio(h + 4)
         pdf.image(io.BytesIO(png), x=(210 - w) / 2, w=w)
         pdf.ln(3)
+
+    return SimpleNamespace(spazio=spazio, sezione=sezione, sottotitolo=sottotitolo, paragrafo=paragrafo,
+                           tabella=tabella, tile=tile, immagine=immagine)
+
+
+# ----------------------------------------------------------------------------
+def genera_pdf(ctx, relazione, grafici=None):
+    if grafici is None:
+        import exports
+        grafici = exports.grafici_report(ctx)
+    pdf = _PDF(ctx)
+    base, scen, rating, piano = ctx["dati"], ctx["scen"], ctx["rating"], ctx["piano"]
+    livello = core.livello_classe(rating["classe"])
+    colore_classe = TONO[livello]
+
+    T = _strumenti(pdf, grafici)
+    spazio, sezione, sottotitolo, paragrafo = T.spazio, T.sezione, T.sottotitolo, T.paragrafo
+    tabella, tile, immagine = T.tabella, T.tile, T.immagine
 
     # =============================== COPERTINA ====================================
     pdf.add_page()
