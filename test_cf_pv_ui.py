@@ -69,3 +69,31 @@ def test_pdf_cliente_senza_costi():
     open(f, "wb").write(pdf)
     txt = subprocess.run(["pdftotext", f, "-"], capture_output=True, text=True).stdout.lower()
     assert "costo industriale" not in txt and "utile" not in txt and "spese generali" not in txt
+
+
+@pytest.mark.parametrize("modulo,chiave,campo,valore", [
+    ("cf", "cf_fido", "number_input", 123000.0),
+    ("pv", "pv_sconto_pct", "number_input", 4.5),
+    ("bp", "bp_ricavi_y1", "number_input", 2_000_000.0),
+])
+def test_salva_e_riapri_in_ogni_modulo(monkeypatch, modulo, chiave, campo, valore):
+    at = _nuovo(monkeypatch, modulo=modulo)
+    at.number_input(key=chiave).set_value(valore).run()
+    at.text_input(key=f"sv_nome_{modulo}").set_value("Prova").run()
+    at.button(key=f"sv_salva_{modulo}").click().run()
+    assert not at.exception
+    import storage
+    assert [p["nome"] for p in storage.elenca_pratiche(modulo=modulo)] == ["Prova"]
+    assert storage.elenca_pratiche() == []                       # non compare tra le pratiche del Credit Risk
+    at.number_input(key=chiave).set_value(valore + 1).run()
+    at.button(key=f"sv_apri_{modulo}").click().run()
+    assert not at.exception and at.number_input(key=chiave).value == valore
+    at.button(key=f"sv_elimina_{modulo}").click().run()
+    assert storage.elenca_pratiche(modulo=modulo) == []
+
+
+def test_nome_pratica_con_prefisso_riservato(monkeypatch):
+    import storage, tempfile, os
+    p = os.path.join(tempfile.mkdtemp(), "t.db")
+    with pytest.raises(ValueError):
+        storage.salva_pratica("cf|x", {}, path=p)

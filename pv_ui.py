@@ -10,7 +10,7 @@ import pv
 import pv_report
 import theme
 from core import fmt_num
-from ui_util import sostituisci_tabella, tabella_modificabile
+from ui_util import pannello_archivio, sostituisci_tabella, tabella_modificabile
 
 ss = st.session_state
 
@@ -48,7 +48,21 @@ def _fig(fig):
     st.pyplot(fig, clear_figure=True)
 
 
-def render(ai_generate, active_key, fcr_uri, ai, audit=None):
+_CAMPI = ("pv_cliente", "pv_oggetto", "pv_validita", "pv_note")
+
+
+def _raccogli():
+    return {"voci": ss["pv_df"].to_dict("records"), "params": _params(), "campi": {k: ss.get(k) for k in _CAMPI}}
+
+
+def _applica(p, nome):
+    sostituisci_tabella("pv_df", pd.DataFrame(p.get("voci") or [], columns=pv.COLONNE_VOCI))
+    pend = {"pv_" + k: v for k, v in (p.get("params") or {}).items() if k in pv.PV_DEFAULT}
+    pend.update({k: v for k, v in (p.get("campi") or {}).items() if k in _CAMPI and v is not None})
+    ss["_pending"] = pend
+
+
+def render(ai_generate, active_key, fcr_uri, ai, audit=None, utente=""):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Computo e Preventivo",
                            "Dal computo metrico al preventivo: costi, spese generali, utile, sconto, sicurezza e IVA, con margine sempre sotto controllo."),
@@ -57,6 +71,7 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None):
         ss["pv_df"] = pd.DataFrame(ESEMPIO, columns=pv.COLONNE_VOCI)
     for k, v in (("pv_cliente", ""), ("pv_oggetto", "Ristrutturazione edificio"), ("pv_validita", 30), ("pv_note", "")):
         ss.setdefault(k, v)
+    pannello_archivio("pv", "il preventivo", _raccogli, _applica, audit, utente)
     t1, t2, t3, t4 = st.tabs(["📝 1. Computo", "💰 2. Preventivo e Margine", "📈 3. Sensibilità e Cash Flow", "📄 4. Documenti"])
 
     with t1:

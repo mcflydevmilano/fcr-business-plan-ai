@@ -9,7 +9,7 @@ import cf_report
 import charts
 import theme
 from core import fmt_num
-from ui_util import sostituisci_tabella, tabella_modificabile
+from ui_util import pannello_archivio, sostituisci_tabella, tabella_modificabile
 
 ss = st.session_state
 
@@ -43,7 +43,18 @@ def _fig(fig):
     st.pyplot(fig, clear_figure=True)
 
 
-def render(fcr_uri, audit=None):
+def _raccogli():
+    return {"cantieri": ss["cf_df"].to_dict("records"), "params": _params(), "nome": ss.get("cf_nome", "")}
+
+
+def _applica(p, nome):
+    sostituisci_tabella("cf_df", pd.DataFrame(p.get("cantieri") or [], columns=cf.COLONNE_CANTIERI))
+    ss["cf_demo"] = False
+    ss["_pending"] = {"cf_" + k: v for k, v in (p.get("params") or {}).items() if k in cf.CF_DEFAULT}
+    ss["_pending"]["cf_nome"] = p.get("nome") or nome
+
+
+def render(fcr_uri, audit=None, utente=""):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Cash Flow di cantiere",
                            "Liquidità del portafoglio cantieri: incassi, pagamenti, cassa mese per mese, fabbisogno di fido e stress test."),
@@ -51,6 +62,7 @@ def render(fcr_uri, audit=None):
     if "cf_df" not in ss:
         ss["cf_df"] = pd.DataFrame(cf.genera_portafoglio(100, 5_000_000, 1, 12, 3, 50, 50, 30, 75.0), columns=cf.COLONNE_CANTIERI)
         ss["cf_demo"] = True
+    pannello_archivio("cf", "il portafoglio", _raccogli, _applica, audit, utente)
     t1, t2, t3, t4 = st.tabs(["🏗️ 1. Portafoglio e Ipotesi", "💶 2. Cash Flow", "🧪 3. Stress e Soluzioni", "📄 4. Dossier"])
 
     with t1:
