@@ -48,3 +48,44 @@ def sostituisci_tabella(chiave, df):
     """Sostituisce i dati (es. dopo una generazione) e riavvia l'editor con la nuova versione."""
     ss[chiave] = df.copy()
     ss[chiave + "_v"] = ss.get(chiave + "_v", 0) + 1
+
+
+def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente=""):
+    """Riquadro 'Salva / apri' per un modulo. `raccogli()` -> payload (dict JSON); `applica(payload, nome)` ripristina i dati."""
+    import storage
+    audit = audit or (lambda *a, **k: None)
+    with st.expander(f"💾 Salva e riapri {etichetta}"):
+        if not storage.database_persistente():
+            st.warning("Database esterno non configurato: i salvataggi si perdono al riavvio dell'app (vedi DATABASE_URL nei Secrets).")
+        a, b = st.columns([3, 1])
+        nome = a.text_input("Nome", key=f"sv_nome_{modulo}", placeholder="es. Portafoglio 2027")
+        b.markdown("<div style='height:1.9rem'></div>", unsafe_allow_html=True)
+        if b.button("💾 Salva", key=f"sv_salva_{modulo}", width="stretch"):
+            try:
+                storage.salva_pratica(nome, raccogli(), autore=utente, modulo=modulo)
+                audit(f"{modulo}_salvato", nome)
+                st.success("Salvato.")
+            except Exception as e:
+                st.error(f"Impossibile salvare: {e}")
+        try:
+            elenco = storage.elenca_pratiche(modulo=modulo)
+        except Exception as e:
+            elenco = []
+            st.error(f"Database non disponibile: {e}")
+        if elenco:
+            nomi = [p["nome"] for p in elenco]
+            scelta = st.selectbox("Salvati", nomi, key=f"sv_scelta_{modulo}",
+                                  format_func=lambda n: next(f"{p['nome']}  ({p['aggiornato'][:16]}" + (f", {p['autore']}" if p["autore"] else "") + ")" for p in elenco if p["nome"] == n))
+            c1, c2 = st.columns(2)
+            if c1.button("📂 Apri", key=f"sv_apri_{modulo}", width="stretch"):
+                payload = storage.carica_pratica(scelta, modulo=modulo)
+                if payload:
+                    audit(f"{modulo}_aperto", scelta)
+                    applica(payload, scelta)
+                    st.rerun()
+            if c2.button("🗑️ Elimina", key=f"sv_elimina_{modulo}", width="stretch"):
+                storage.elimina_pratica(scelta, modulo=modulo)
+                audit(f"{modulo}_eliminato", scelta)
+                st.rerun()
+        else:
+            st.caption("Nessun salvataggio per questo modulo.")

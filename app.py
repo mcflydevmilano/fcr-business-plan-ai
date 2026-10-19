@@ -449,8 +449,11 @@ if MODULO == "credit":
                 storage.elimina_pratica(scelta)
                 audit("pratica_eliminata", scelta)
                 st.rerun()
-        st.caption("Il database e' un file locale: su hosting con disco temporaneo (es. Streamlit Cloud) i salvataggi "
-                   "si perdono al riavvio. Imposta FCR_DB_PATH su un volume persistente.")
+        if storage.database_persistente():
+            st.caption("Salvataggi su database esterno: restano anche dopo il riavvio dell'app.")
+        else:
+            st.caption("Database esterno non configurato: i salvataggi sono in un file locale e su hosting con disco temporaneo "
+                       "(es. Streamlit Cloud) si perdono al riavvio. Imposta DATABASE_URL nei Secrets.")
         st.markdown("---")
 
 
@@ -544,15 +547,15 @@ if MODULO is None:
     st.stop()
 
 if MODULO == "bp":
-    bp_ui.render(ai_generate, active_key, FCR_URI, ai, audit)
+    bp_ui.render(ai_generate, active_key, FCR_URI, ai, audit, ss["utente"]["username"])
     st.stop()
 
 if MODULO == "cf":
-    cf_ui.render(FCR_URI, audit)
+    cf_ui.render(FCR_URI, audit, ss["utente"]["username"])
     st.stop()
 
 if MODULO == "pv":
-    pv_ui.render(ai_generate, active_key, FCR_URI, ai, audit)
+    pv_ui.render(ai_generate, active_key, FCR_URI, ai, audit, ss["utente"]["username"])
     st.stop()
 
 # ----------------------------------------------------------------------------

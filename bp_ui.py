@@ -110,7 +110,16 @@ def _contesto_numeri(out, descrizione):
             "descrizione": [n for n in nums if n is not None]}
 
 
-def render(ai_generate, active_key, fcr_uri, ai, audit=None):
+def _raccogli():
+    return {k: v for k, v in ss.items() if isinstance(k, str) and k.startswith("bp_") and k not in ("bp_prop", "bp_report")
+            and isinstance(v, (int, float, str, bool)) and not k.endswith("_v")}
+
+
+def _applica(p, nome):
+    ss["_pending"] = {k: v for k, v in p.items() if isinstance(k, str) and k.startswith("bp_")}
+
+
+def render(ai_generate, active_key, fcr_uri, ai, audit=None, utente=""):
     st.markdown(
         theme.hero(fcr_uri, "Business Plan Studio",
                    "Pianificazione economico-finanziaria di nuove iniziative: conto economico, finanziamento e cash flow "
@@ -120,6 +129,8 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None):
     for k, v in (("bp_nome", "Divisione riqualificazioni NZEB"), ("bp_descr", ESEMPIO_PROGETTO)):
         ss.setdefault(k, v)
 
+    from ui_util import pannello_archivio
+    pannello_archivio("bp", "il business plan", _raccogli, _applica, audit, utente)
     t1, t2, t3, t4, t5 = st.tabs(["🤖 1. Wizard AI e Ipotesi", "📊 2. Conto Economico", "🏦 3. Finanziamenti e Cash Flow",
                                   "🎯 4. Scenari e Sensibilità", "📄 5. Dossier PDF"])
 

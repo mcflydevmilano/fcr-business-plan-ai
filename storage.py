@@ -106,10 +106,22 @@ def _db(path=None):
         con.close()
 
 
-def salva_pratica(nome, payload, path=None, autore=""):
+MODULI_ARCHIVIO = ("bp", "cf", "pv")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
+
+
+def _chiave(nome, modulo="credit"):
     nome = (nome or "").strip()
+    if modulo in MODULI_ARCHIVIO:
+        return f"{modulo}|{nome}" if nome else ""
+    if any(nome.startswith(m + "|") for m in MODULI_ARCHIVIO):
+        raise ValueError("Il nome non puo' iniziare con 'bp|', 'cf|' o 'pv|' (prefissi riservati).")
+    return nome
+
+
+def salva_pratica(nome, payload, path=None, autore="", modulo="credit"):
+    nome = _chiave(nome, modulo)
     if not nome:
-        raise ValueError("Il nome della pratica non puo' essere vuoto.")
+        raise ValueError("Il nome non puo' essere vuoto.")
     testo = json.dumps(payload, ensure_ascii=False, default=str)
     with _db(path) as con:
         esiste = con.execute("SELECT 1 FROM pratiche WHERE nome=?", (nome,)).fetchone()
@@ -122,23 +134,31 @@ def salva_pratica(nome, payload, path=None, autore=""):
             )
 
 
-def elenca_pratiche(path=None):
+def elenca_pratiche(path=None, modulo="credit"):
     with _db(path) as con:
-        return [
-            {"nome": r[0], "aggiornato": r[1], "autore": r[2] or ""}
-            for r in con.execute("SELECT nome, aggiornato, autore FROM pratiche ORDER BY aggiornato DESC")
-        ]
+        righe = con.execute("SELECT nome, aggiornato, autore FROM pratiche ORDER BY aggiornato DESC").fetchall()
+    out = []
+    for nome, agg, aut in righe:
+        pref = next((m for m in MODULI_ARCHIVIO if nome.startswith(m + "|")), "credit")
+        if pref == modulo:
+            out.append({"nome": nome.split("|", 1)[1] if pref != "credit" else nome, "aggiornato": agg, "autore": aut or ""})
+    return out
 
 
-def carica_pratica(nome, path=None):
+def carica_pratica(nome, path=None, modulo="credit"):
     with _db(path) as con:
-        r = con.execute("SELECT payload FROM pratiche WHERE nome=?", (nome,)).fetchone()
+        r = con.execute("SELECT payload FROM pratiche WHERE nome=?", (_chiave(nome, modulo),)).fetchone()
     return json.loads(r[0]) if r else None
 
 
-def elimina_pratica(nome, path=None):
+def elimina_pratica(nome, path=None, modulo="credit"):
     with _db(path) as con:
-        con.execute("DELETE FROM pratiche WHERE nome=?", (nome,))
+        con.execute("DELETE FROM pratiche WHERE nome=?", (_chiave(nome, modulo),))
+
+
+def database_persistente():
+    """True se i dati stanno in un database esterno (PostgreSQL) e non in un file locale."""
+    return bool(_url_db())
 
 
 def log_report(pratica, report_id, modello, hash_dati, dettagli=None, path=None):
