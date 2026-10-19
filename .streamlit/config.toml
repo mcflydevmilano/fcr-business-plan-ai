@@ -1,1 +1,15 @@
+# Tema chiaro "FinTech istituzionale" per tutta l'app (anche per tabelle e menu nativi di Streamlit).
+[theme]
+base = "light"
+primaryColor = "#1e40af"
+backgroundColor = "#f8fafc"
+secondaryBackgroundColor = "#f1f5f9"
+textColor = "#0f172a"
+font = "sans serif"
+
+[server]
+maxUploadSize = 25
+
+[browser]
+gatherUsageStats = false
 
