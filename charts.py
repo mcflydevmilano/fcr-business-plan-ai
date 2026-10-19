@@ -299,3 +299,43 @@ def fig_bp_mutuo(mutuo, tema="light"):
     for txt in leg.get_texts():
         txt.set_color(_t(tema)["fg"])
     return fig
+
+
+def fig_bp_scenari(risultati, tema="light"):
+    """Confronto tra scenari: cassa di fine anno per ciascuno (linee) e DSCR minimo nel titolo delle legende."""
+    fig, (ax,) = _nuova(tema)
+    t = _t(tema)
+    colori = {"Pessimistico": ROSSO, "Base": SERIE[0], "Ottimistico": VERDE}
+    for i, (nome, o) in enumerate(risultati.items()):
+        xs = ["Avvio"] + [str(r["AnnoNum"]) for r in o["anni"]]
+        ys = [o["kpi"]["cassa_iniziale"]] + [r["Cassa finale"] for r in o["anni"]]
+        d = o["kpi"]["dscr_min"]
+        etich = f"{nome}" + (f" (DSCR min {d:.2f}x)".replace(".", ",") if d is not None else "")
+        ax.plot(xs, ys, marker="o", linewidth=2, color=colori.get(nome, SERIE[(i + 3) % len(SERIE)]), label=etich)
+    ax.axhline(0, color=t["grid"], linewidth=0.9)
+    _k(ax)
+    ax.set_title("Cassa di fine anno nei tre scenari", fontsize=10, loc="left")
+    _legenda(ax, tema, loc="best")
+    return fig
+
+
+def fig_tornado(righe, etichetta_metrica, tema="light", max_righe=8):
+    """Grafico 'tornado': scostamento della metrica rispetto alla base per ogni variabile."""
+    fig, (ax,) = _nuova(tema, h=3.8)
+    t = _t(tema)
+    righe = list(righe)[:max_righe][::-1]
+    if not righe:
+        return fig
+    base = righe[0]["Base"]
+    for i, r in enumerate(righe):
+        lo, hi = r["Con valore minore"] - base, r["Con valore maggiore"] - base
+        ax.barh(i, lo, color=ROSSO if lo < 0 else VERDE, height=0.55, alpha=0.9)
+        ax.barh(i, hi, color=VERDE if hi > 0 else ROSSO, height=0.55, alpha=0.9)
+    ax.set_yticks(range(len(righe)))
+    ax.set_yticklabels([f"{r['Variabile']} ({r['Variazione']})" for r in righe], fontsize=8, color=t["fg"])
+    ax.axvline(0, color=t["fg"], linewidth=0.9)
+    ax.grid(axis="x", color=t["grid"], alpha=0.5, linewidth=0.6)
+    ax.grid(axis="y", visible=False)
+    ax.set_xlabel(f"Scostamento di {etichetta_metrica} rispetto al caso base ({fmt_num(base, 2) if abs(base) < 100 else fmt_num(base)})", fontsize=8)
+    ax.set_title("Sensibilita': quali ipotesi pesano di piu'", fontsize=10, loc="left")
+    return fig
