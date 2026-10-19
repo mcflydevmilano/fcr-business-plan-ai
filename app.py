@@ -197,7 +197,7 @@ MSG_QUOTA_ESTRAZIONE = (
     "o inserisci un'altra chiave API nella barra laterale."
 )
 MSG_QUOTA_REPORT = (
-    "⏳ La quota giornaliera gratuita di Gemini e' esaurita: **PDF e Word sono stati generati senza la relazione "
+    "⏳ L'AI non e' disponibile ora (quota esaurita o servizio sovraccarico): **PDF e Word sono stati generati senza la relazione "
     "scritta dall'AI** (contengono comunque tabelle, grafici, stress test, covenant e commesse). Per avere anche la "
     "relazione puoi riprovare piu' tardi (la quota si ripristina di solito entro 24 ore), attivare la fatturazione "
     "su Google AI Studio o inserire un'altra chiave API nella barra laterale."
@@ -589,8 +589,8 @@ with tab_dati:
                     except json.JSONDecodeError:
                         st.error("Il modello non ha restituito un JSON valido. Riprova.")
                     except Exception as e:
-                        if ai.errore_quota(e):
-                            st.error(MSG_QUOTA_ESTRAZIONE)
+                        if ai.errore_temporaneo(e):
+                            st.error(ai.messaggio_errore(e) + " Puoi continuare subito scegliendo **Inserimento Dati Manuale** qui sopra.")
                         else:
                             st.error(f"Errore durante l'elaborazione: {e}")
     else:
@@ -952,7 +952,7 @@ with tab_rep:
                         ctx["modello"] = usato
                         avvisi = core.numeri_sospetti(relazione, {k: v for k, v in ctx.items() if k not in ("commesse_df", "per_cliente")})
                     except Exception as e_ai:
-                        if not ai.errore_quota(e_ai):
+                        if not ai.errore_temporaneo(e_ai):
                             raise
                         quota_esaurita = True
                 if relazione is None:

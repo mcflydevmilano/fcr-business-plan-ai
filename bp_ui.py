@@ -142,7 +142,7 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None):
                 except json.JSONDecodeError:
                     st.error("Il modello non ha restituito un JSON valido. Riprova.")
                 except Exception as e:
-                    st.error(MSG_QUOTA if ai.errore_quota(e) else f"Errore durante la generazione: {e}")
+                    st.error((ai.messaggio_errore(e) + " Puoi inserire le ipotesi a mano nei campi qui sotto.") if ai.errore_temporaneo(e) else f"Errore durante la generazione: {e}")
         if not wizard_on:
             st.caption("Per usare il wizard serve una chiave Gemini e l'accettazione dell'informativa privacy (barra laterale). "
                        "Senza AI puoi inserire le ipotesi a mano qui sotto: tutto il resto funziona uguale.")
@@ -350,7 +350,7 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None):
                             ctx["modello"] = usato
                             sospetti = core.numeri_sospetti(relazione, _contesto_numeri(out, ss.get("bp_descr", "")))
                         except Exception as e_ai:
-                            if not ai.errore_quota(e_ai):
+                            if not ai.errore_temporaneo(e_ai):
                                 raise
                             quota = True
                     if audit:
@@ -362,7 +362,7 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None):
         rep = ss.get("bp_report")
         if rep:
             if rep["quota"]:
-                st.warning("⏳ La quota giornaliera gratuita di Gemini e' esaurita: **il dossier e' stato generato senza la relazione "
+                st.warning("⏳ L'AI non e' disponibile ora (quota esaurita o servizio sovraccarico): **il dossier e' stato generato senza la relazione "
                            "scritta dall'AI**. Contiene comunque tutte le tabelle e i grafici.")
             if rep["sospetti"]:
                 st.warning("⚠️ La relazione dell'AI cita cifre che non trovo nei calcoli: " + ", ".join(rep["sospetti"])

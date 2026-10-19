@@ -132,4 +132,4 @@ def test_dossier_con_quota_esaurita_genera_comunque_il_pdf(monkeypatch):
     assert not at.exception
     rep = at.session_state["bp_report"]
     assert rep["quota"] is True and rep["pdf"][:4] == b"%PDF"
-    assert any("quota giornaliera" in w.value for w in at.warning)
+    assert any("non e' disponibile ora" in w.value for w in at.warning)

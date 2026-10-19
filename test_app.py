@@ -193,7 +193,7 @@ def test_quota_esaurita_genera_comunque_i_documenti(monkeypatch):
     assert not app.exception
     rep = app.session_state["report"]
     assert rep["quota"] is True and rep["pdf"][:4] == b"%PDF" and rep["docx"][:2] == b"PK"
-    assert any("quota giornaliera" in w.value for w in app.warning)
+    assert any("non e' disponibile ora" in w.value for w in app.warning)
     assert not any("429" in e.value for e in app.error)
 
 
