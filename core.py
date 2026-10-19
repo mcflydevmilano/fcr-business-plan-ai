@@ -56,6 +56,16 @@ SOGLIE_DEFAULT = {
     "equity_ratio": (0.25, 0.15),
     "dscr": (1.30, 1.00),
 }
+# Profili di soglie per settore. SONO IPOTESI DI LAVORO ragionate, NON benchmark ufficiali (Cerved, Istat, Banca d'Italia):
+# vanno validate da un esperto o sostituite con benchmark reali (si possono importare da file JSON dall'interfaccia).
+PROFILI_SOGLIE = {
+    "Generico (predefinito)": SOGLIE_DEFAULT,
+    "Edilizia e costruzioni": {"pfn_ebitda": (3.0, 5.0), "pfn_pn": (1.2, 2.5), "equity_ratio": (0.20, 0.12), "dscr": (1.25, 1.00)},
+    "Efficientamento energetico / ESCo": {"pfn_ebitda": (4.0, 6.0), "pfn_pn": (1.5, 3.0), "equity_ratio": (0.18, 0.10), "dscr": (1.20, 1.00)},
+    "Immobiliare e sviluppo": {"pfn_ebitda": (5.0, 8.0), "pfn_pn": (1.5, 3.0), "equity_ratio": (0.25, 0.15), "dscr": (1.20, 1.00)},
+    "Industria manifatturiera": {"pfn_ebitda": (2.5, 4.0), "pfn_pn": (1.0, 2.0), "equity_ratio": (0.30, 0.20), "dscr": (1.30, 1.05)},
+    "Servizi e commercio": {"pfn_ebitda": (2.0, 3.5), "pfn_pn": (0.8, 1.5), "equity_ratio": (0.25, 0.15), "dscr": (1.30, 1.05)},
+}
 VERSO = {"pfn_ebitda": "min", "pfn_pn": "min", "equity_ratio": "max", "dscr": "max"}
 
 COVENANT_DEFAULT = {"pfn_ebitda_max": 3.5, "dscr_min": 1.20}
@@ -104,29 +114,49 @@ LOGO_PATH = _trova_file(["aetheris_labs_logo.jpg", "aetheris_labs_logo.png"]) or
 LOGO_FCR_PATH = _trova_logo_fcr()        # logo FCR (PNG con trasparenza)
 
 PRIVACY_PUNTI = [
+    ("Titolare e ruoli",
+     "Il titolare del trattamento e' l'organizzazione che utilizza l'applicazione e carica i dati dei propri clienti; "
+     "gli sviluppatori e i fornitori tecnici operano come responsabili (o sub-responsabili) del trattamento solo se "
+     "formalmente designati con contratto ai sensi dell'art. 28 GDPR."),
     ("Dati trattati",
      "L'applicazione elabora dati contabili e finanziari di imprese. Evitare di inserire dati personali di persone "
-     "fisiche (soci, amministratori, garanti, dipendenti) se non strettamente necessari."),
+     "fisiche (soci, amministratori, garanti, dipendenti, ditte individuali) se non strettamente necessari e, ove "
+     "inevitabili, ridurli al minimo (minimizzazione, art. 5 GDPR)."),
+    ("Accessi e registro delle attivita'",
+     "L'accesso e' personale (nome utente e password). Per sicurezza e responsabilita' vengono registrati data, nome "
+     "utente e tipo di operazione (accessi, salvataggi di pratiche, import, report generati), senza il contenuto dei "
+     "documenti. Il registro e' consultabile dagli amministratori."),
     ("Elaborazione con intelligenza artificiale",
      "Quando si usano le funzioni AI, i documenti caricati e i dati numerici vengono inviati ai server di Google "
-     "(servizio Gemini API) per estrarre i dati e redigere la relazione. Nel piano gratuito Google puo' utilizzare i "
-     "contenuti per migliorare i propri servizi; per i piani a pagamento valgono condizioni diverse. Verificare i "
-     "termini vigenti prima di caricare dati di clienti."),
+     "(servizio Gemini API) per estrarre i dati e redigere la relazione. Secondo i termini di Google, nei servizi "
+     "gratuiti i contenuti possono essere usati per migliorare i prodotti e letti da revisori umani, e non vanno inviati "
+     "dati riservati o personali; nei servizi a pagamento non sono usati per migliorarli e vale l'accordo di trattamento "
+     "dati di Google. Per un'applicazione usata nello SEE, in Svizzera o nel Regno Unito Google richiede i servizi a "
+     "pagamento: per dati di clienti usare una chiave con fatturazione attiva e verificare i termini vigenti. "
+     "Senza chiave AI nessun dato lascia l'app."),
+    ("Fornitori e trasferimenti extra-UE",
+     "Sono coinvolti il fornitore di hosting (es. Streamlit Community Cloud) e Google (Gemini API). Sono possibili "
+     "trasferimenti verso Paesi extra-UE (es. Stati Uniti): verificare la base del trasferimento (decisione di "
+     "adeguatezza o clausole contrattuali standard) e sottoscrivere gli accordi di trattamento dati (DPA) dei fornitori."),
     ("Conservazione",
-     "I dati inseriti restano nella sessione del browser fino alla sua chiusura. Le pratiche salvate sono memorizzate "
-     "nel database dell'applicazione fino alla cancellazione manuale. I report generati non vengono conservati dal "
-     "sistema: il registro di audit riporta solo ID, data, modello AI e impronta (hash) dei dati."),
+     "I dati inseriti restano nella sessione del browser fino alla sua chiusura. Le pratiche salvate restano nel "
+     "database dell'applicazione fino alla cancellazione manuale (definire e rispettare un termine di conservazione). "
+     "I report generati non vengono conservati dal sistema: il registro riporta solo ID, data, modello AI e hash dei dati."),
+    ("Diritti degli interessati e sicurezza",
+     "Se i dati riguardano persone fisiche, vanno garantiti i diritti di accesso, rettifica, cancellazione e opposizione "
+     "(artt. 15-22 GDPR): le pratiche si possono eliminare dall'applicazione. Misure adottate: password con hash, blocco "
+     "dopo tentativi falliti, revoca immediata degli accessi, consenso privacy prima dell'uso dell'AI."),
     ("Responsabilita' dell'utente",
      "Chi utilizza l'applicazione deve disporre di una base giuridica per il trattamento, informare gli interessati, "
-     "designare i fornitori come responsabili del trattamento, valutare gli eventuali trasferimenti di dati verso "
-     "Paesi extra-UE e adottare adeguate misure di sicurezza, ai sensi del Regolamento (UE) 2016/679 (GDPR)."),
+     "designare i fornitori come responsabili, valutare i trasferimenti extra-UE, aggiornare il registro dei "
+     "trattamenti e, se necessario, svolgere una valutazione d'impatto (DPIA), ai sensi del Regolamento (UE) 2016/679 (GDPR)."),
     ("Natura dell'informativa",
      "Questa informativa ha finalita' di trasparenza e non costituisce consulenza legale: per la conformita' "
      "consultare il proprio DPO o consulente privacy."),
 ]
 PRIVACY_BREVE = (
-    "Privacy: i dati e i documenti elaborati con le funzioni AI sono inviati a Google (Gemini API); nel piano gratuito "
-    "Google puo' utilizzarli per migliorare i propri servizi. Evitare dati personali non necessari; l'utente e' "
+    "Privacy: i dati e i documenti elaborati con le funzioni AI sono inviati a Google (Gemini API); nei servizi gratuiti "
+    "Google puo' utilizzarli per migliorare i propri prodotti, per dati di clienti serve una chiave a pagamento. Evitare dati personali non necessari; l'utente e' "
     "responsabile della base giuridica, dell'informativa agli interessati e della conformita' al GDPR (Reg. UE 2016/679). "
     "Le pratiche salvate restano nel database dell'applicazione fino alla cancellazione manuale."
 )
@@ -608,3 +638,54 @@ def soglie_testo(d):
         return f">= {fmt_pct(100 * d['verde'], 0)} / {fmt_pct(100 * d['giallo'], 0)}"
     segno = "<" if d["verso"] == "min" else ">="
     return f"{segno} {fmt_num(d['verde'], 2)} / {fmt_num(d['giallo'], 2)}"
+
+
+def nome_profilo(soglie):
+    """Nome del profilo di soglie che coincide con `soglie`, altrimenti "Personalizzato"."""
+    if not soglie:
+        return "Generico (predefinito)"
+    for nome, prof in PROFILI_SOGLIE.items():
+        if all(abs(float(soglie[k][0]) - prof[k][0]) < 1e-9 and abs(float(soglie[k][1]) - prof[k][1]) < 1e-9 for k in SOGLIE_DEFAULT if k in soglie):
+            return nome
+    return "Personalizzato"
+
+
+def parse_profilo_soglie(testo):
+    """
+    Legge un profilo di soglie da JSON: {"nome": "...", "fonte": "...", "soglie": {"pfn_ebitda": [verde, giallo], ...}}.
+    Restituisce (nome, fonte, soglie). Solleva ValueError con un messaggio chiaro se il file non e' valido o incoerente.
+    """
+    import json
+    try:
+        obj = json.loads(testo)
+    except Exception as e:
+        raise ValueError(f"File non valido (JSON non leggibile): {e}")
+    sog = obj.get("soglie") if isinstance(obj, dict) else None
+    if not isinstance(sog, dict):
+        raise ValueError("Manca la chiave \"soglie\".")
+    out = {}
+    for k in SOGLIE_DEFAULT:
+        if k not in sog or not isinstance(sog[k], (list, tuple)) or len(sog[k]) != 2:
+            raise ValueError(f"Soglia mancante o non valida: {k} (attesa lista [verde, giallo]).")
+        v, g = to_float(sog[k][0], None), to_float(sog[k][1], None)
+        if v is None or g is None or v < 0 or g < 0:
+            raise ValueError(f"Valori non numerici o negativi per {k}.")
+        if (VERSO[k] == "min" and v > g) or (VERSO[k] == "max" and v < g):
+            raise ValueError(f"Soglie incoerenti per {k}: verde deve essere {'<=' if VERSO[k] == 'min' else '>='} giallo.")
+        out[k] = (float(v), float(g))
+    return str(obj.get("nome") or "Profilo importato"), str(obj.get("fonte") or ""), out
+
+
+def profilo_json(nome, soglie, fonte=""):
+    import json
+    return json.dumps({"nome": nome, "fonte": fonte, "soglie": {k: list(v) for k, v in soglie.items()}}, ensure_ascii=False, indent=2)
+
+
+def testo_validazione(valid):
+    """Frase per i report sullo stato di validazione delle soglie."""
+    valid = valid or {}
+    da, data, fonte = (valid.get("da") or "").strip(), (valid.get("data") or "").strip(), (valid.get("fonte") or "").strip()
+    if da:
+        return (f"Soglie validate da: {da}" + (f" in data {data}" if data else "") + (f". Fonte/benchmark: {fonte}" if fonte else "") + ".")
+    return ("Soglie NON validate: sono ipotesi di lavoro del settore, non derivate da benchmark ufficiali. "
+            "Prima di un uso decisionale vanno confermate da un esperto o da dati di settore.")
