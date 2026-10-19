@@ -227,3 +227,75 @@ def fig_commesse(per_cliente, tema="light", top=8):
     ax.set_title("Portafoglio per cliente (% sul totale importo)", fontsize=10, loc="left")
     _legenda(ax, tema, loc="upper right")
     return fig
+
+
+# ----------------------------------------------------------------------------
+# Business Plan Studio
+# ----------------------------------------------------------------------------
+def fig_bp_economico(anni, tema="light"):
+    """Ricavi, EBITDA e utile netto per anno (barre affiancate)."""
+    fig, (ax,) = _nuova(tema)
+    t = _t(tema)
+    xs = list(range(len(anni)))
+    w = 0.26
+    serie = [("Ricavi", "Ricavi", SERIE[0]), ("EBITDA", "EBITDA", SERIE[2]), ("Utile netto", "Utile netto", SERIE[1])]
+    for i, (chiave, nome, col) in enumerate(serie):
+        vals = [r[chiave] for r in anni]
+        ax.bar([x + (i - 1) * w for x in xs], vals, width=w, color=col, label=nome)
+        for x, v in zip(xs, vals):
+            ax.text(x + (i - 1) * w, v + (abs(v) * 0.02 if v >= 0 else -abs(v) * 0.02), f"{fmt_num(v / 1000)}k", ha="center",
+                    va="bottom" if v >= 0 else "top", fontsize=6.5, color=t["fg"])
+    ax.axhline(0, color=t["grid"], linewidth=0.8)
+    ax.set_xticks(xs)
+    ax.set_xticklabels([str(r["AnnoNum"]) for r in anni])
+    _k(ax)
+    ax.set_title("Ricavi, EBITDA e utile netto", fontsize=10, loc="left")
+    _legenda(ax, tema, loc="upper left")
+    return fig
+
+
+def fig_bp_finanza(anni, cassa0=0.0, tema="light"):
+    """Cassa di fine anno (verde/rosso) e PFN (linea)."""
+    fig, (ax,) = _nuova(tema)
+    t = _t(tema)
+    etich = ["Avvio"] + [str(r["AnnoNum"]) for r in anni]
+    cassa = [cassa0] + [r["Cassa finale"] for r in anni]
+    pfn = [None] + [r["PFN"] for r in anni]
+    ax.bar(etich, cassa, color=[VERDE if v >= 0 else ROSSO for v in cassa], width=0.5, label="Cassa di fine anno")
+    for i, v in enumerate(cassa):
+        ax.text(i, v + (abs(v) * 0.03 if v >= 0 else -abs(v) * 0.03), f"{fmt_num(v / 1000)}k", ha="center",
+                va="bottom" if v >= 0 else "top", fontsize=7, color=t["fg"])
+    xs = [i for i, v in enumerate(pfn) if v is not None]
+    ax.plot(xs, [pfn[i] for i in xs], color=SERIE[0], marker="o", linewidth=2, label="PFN (debito - cassa)")
+    ax.axhline(0, color=t["grid"], linewidth=0.8)
+    _k(ax)
+    ax.set_title("Cassa e posizione finanziaria netta", fontsize=10, loc="left")
+    _legenda(ax, tema, loc="best")
+    return fig
+
+
+def fig_bp_mutuo(mutuo, tema="light"):
+    """Piano di ammortamento: quota capitale + interessi per anno e debito residuo."""
+    fig, (ax,) = _nuova(tema)
+    xs = [str(r["Anno"]) for r in mutuo]
+    cap = [r["Quota capitale"] for r in mutuo]
+    inte = [r["Interessi"] for r in mutuo]
+    ax.bar(xs, cap, color=SERIE[0], width=0.55, label="Quota capitale")
+    ax.bar(xs, inte, bottom=cap, color=SERIE[1], width=0.55, label="Interessi")
+    ax2 = ax.twinx()
+    ax2.plot(xs, [r["Debito residuo"] for r in mutuo], color=SERIE[4], marker="o", linewidth=1.8, label="Debito residuo")
+    for a in (ax, ax2):
+        _k(a)
+        a.tick_params(colors=_t(tema)["fg"], labelsize=8)
+    ax2.spines["top"].set_visible(False)
+    ax2.spines["right"].set_color(_t(tema)["grid"])
+    ax.set_ylim(0, max([c + i for c, i in zip(cap, inte)] + [1]) * 1.4)
+    ax2.set_ylim(0, max([r["Debito residuo"] for r in mutuo] + [1]) * 1.4)
+    ax.set_xlabel("Anno del finanziamento", fontsize=8)
+    ax.set_title("Piano di ammortamento del finanziamento", fontsize=10, loc="left")
+    h1, l1 = ax.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    leg = ax.legend(h1 + h2, l1 + l2, frameon=False, fontsize=8, loc="upper center", ncol=3)
+    for txt in leg.get_texts():
+        txt.set_color(_t(tema)["fg"])
+    return fig
