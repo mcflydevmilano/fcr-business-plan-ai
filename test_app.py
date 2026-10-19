@@ -18,6 +18,7 @@ def at(monkeypatch):
     monkeypatch.setattr(storage, "DB_PATH", os.path.join(tmp, "test.db"))
     app = AppTest.from_file(APP, default_timeout=120)
     app.session_state["password_correct"] = True
+    app.session_state["active_module"] = "credit"
     return app.run()
 
 
@@ -134,8 +135,10 @@ def test_quota_esaurita_genera_comunque_i_documenti(monkeypatch):
     monkeypatch.setattr(ai, "genera", finta)
     app = AppTest.from_file(APP, default_timeout=120)
     app.session_state["password_correct"] = True
+    app.session_state["active_module"] = "credit"
+    app.session_state["privacy_ok"] = True
     app.run()
-    assert app.checkbox[0].value is True          # relazione AI attiva (c'e' una chiave)
+    assert [c for c in app.checkbox if "relazione" in c.label][0].value is True          # relazione AI attiva (c'e' una chiave)
     _btn(app, "Genera Report PDF + Word").click().run()
     assert not app.exception
     rep = app.session_state["report"]
@@ -154,7 +157,25 @@ def test_errore_diverso_dalla_quota_resta_visibile(monkeypatch):
     monkeypatch.setattr(ai, "genera", lambda *a, **k: (_ for _ in ()).throw(Exception("403 PERMISSION_DENIED")))
     app = AppTest.from_file(APP, default_timeout=120)
     app.session_state["password_correct"] = True
+    app.session_state["active_module"] = "credit"
+    app.session_state["privacy_ok"] = True
     app.run()
     _btn(app, "Genera Report PDF + Word").click().run()
     assert any("403" in e.value for e in app.error)
     assert "report" not in app.session_state
+
+
+def test_ai_bloccata_senza_accettare_privacy(monkeypatch):
+    import tempfile
+    import storage
+    monkeypatch.setenv("APP_PASSWORD", "segreta")
+    monkeypatch.setenv("GEMINI_API_KEY", "chiave-finta")
+    monkeypatch.setattr(storage, "DB_PATH", os.path.join(tempfile.mkdtemp(), "t.db"))
+    app = AppTest.from_file(APP, default_timeout=120)
+    app.session_state["password_correct"] = True
+    app.session_state["active_module"] = "credit"
+    app.run()
+    assert not app.exception
+    assert any("informativa privacy" in w.value for w in app.warning)
+    rel = [c for c in app.checkbox if "relazione" in c.label][0]
+    assert rel.value is False
