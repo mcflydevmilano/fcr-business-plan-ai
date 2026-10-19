@@ -8,3 +8,6 @@ fpdf2>=2.7
 python-docx
 google-genai
 Pillow
+psycopg[binary]>=3.1
+# solo per i test (facoltativo):
+pytest
