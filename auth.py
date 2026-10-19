@@ -15,7 +15,6 @@ bloccato per un po' (conteggio nel registro attivita').
 """
 import hashlib
 import hmac
-import os
 import re
 import secrets as _secrets
 
@@ -25,7 +24,7 @@ ITERAZIONI = 240_000
 MAX_TENTATIVI = 5
 FINESTRA_BLOCCO_S = 15 * 60
 LUNGHEZZA_MIN_PASSWORD = 10
-RUOLI = ("admin", "utente")
+RUOLI = ("admin", "utente", "lettore")        # lettore = sola consultazione: niente modifica dei dati ne' salvataggi
 _RE_USER = re.compile(r"^[a-z0-9][a-z0-9._-]{2,39}$")
 
 

@@ -14,7 +14,7 @@ def render(utente, utenti_secrets, audit):
     if utente.get("ruolo") != "admin":
         st.error("Accesso riservato agli amministratori.")
         return
-    t1, t2 = st.tabs(["Utenti", "Registro attività"])
+    t1, t2, t3 = st.tabs(["Utenti", "Registro attività", "Backup"])
 
     with t1:
         st.markdown("#### Utenti configurati nei secrets")
@@ -90,3 +90,18 @@ def render(utente, utenti_secrets, audit):
         st.download_button("📥 Scarica il registro (CSV)", df.to_csv(index=False).encode("utf-8-sig"), file_name="registro_attivita.csv", mime="text/csv")
         st.caption("Il registro e' nel database dell'applicazione: su hosting con disco temporaneo si azzera al riavvio. "
                    "Per una conservazione stabile imposta FCR_DB_PATH su un volume persistente.")
+
+    with t3:
+        import json
+        st.markdown("#### Copia di sicurezza dei dati")
+        st.caption("Scarica tutte le pratiche, i portafogli, i preventivi, gli scadenzari, l'elenco utenti (senza password) e il registro attività. "
+                   "Conservala in un posto sicuro: contiene dati dei clienti. Il piano gratuito del database non include backup automatici.")
+        if st.button("Prepara il backup", key="adm_bk"):
+            try:
+                bk = storage.esporta_backup()
+                st.session_state["adm_backup"] = json.dumps(bk, ensure_ascii=False, indent=1, default=str).encode("utf-8")
+                audit("backup_esportato", f"{len(bk['pratiche'])} salvataggi")
+            except Exception as e:
+                st.error(f"Backup non riuscito: {e}")
+        if st.session_state.get("adm_backup"):
+            st.download_button("📥 Scarica il backup (JSON)", st.session_state["adm_backup"], file_name="backup_fcr_suite.json", mime="application/json")
