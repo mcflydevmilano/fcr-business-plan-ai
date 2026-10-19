@@ -1,9 +1,9 @@
 """
-storage.py - Salvataggio pratiche e registro dei report (SQLite).
+storage.py - Salvataggio pratiche, utenti e registro attivita' (PostgreSQL oppure SQLite).
 
-ATTENZIONE: su piattaforme con filesystem effimero (es. Streamlit Community Cloud) il file
-si perde ad ogni riavvio. Imposta FCR_DB_PATH su un volume persistente oppure sostituisci
-questo modulo con un database gestito (PostgreSQL, ecc.).
+Se e' impostato DATABASE_URL (variabile d'ambiente o Secret di Streamlit, es. la stringa di connessione di Neon)
+si usa PostgreSQL e i dati sopravvivono ai riavvii. Altrimenti si usa un file SQLite (FCR_DB_PATH): su piattaforme
+con filesystem effimero (Streamlit Community Cloud) quel file si perde ad ogni riavvio.
 """
 import contextlib
 import json
@@ -18,8 +18,65 @@ def _now():
     return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
 
 
+def _url_db():
+    """Stringa di connessione PostgreSQL, se configurata."""
+    u = os.environ.get("DATABASE_URL", "").strip()
+    if not u:
+        try:
+            import streamlit as st
+            u = str(st.secrets.get("DATABASE_URL", "") or "").strip()
+        except Exception:
+            u = ""
+    return u
+
+
+_PG_PRONTO = set()
+
+
+class _ConPG:
+    """Adatta una connessione psycopg all'uso di sqlite3 nel resto del modulo (segnaposto ?, execute diretto)."""
+
+    def __init__(self, con):
+        self.con = con
+
+    def execute(self, sql, par=()):
+        return self.con.execute(sql.replace("?", "%s"), tuple(par))
+
+    def commit(self):
+        self.con.commit()
+
+    def close(self):
+        self.con.close()
+
+
+def _schema_pg(con):
+    for ddl in (
+        "CREATE TABLE IF NOT EXISTS pratiche (nome TEXT PRIMARY KEY, creato TEXT, aggiornato TEXT, payload TEXT, autore TEXT)",
+        "CREATE TABLE IF NOT EXISTS report_log (id SERIAL PRIMARY KEY, pratica TEXT, report_id TEXT, creato TEXT, "
+        "modello TEXT, hash_dati TEXT, dettagli TEXT)",
+        "CREATE TABLE IF NOT EXISTS utenti (username TEXT PRIMARY KEY, hash TEXT NOT NULL, ruolo TEXT NOT NULL DEFAULT 'utente', "
+        "attivo INTEGER NOT NULL DEFAULT 1, creato TEXT, ultimo_accesso TEXT, creato_da TEXT)",
+        "CREATE TABLE IF NOT EXISTS audit_log (id SERIAL PRIMARY KEY, ts TEXT, utente TEXT, azione TEXT, dettaglio TEXT)",
+    ):
+        con.execute(ddl)
+
+
 @contextlib.contextmanager
 def _db(path=None):
+    url = None if path else _url_db()
+    if url:
+        import psycopg
+        con = _ConPG(psycopg.connect(url, connect_timeout=15))
+        try:
+            if url not in _PG_PRONTO:
+                _schema_pg(con)
+                con.commit()
+                _PG_PRONTO.add(url)
+            yield con
+            con.commit()
+        finally:
+            con.close()
+        return
     con = sqlite3.connect(path or DB_PATH)
     try:
         con.execute(
