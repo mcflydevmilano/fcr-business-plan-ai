@@ -110,7 +110,7 @@ def _contesto_numeri(out, descrizione):
             "descrizione": [n for n in nums if n is not None]}
 
 
-def render(ai_generate, active_key, fcr_uri, ai):
+def render(ai_generate, active_key, fcr_uri, ai, audit=None):
     st.markdown(
         theme.hero(fcr_uri, "Business Plan Studio",
                    "Pianificazione economico-finanziaria di nuove iniziative: conto economico, finanziamento e cash flow "
@@ -120,8 +120,8 @@ def render(ai_generate, active_key, fcr_uri, ai):
     for k, v in (("bp_nome", "Divisione riqualificazioni NZEB"), ("bp_descr", ESEMPIO_PROGETTO)):
         ss.setdefault(k, v)
 
-    t1, t2, t3, t4 = st.tabs(["🤖 1. Wizard AI e Ipotesi", "📊 2. Conto Economico", "🏦 3. Finanziamenti e Cash Flow",
-                              "📄 4. Dossier PDF"])
+    t1, t2, t3, t4, t5 = st.tabs(["🤖 1. Wizard AI e Ipotesi", "📊 2. Conto Economico", "🏦 3. Finanziamenti e Cash Flow",
+                                  "🎯 4. Scenari e Sensibilità", "📄 5. Dossier PDF"])
 
     # ============================ 1. WIZARD + IPOTESI ============================
     with t1:
@@ -180,7 +180,18 @@ def render(ai_generate, active_key, fcr_uri, ai):
             st.markdown("**Investimento e fisco**")
             _num("Investimento iniziale / CAPEX (€)", "capex", 0.0, 500_000_000.0, 25_000.0)
             _num("Anni di ammortamento", "anni_amm", 1, 20, 1)
-            _sld("Aliquota fiscale IRES+IRAP (%)", "aliquota", 0, 60, 0.5)
+            ss.setdefault("bp_fisco", "dettagliato")
+            st.radio("Modello fiscale", ["dettagliato", "semplice"], key="bp_fisco", horizontal=True,
+                     help="Dettagliato: IRES e IRAP separate, con riporto delle perdite. Semplice: un'unica aliquota sugli utili positivi.")
+            if ss["bp_fisco"] == "semplice":
+                _sld("Aliquota fiscale unica (%)", "aliquota", 0, 60, 0.5)
+            else:
+                _sld("Aliquota IRES (%)", "ires", 0, 40, 0.5)
+                _sld("Aliquota IRAP (%)", "irap", 0, 10, 0.1, help="Base ordinaria 3,9%, con differenze regionali: verifica l'aliquota della tua regione.")
+                _sld("Personale deducibile dall'IRAP (%)", "irap_ded_pers", 0, 100, 5,
+                     help="Quota del costo del personale che riduce la base IRAP (es. dipendenti a tempo indeterminato). Prudenzialmente 0.")
+                ss.setdefault("bp_riporto", True)
+                st.checkbox("Riporta le perdite fiscali (utilizzo fino all'80% del reddito)", key="bp_riporto")
             _sld("Capitale circolante (% sulla variazione dei ricavi)", "ccn_pct", 0, 60, 1,
                  help="Quanta cassa viene assorbita da crediti e magazzino per ogni euro di ricavi in piu'. Nei lavori edili e' spesso alta.")
             ss.setdefault("bp_n_anni", 3)
@@ -220,11 +231,20 @@ def render(ai_generate, active_key, fcr_uri, ai):
         voci = [("Ricavi delle vendite", "Ricavi", 1), ("Costi variabili", "Costi variabili", -1), ("Costo del personale", "Personale", -1),
                 ("Altri costi operativi", "Altri costi", -1), ("EBITDA (MOL)", "EBITDA", 1), ("Ammortamenti", "Ammortamenti", -1),
                 ("EBIT", "EBIT", 1), ("Interessi passivi", "Interessi", -1), ("Utile ante imposte", "Utile ante imposte", 1),
+                ("di cui IRES", "IRES", -1), ("di cui IRAP", "IRAP", -1),
                 ("Imposte", "Imposte", -1), ("Utile netto", "Utile netto", 1)]
+        if q["fisco"] == "semplice":
+            voci = [v for v in voci if v[1] not in ("IRES", "IRAP")]
         righe = [{"Voce (EUR)": et, **{str(r["AnnoNum"]): fmt_num(sg * r[ch]) for r in anni}} for et, ch, sg in voci]
         righe.insert(5, {"Voce (EUR)": "Margine EBITDA %", **{str(r["AnnoNum"]): fmt_num(r["Margine EBITDA %"], 1) + "%" for r in anni}})
         _df(pd.DataFrame(righe))
-        st.caption("Le imposte sono calcolate solo su utili positivi, senza riporto delle perdite (ipotesi prudenziale).")
+        if q["fisco"] == "semplice":
+            st.caption("Modello semplice: aliquota unica applicata solo agli utili positivi, senza riporto delle perdite.")
+        else:
+            st.caption("IRES sul risultato ante imposte (al netto delle perdite pregresse, max 80% del reddito); IRAP su EBIT + personale non deducibile, "
+                       "dovuta anche in perdita. Il reddito imponibile e' assunto uguale all'utile civilistico: verifica le variazioni fiscali con il commercialista.")
+            if anni[-1]["Perdite fiscali residue"] > 1:
+                st.info(f"Perdite fiscali ancora riportabili a fine piano: {fmt_eur(anni[-1]['Perdite fiscali residue'])}.")
         _fig(charts.fig_bp_economico(anni, "light"))
 
     # ============================ 3. FINANZIAMENTI E CASH FLOW ====================
@@ -260,8 +280,59 @@ def render(ai_generate, active_key, fcr_uri, ai):
             else:
                 st.info("Nessun finanziamento: il DSCR non e' calcolabile.")
 
-    # ============================ 4. DOSSIER PDF ================================
+    # ============================ 4. SCENARI E SENSIBILITA' =====================
     with t4:
+        st.subheader("Scenari: pessimistico, base, ottimistico")
+        st.caption("Ogni scenario modifica le ipotesi base con gli scostamenti qui sotto (modificabili). Il caso base e' sempre quello inserito nella scheda 1.")
+        if "bp_scen_df" not in ss:
+            ss["bp_scen_df"] = pd.DataFrame(
+                [{"Scenario": n, **{et: float(d.get(c, 0.0)) for c, (_k, _m, et) in bp.CAMPI_SCENARIO.items()}}
+                 for n, d in bp.SCENARI_DEFAULT.items() if n != "Base"])
+        ed = st.data_editor(ss["bp_scen_df"], width="stretch", hide_index=True, key="scen_editor_tmp",
+                            disabled=["Scenario"], num_rows="fixed")
+        scen_def = {}
+        for _, r_ in ed.iterrows():
+            scen_def[str(r_["Scenario"])] = {c: core.to_float(r_[et], 0.0) for c, (_k, _m, et) in bp.CAMPI_SCENARIO.items()}
+        risultati = bp.calcola_scenari(_params(), scen_def)
+        conf = bp.confronto_scenari(risultati)
+        _df(pd.DataFrame([{
+            "Scenario": c["Scenario"], "Ricavi ultimo anno": fmt_num(c["Ricavi ultimo anno"]),
+            "EBITDA ultimo anno": fmt_num(c["EBITDA ultimo anno"]), "Utile netto cumulato": fmt_num(c["Utile netto cumulato"]),
+            "Cassa minima": fmt_num(c["Cassa minima"]), "DSCR minimo": fmt_x(c["DSCR minimo"]) if c["DSCR minimo"] is not None else "n.d.",
+            "Payback": f"{fmt_num(c['Payback (anni)'], 1)} anni" if c["Payback (anni)"] is not None else "oltre il piano"} for c in conf]))
+        peggio = risultati.get("Pessimistico")
+        if peggio and peggio["kpi"]["cassa_minima"] < -1:
+            st.warning(f"Nello scenario pessimistico la cassa scende a {fmt_eur(peggio['kpi']['cassa_minima'])}: servirebbe una linea di liquidita' di scorta.")
+        _fig(charts.fig_bp_scenari(risultati, "light"))
+
+        st.subheader("Sensibilità: quali ipotesi pesano di più")
+        opzioni = list(bp.METRICHE)
+        met = st.selectbox("Indicatore da analizzare", opzioni, format_func=lambda m: bp.METRICHE[m], index=1, key="bp_sens_metrica")
+        sens = bp.sensibilita(_params(), met)
+        if not sens:
+            st.info("Questo indicatore non e' calcolabile (ad esempio il DSCR senza finanziamento). Scegline un altro.")
+        else:
+            _df(pd.DataFrame([{"Variabile": r["Variabile"], "Variazione": r["Variazione"],
+                               "Con valore minore": fmt_num(r["Con valore minore"], 2 if met == "dscr_min" else 0),
+                               "Caso base": fmt_num(r["Base"], 2 if met == "dscr_min" else 0),
+                               "Con valore maggiore": fmt_num(r["Con valore maggiore"], 2 if met == "dscr_min" else 0)} for r in sens]))
+            _fig(charts.fig_tornado(sens, bp.METRICHE[met], "light"))
+            st.caption("Per ogni riga si varia una sola ipotesi per volta (verso l'alto e verso il basso) tenendo ferme le altre.")
+        ss["_bp_scen_out"] = {"scenari": risultati, "sensibilita": sens, "sens_metrica": bp.METRICHE[met]}
+
+        with st.expander("Mappa di sensibilità: ricavi × costi variabili"):
+            base_r, base_c = float(q["ricavi_y1"]), float(q["cv_pct"])
+            xs = [round(base_r * f) for f in (0.8, 0.9, 1.0, 1.1, 1.2)]
+            ys = [max(0.0, base_c + d) for d in (-10, -5, 0, 5, 10)]
+            mat = bp.griglia(_params(), "ricavi_y1", xs, "cv_pct", ys, "cassa_minima" if q["mutuo"] <= 0 else "dscr_min")
+            usa_d = q["mutuo"] > 0
+            tab = pd.DataFrame([[fmt_num(v, 2) if (v is not None and usa_d) else (fmt_num(v) if v is not None else "n.d.") for v in riga] for riga in mat],
+                               index=[f"Costi variabili {fmt_num(y, 0)}%" for y in ys], columns=[f"Ricavi {fmt_num(x)}" for x in xs])
+            st.caption("Valori: " + ("DSCR minimo" if usa_d else "cassa minima (EUR)") + ". Sotto 1,00 il flusso non copre il servizio del debito.")
+            st.dataframe(tab, width="stretch")
+
+    # ============================ 5. DOSSIER PDF ================================
+    with t5:
         st.subheader("Dossier del Business Plan")
         usa_ai = st.checkbox("Includi la relazione strategica scritta dall'AI", value=bool(active_key), disabled=not active_key, key="bp_usa_ai")
         st.caption("💡 Se togli la spunta ottieni comunque il dossier PDF completo di ipotesi, conto economico, cash flow, "
@@ -269,7 +340,8 @@ def render(ai_generate, active_key, fcr_uri, ai):
         if st.button("🚀 Genera il dossier PDF", type="primary"):
             with st.spinner("Creazione del dossier in corso..."):
                 try:
-                    ctx = bp_report.costruisci_ctx_bp(out, ss.get("bp_nome", ""), ss.get("bp_descr", ""), "nessuno")
+                    out_pdf = {**out, **ss.get("_bp_scen_out", {})}
+                    ctx = bp_report.costruisci_ctx_bp(out_pdf, ss.get("bp_nome", ""), ss.get("bp_descr", ""), "nessuno")
                     relazione, quota, sospetti = "", False, []
                     if usa_ai and active_key:
                         try:
@@ -281,6 +353,8 @@ def render(ai_generate, active_key, fcr_uri, ai):
                             if not ai.errore_quota(e_ai):
                                 raise
                             quota = True
+                    if audit:
+                        audit("dossier_bp", f"{ctx['report_id']} iniziativa={ss.get('bp_nome', '')}")
                     ss["bp_report"] = {"pdf": bp_report.genera_pdf_bp(ctx, relazione), "id": ctx["report_id"],
                                        "sospetti": sospetti, "quota": quota, "modello": ctx["modello"]}
                 except Exception as e:
