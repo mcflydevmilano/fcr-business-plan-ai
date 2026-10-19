@@ -139,6 +139,11 @@ h3 { margin-top: .6rem; }
 .hub-card.og .hub-badge { background: #f0fdfa; }
 .hub-card.og .hub-num { color: #0f766e; }
 .hub-card.og li::before { background: #ccfbf1; color: #0f766e; }
+.hub-card.ca::before { background: linear-gradient(90deg, #0369a1, #38bdf8); }
+.hub-card.ca:hover { border-color: #bae6fd; box-shadow: 0 2px 4px rgba(15,23,42,.06), 0 14px 34px rgba(3,105,161,.16); }
+.hub-card.ca .hub-badge { background: #f0f9ff; }
+.hub-card.ca .hub-num { color: #0369a1; }
+.hub-card.ca li::before { background: #e0f2fe; color: #0369a1; }
 .hub-card.dd::before { background: linear-gradient(90deg, #be123c, #fb7185); }
 .hub-card.dd:hover { border-color: #fecdd3; box-shadow: 0 2px 4px rgba(15,23,42,.06), 0 14px 34px rgba(190,18,60,.16); }
 .hub-card.dd .hub-badge { background: #fff1f2; }
@@ -262,7 +267,9 @@ hr { border-color: var(--line); }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; } ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
+.st-key-hub_top { display: none; }
 @media (max-width: 700px) {
+  .st-key-hub_top { display: block !important; }
   .hero { gap: 12px; } .hero-logo { width: 62px; } .hero-title { font-size: 1.35rem; }
   .hub-title { font-size: 1.5rem; } .score-num { font-size: 2.8rem; }
 }

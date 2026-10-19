@@ -40,8 +40,10 @@ import fo_ui
 import sx_ui
 import mz_ui
 import og_ui
+import ca_ui
 import pv_ui
 import theme
+import ui_util
 import xbrl
 from core import (
     COLONNE_COMMESSE, COVENANT_DEFAULT, DATI_DEFAULT, DISCLAIMER, LEVE_DEFAULT, PIANO_DEFAULT,
@@ -383,7 +385,7 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "dd": ("dd_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "ca": ("ca_",), "dd": ("dd_",)}
 
 
 def vai_a(modulo):
@@ -427,17 +429,21 @@ with st.sidebar:
             vai_a(None)
         st.markdown("---")
 
+if MODULO is not None:
+    if st.button("🏠 Hub", key="hub_top"):                    # visibile solo su telefono (la barra laterale e' chiusa)
+        vai_a(None)
+
 if MODULO == "credit":
     with st.sidebar:
         st.markdown("#### 📁 Pratica")
         st.text_input("Nome pratica", key="pratica_nome", placeholder="es. Rossi Costruzioni 2025")
         if st.button("💾 Salva pratica", width="stretch", disabled=ss["utente"]["ruolo"] == "lettore"):
             try:
-                storage.salva_pratica(ss.get("pratica_nome", ""), payload_pratica(), autore=ss["utente"]["username"])
-                audit("pratica_salvata", ss.get("pratica_nome", ""))
-                st.toast("Pratica salvata", icon="✅")
+                if ui_util.salva_protetto("credit", ss.get("pratica_nome", ""), payload_pratica(), ss["utente"]["username"], audit):
+                    st.toast("Pratica salvata", icon="✅")
             except Exception as e:
                 st.error(f"Impossibile salvare: {e}")
+        ui_util.conflitto_salvataggio("credit", ss["utente"]["username"], audit)
         try:
             elenco = storage.elenca_pratiche()
         except Exception as e:
@@ -451,6 +457,8 @@ if MODULO == "credit":
                 payload = storage.carica_pratica(scelta)
                 audit("pratica_caricata", scelta)
                 if payload:
+                    _meta = storage.meta_pratica(scelta)
+                    ss["_base_credit"] = {"nome": scelta, "agg": _meta["aggiornato"] if _meta else ""}
                     applica_payload(payload, scelta)
                     st.rerun()
             if c2.button("🗑️ Elimina", width="stretch", disabled=ss["utente"]["ruolo"] == "lettore"):
@@ -661,6 +669,18 @@ if MODULO is None:
         )
         if st.button('Apri Organico  →', key='hub_og', width="stretch"):
             vai_a('og')
+    with _cb:
+        st.markdown(
+            theme.hub_card(
+                'Strumento 13', '🗓️', 'Calendario scadenze',
+                'Tutte le scadenze in una lista: fatture, gare, documenti, formazioni e mezzi.',
+                ['Scadute e prossime in ordine di data', 'Calendario per il telefono (file .ics)', 'Riepilogo email ogni mattina', 'Legge i dati dei moduli, anche salvati'],
+                ['Scadenze', 'Telefono', 'Email'], 'ca',
+            ),
+            unsafe_allow_html=True,
+        )
+        if st.button('Apri Calendario scadenze  →', key='hub_ca', width="stretch"):
+            vai_a('ca')
     st.caption("Le simulazioni sono indicative e non costituiscono rating regolamentare, parere di credito o consulenza.")
     st.stop()
 
@@ -684,6 +704,10 @@ for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og
     if MODULO == _m:
         _ui.render(FCR_URI, audit, ss["utente"]["username"])
         st.stop()
+
+if MODULO == "ca":
+    ca_ui.render(FCR_URI, audit)
+    st.stop()
 
 if MODULO == "dd":
     dd_ui.render(FCR_URI, audit)

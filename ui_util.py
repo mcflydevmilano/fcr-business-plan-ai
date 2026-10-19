@@ -55,6 +55,46 @@ def sostituisci_tabella(chiave, df):
     ss[chiave + "_v"] = ss.get(chiave + "_v", 0) + 1
 
 
+def salva_protetto(modulo, nome, payload, utente, audit):
+    """Salva controllando che nessun altro abbia modificato lo stesso salvataggio dopo che lo hai aperto. Restituisce True se ha salvato."""
+    import storage
+    nome = (nome or "").strip()
+    base = ss.get(f"_base_{modulo}") or {}
+    atteso = base.get("agg", "") if base.get("nome") == nome else ""
+    try:
+        agg = storage.salva_pratica(nome, payload, autore=utente, modulo=modulo, atteso=atteso)
+    except storage.ConflittoSalvataggio as c:
+        ss[f"_conf_{modulo}"] = {"nome": nome, "payload": payload, "autore": c.autore, "agg": c.aggiornato, "aperto": bool(atteso)}
+        return False
+    ss.pop(f"_conf_{modulo}", None)
+    ss[f"_base_{modulo}"] = {"nome": nome, "agg": agg}
+    audit(f"{modulo}_salvato", nome)
+    return True
+
+
+def conflitto_salvataggio(modulo, utente, audit):
+    """Se l'ultimo salvataggio ha trovato una modifica altrui, mostra l'avviso e il pulsante per sovrascrivere comunque."""
+    import storage
+    c = ss.get(f"_conf_{modulo}")
+    if not c:
+        return
+    chi = f"da {c['autore']} " if c["autore"] else ""
+    if c["aperto"]:
+        st.warning(f"⚠️ «{c['nome']}» è stato modificato {chi}alle {c['agg'][11:16]} (UTC) dopo che l'avevi aperto. Salvando ora sostituiresti il suo lavoro.")
+    else:
+        st.warning(f"⚠️ Esiste già un salvataggio «{c['nome']}» (ultima modifica {chi}alle {c['agg'][11:16]} UTC) che non hai aperto. Salvando lo sostituiresti.")
+    a, b = st.columns(2)
+    if a.button("Sovrascrivi comunque", key=f"sv_forza_{modulo}", width="stretch"):
+        agg = storage.salva_pratica(c["nome"], c["payload"], autore=utente, modulo=modulo)
+        ss[f"_base_{modulo}"] = {"nome": c["nome"], "agg": agg}
+        ss.pop(f"_conf_{modulo}", None)
+        audit(f"{modulo}_salvato_forzato", c["nome"])
+        st.rerun()
+    if b.button("Annulla", key=f"sv_annulla_{modulo}", width="stretch"):
+        ss.pop(f"_conf_{modulo}", None)
+        st.rerun()
+
+
 def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente=""):
     """Riquadro 'Salva / apri' per un modulo. `raccogli()` -> payload (dict JSON); `applica(payload, nome)` ripristina i dati."""
     import storage
@@ -69,11 +109,11 @@ def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente="
             st.info("Il tuo ruolo è «lettore»: puoi consultare e aprire i salvataggi, ma non modificarli.")
         if b.button("💾 Salva", key=f"sv_salva_{modulo}", width="stretch", disabled=sola_lettura()):
             try:
-                storage.salva_pratica(nome, raccogli(), autore=utente, modulo=modulo)
-                audit(f"{modulo}_salvato", nome)
-                st.success("Salvato.")
+                if salva_protetto(modulo, nome, raccogli(), utente, audit):
+                    st.success("Salvato.")
             except Exception as e:
                 st.error(f"Impossibile salvare: {e}")
+        conflitto_salvataggio(modulo, utente, audit)
         try:
             elenco = storage.elenca_pratiche(modulo=modulo)
         except Exception as e:
@@ -88,6 +128,9 @@ def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente="
                 payload = storage.carica_pratica(scelta, modulo=modulo)
                 if payload:
                     audit(f"{modulo}_aperto", scelta)
+                    meta = storage.meta_pratica(scelta, modulo=modulo)
+                    ss[f"_base_{modulo}"] = {"nome": scelta, "agg": meta["aggiornato"] if meta else ""}
+                    ss.pop(f"_conf_{modulo}", None)
                     applica(payload, scelta)
                     st.rerun()
             if c2.button("🗑️ Elimina", key=f"sv_elimina_{modulo}", width="stretch", disabled=sola_lettura()):
@@ -106,6 +149,8 @@ def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente="
                         payload = storage.carica_versione(vid)
                         if payload:
                             audit(f"{modulo}_versione_ripristinata", f"{scelta} #{vid}")
+                            meta = storage.meta_pratica(scelta, modulo=modulo)
+                            ss[f"_base_{modulo}"] = {"nome": scelta, "agg": meta["aggiornato"] if meta else ""}
                             applica(payload, scelta)
                             st.rerun()
                     st.caption("Il ripristino apre i dati di quella versione; per renderla definitiva salvala di nuovo (la versione attuale finisce nello storico).")

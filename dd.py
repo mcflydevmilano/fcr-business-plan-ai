@@ -308,3 +308,21 @@ def conteggio(righe):
     for r in righe:
         c[r["Stato"]] += 1
     return c
+
+
+MODULI_METRICHE = ("sc", "cf", "pv", "sl", "ga", "fo", "sx", "mz", "og", "credit", "bp")
+
+
+def metriche_da_payload(m, payload, oggi=None):
+    """Calcola le metriche di un modulo da un payload salvato (usato dal Cruscotto e dal riepilogo email)."""
+    if not payload:
+        return None
+    if m == "cf":
+        return metriche_cf(payload)
+    if m == "pv":
+        return metriche_pv(payload)
+    if m == "credit":
+        return metriche_credit(payload)
+    if m == "bp":
+        return metriche_bp(payload)
+    return globals()["metriche_" + m](payload, oggi)
