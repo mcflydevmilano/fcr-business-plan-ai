@@ -27,6 +27,11 @@ def _applica_modifiche(df, stato):
     return df
 
 
+def sola_lettura():
+    """True per gli utenti con ruolo «lettore»: possono consultare e scaricare i dossier, non modificare ne' salvare."""
+    return (ss.get("utente") or {}).get("ruolo") == "lettore"
+
+
 def tabella_modificabile(chiave, df_iniziale, column_config=None, altezza=None, num_rows="dynamic"):
     """Mostra la tabella e restituisce il DataFrame aggiornato. `chiave` identifica i dati in session_state (usa un prefisso del modulo)."""
     if chiave not in ss:
@@ -39,8 +44,8 @@ def tabella_modificabile(chiave, df_iniziale, column_config=None, altezza=None, 
         ss[chiave + "_v"] = ver + 1
 
     kw = {"height": altezza} if altezza else {}
-    st.data_editor(ss[chiave], key=key_ed, on_change=_cb, num_rows=num_rows, hide_index=True, column_config=column_config or {},
-                   width="stretch", **kw)
+    st.data_editor(ss[chiave], key=key_ed, on_change=_cb, num_rows="fixed" if sola_lettura() else num_rows, hide_index=True, column_config=column_config or {},
+                   width="stretch", disabled=sola_lettura(), **kw)
     return ss[chiave]
 
 
@@ -60,7 +65,9 @@ def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente="
         a, b = st.columns([3, 1])
         nome = a.text_input("Nome", key=f"sv_nome_{modulo}", placeholder="es. Portafoglio 2027")
         b.markdown("<div style='height:1.9rem'></div>", unsafe_allow_html=True)
-        if b.button("💾 Salva", key=f"sv_salva_{modulo}", width="stretch"):
+        if sola_lettura():
+            st.info("Il tuo ruolo è «lettore»: puoi consultare e aprire i salvataggi, ma non modificarli.")
+        if b.button("💾 Salva", key=f"sv_salva_{modulo}", width="stretch", disabled=sola_lettura()):
             try:
                 storage.salva_pratica(nome, raccogli(), autore=utente, modulo=modulo)
                 audit(f"{modulo}_salvato", nome)
@@ -83,10 +90,25 @@ def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente="
                     audit(f"{modulo}_aperto", scelta)
                     applica(payload, scelta)
                     st.rerun()
-            if c2.button("🗑️ Elimina", key=f"sv_elimina_{modulo}", width="stretch"):
+            if c2.button("🗑️ Elimina", key=f"sv_elimina_{modulo}", width="stretch", disabled=sola_lettura()):
                 storage.elimina_pratica(scelta, modulo=modulo)
                 audit(f"{modulo}_eliminato", scelta)
                 st.rerun()
+            try:
+                versioni = storage.storico_pratica(scelta, modulo=modulo)
+            except Exception:
+                versioni = []
+            if versioni:
+                with st.expander(f"🕘 Versioni precedenti di «{scelta}» ({len(versioni)})"):
+                    vid = st.selectbox("Versione", [v["id"] for v in versioni], key=f"sv_ver_{modulo}",
+                                       format_func=lambda i: next(f"{v['salvato'][:16]}" + (f" · {v['autore']}" if v["autore"] else "") for v in versioni if v["id"] == i))
+                    if st.button("↩️ Ripristina questa versione", key=f"sv_rip_{modulo}", width="stretch"):
+                        payload = storage.carica_versione(vid)
+                        if payload:
+                            audit(f"{modulo}_versione_ripristinata", f"{scelta} #{vid}")
+                            applica(payload, scelta)
+                            st.rerun()
+                    st.caption("Il ripristino apre i dati di quella versione; per renderla definitiva salvala di nuovo (la versione attuale finisce nello storico).")
         else:
             st.caption("Nessun salvataggio per questo modulo.")
 
@@ -109,3 +131,147 @@ def modello_excel(colonne, etichette, esempi):
     bio = io.BytesIO()
     wb.save(bio)
     return bio.getvalue()
+
+
+# ----------------------------------------------------------------------------
+# IMPORT CON MAPPATURA DELLE COLONNE (export del gestionale / del commercialista)
+# ----------------------------------------------------------------------------
+def _norm(s):
+    import re
+    return re.sub(r"[^a-z0-9]", "", str(s).lower())
+
+
+def indovina_mappa(colonne_file, campi, etichette, sinonimi=None):
+    """Per ogni campo dell'app cerca la colonna del file che gli somiglia (nome, etichetta o sinonimi). Restituisce {campo: colonna|None}."""
+    sinonimi = sinonimi or {}
+    per_norm = {}
+    for c in colonne_file:
+        per_norm.setdefault(_norm(c), c)
+    usate, mappa = set(), {}
+    for campo in campi:
+        cand = [campo, etichette.get(campo, "")] + list(sinonimi.get(campo, ()))
+        trovata = None
+        for x in cand:
+            n = _norm(x)
+            if n and n in per_norm and per_norm[n] not in usate:
+                trovata = per_norm[n]
+                break
+        if trovata is None:                                    # corrispondenza parziale (es. "Data scadenza" ~ "Scadenza")
+            for x in cand:
+                n = _norm(x)
+                for cn, c in per_norm.items():
+                    if n and len(n) >= 4 and n in cn and c not in usate:
+                        trovata = c
+                        break
+                if trovata:
+                    break
+        if trovata is not None:
+            usate.add(trovata)
+        mappa[campo] = trovata
+    return mappa
+
+
+def applica_mappa(df, mappa, campi):
+    """DataFrame con le colonne dell'app, prese dal file secondo la mappa. Date in ISO, celle vuote a None."""
+    import datetime as dt
+    import pandas as pd
+    righe = []
+    for _, r in df.iterrows():
+        riga = {}
+        for c in campi:
+            v = r[mappa[c]] if mappa.get(c) in df.columns else None
+            if hasattr(v, "to_pydatetime"):
+                v = v.to_pydatetime().date().isoformat()
+            elif isinstance(v, (dt.datetime, dt.date)):
+                v = (v.date() if isinstance(v, dt.datetime) else v).isoformat()
+            elif v is not None and not isinstance(v, str) and pd.isna(v):
+                v = None
+            riga[c] = v
+        righe.append(riga)
+    out = pd.DataFrame(righe, columns=list(campi))
+    return out.dropna(how="all").reset_index(drop=True).astype(object).where(lambda d: d.notna(), None)
+
+
+def importa_dati(chiave, campi, etichette, sigla, idx, audit=None, sinonimi=None, dopo=None, trasforma=None):
+    """Caricamento di un Excel/CSV con scelta guidata delle colonne. `dopo()` viene chiamata dopo un import riuscito."""
+    import pandas as pd
+    audit = audit or (lambda *a, **k: None)
+    if sola_lettura():
+        st.caption("Importazione non disponibile per il ruolo «lettore».")
+        return
+    up = st.file_uploader("Importa da Excel/CSV", type=["xlsx", "csv"], key=f"up_{sigla}{idx}")
+    if up is None:
+        return
+    try:
+        d = pd.read_csv(up, sep=None, engine="python") if up.name.lower().endswith(".csv") else pd.read_excel(up)
+    except Exception as e:
+        st.error(f"File non leggibile: {e}")
+        return
+    if d.empty:
+        st.error("Il file non contiene righe.")
+        return
+    guess = indovina_mappa(list(d.columns), campi, etichette, sinonimi)
+    st.caption("Controlla a quale colonna del tuo file corrisponde ogni campo (la scelta è già proposta). Lascia «—» per i campi che non hai.")
+    opz = ["—"] + [str(c) for c in d.columns]
+    cols = st.columns(3)
+    scelta = {}
+    for i, c in enumerate(campi):
+        pre = guess.get(c)
+        scelta[c] = cols[i % 3].selectbox(etichette.get(c, c), opz, index=opz.index(str(pre)) if pre is not None and str(pre) in opz else 0, key=f"map_{sigla}{idx}_{_norm(up.name)}_{c}")
+    mappa = {c: (next((x for x in d.columns if str(x) == v), None) if v != "—" else None) for c, v in scelta.items()}
+    modo = st.radio("Dati già presenti", ["Sostituisci", "Aggiungi in coda"], horizontal=True, key=f"mod_{sigla}{idx}")
+    if st.button("Importa il file", key=f"imp_{sigla}{idx}"):
+        nuovo = applica_mappa(d, mappa, campi)
+        if trasforma is not None:
+            nuovo = trasforma(nuovo)
+        if nuovo.empty:
+            st.error("Nessuna riga valida: controlla la corrispondenza delle colonne.")
+        else:
+            att = ss.get(chiave)
+            if modo == "Aggiungi in coda" and att is not None and len(att):
+                nuovo = pd.concat([att, nuovo], ignore_index=True)
+            sostituisci_tabella(chiave, nuovo)
+            audit(f"{sigla}_import", up.name)
+            if dopo:
+                dopo()
+            st.rerun()
+
+
+def blocco_tabella(chiave, titolo, nota, campi, etichette, cfg, esempio_df, sigla, idx, audit=None, altezza=240, sinonimi=None):
+    """Tabella modificabile + modello Excel + import guidato, con lo stesso aspetto in tutti i moduli."""
+    st.subheader(titolo)
+    if nota:
+        st.caption(nota)
+    tabella_modificabile(chiave, esempio_df, cfg, altezza=altezza)
+    with st.expander(f"Importa da Excel/CSV: {titolo}"):
+        st.download_button("📥 Modello Excel", modello_excel(campi, etichette, esempio_df.head(3).to_dict("records")), file_name=f"modello_{sigla}_{idx}.xlsx",
+                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{sigla}{idx}")
+        importa_dati(chiave, campi, etichette, sigla, idx, audit, sinonimi)
+
+
+def banner_esempio(flag, tabelle, key):
+    """Avviso «dati di esempio» con pulsante per svuotare le tabelle. `tabelle`: [(chiave, colonne)]."""
+    import pandas as pd
+    if ss.get(flag):
+        st.info("Dati di esempio con date relative a oggi. Sostituiscili con i tuoi: modifica le tabelle o importa un file.")
+        if st.button("Svuota l'esempio e parti da zero", key=key, disabled=sola_lettura()):
+            for chiave, cols in tabelle:
+                sostituisci_tabella(chiave, pd.DataFrame(columns=cols))
+            ss[flag] = False
+            st.rerun()
+
+
+def scarica_dossier(sigla, genera, nome_file, audit, titolo_nome):
+    """Blocco «Genera dossier PDF + Excel». `genera()` -> (pdf, xlsx, id). Lo stato sta in session_state['rep_<sigla>']."""
+    nome = st.text_input("Nome del documento", titolo_nome, key=f"{sigla}_nome")
+    if st.button("📄 Genera dossier PDF ed Excel", type="primary", key=f"gen_{sigla}"):
+        with st.spinner("Preparo i documenti..."):
+            pdf, xlsx, rid = genera(nome)
+            ss[f"rep_{sigla}"] = {"pdf": pdf, "xlsx": xlsx, "id": rid}
+            audit(f"{sigla}_report", rid)
+    rep = ss.get(f"rep_{sigla}")
+    if rep:
+        c1, c2 = st.columns(2)
+        c1.download_button("📥 Scarica il dossier PDF", rep["pdf"], file_name=f"{nome_file}_{rep['id']}.pdf", mime="application/pdf", width="stretch", key=f"dlp_{sigla}")
+        c2.download_button("📥 Scarica l'Excel con formule", rep["xlsx"], file_name=f"{nome_file}_{rep['id']}.xlsx",
+                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", width="stretch", key=f"dlx_{sigla}")

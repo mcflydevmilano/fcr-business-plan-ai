@@ -35,6 +35,11 @@ import cf_ui
 import dd_ui
 import sc_ui
 import sl_ui
+import ga_ui
+import fo_ui
+import sx_ui
+import mz_ui
+import og_ui
 import pv_ui
 import theme
 import xbrl
@@ -378,7 +383,7 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "dd": ("dd_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "dd": ("dd_",)}
 
 
 def vai_a(modulo):
@@ -426,7 +431,7 @@ if MODULO == "credit":
     with st.sidebar:
         st.markdown("#### 📁 Pratica")
         st.text_input("Nome pratica", key="pratica_nome", placeholder="es. Rossi Costruzioni 2025")
-        if st.button("💾 Salva pratica", width="stretch"):
+        if st.button("💾 Salva pratica", width="stretch", disabled=ss["utente"]["ruolo"] == "lettore"):
             try:
                 storage.salva_pratica(ss.get("pratica_nome", ""), payload_pratica(), autore=ss["utente"]["username"])
                 audit("pratica_salvata", ss.get("pratica_nome", ""))
@@ -448,7 +453,7 @@ if MODULO == "credit":
                 if payload:
                     applica_payload(payload, scelta)
                     st.rerun()
-            if c2.button("🗑️ Elimina", width="stretch"):
+            if c2.button("🗑️ Elimina", width="stretch", disabled=ss["utente"]["ruolo"] == "lettore"):
                 storage.elimina_pratica(scelta)
                 audit("pratica_eliminata", scelta)
                 st.rerun()
@@ -593,6 +598,69 @@ if MODULO is None:
         )
         if st.button("Apri SAL e contabilità  →", key="hub_sl", width="stretch"):
             vai_a("sl")
+    _ca, _cb = st.columns(2, gap="large")
+    with _ca:
+        st.markdown(
+            theme.hub_card(
+                'Strumento 8', '🏛️', 'Gare e offerte',
+                'Quali gare fare e con che ribasso, e cosa manca prima della scadenza.',
+                ['Ribasso massimo per il margine obiettivo', 'Valore atteso e pipeline ponderata', 'Check-list dei documenti con scadenze', 'Le gare vinte passano a SAL'],
+                ['Ribasso', 'Pipeline', 'PDF + Excel'], 'ga',
+            ),
+            unsafe_allow_html=True,
+        )
+        if st.button('Apri Gare e offerte  →', key='hub_ga', width="stretch"):
+            vai_a('ga')
+    with _cb:
+        st.markdown(
+            theme.hub_card(
+                'Strumento 9', '🤝', 'Fornitori e subappaltatori',
+                'Documenti in scadenza, contratti e confronto preventivi.',
+                ['DURC, assicurazioni e SOA con avvisi', 'Ordini aperti, fatturato e da pagare', 'Offerta più bassa tra i fornitori in regola', 'Dossier PDF ed Excel con formule'],
+                ['Scadenze', 'Contratti', 'Confronto'], 'fo',
+            ),
+            unsafe_allow_html=True,
+        )
+        if st.button('Apri Fornitori  →', key='hub_fo', width="stretch"):
+            vai_a('fo')
+    _ca, _cb = st.columns(2, gap="large")
+    with _ca:
+        st.markdown(
+            theme.hub_card(
+                'Strumento 10', '🦺', 'Sicurezza e documenti di cantiere',
+                'Formazioni, idoneità e documenti obbligatori per cantiere.',
+                ['Scadenze di corsi e visite mediche', 'Check-list documenti per cantiere', 'Cantieri a rischio in evidenza', 'Dossier PDF ed Excel'],
+                ['Formazione', 'Cantieri', 'PDF + Excel'], 'sx',
+            ),
+            unsafe_allow_html=True,
+        )
+        if st.button('Apri Sicurezza  →', key='hub_sx', width="stretch"):
+            vai_a('sx')
+    with _cb:
+        st.markdown(
+            theme.hub_card(
+                'Strumento 11', '🚜', 'Parco mezzi e attrezzature',
+                'Tariffa oraria dei mezzi, utilizzo e scadenze.',
+                ['Costo orario e costi fissi non assorbiti', 'Costi dei mezzi per commessa', 'Revisioni e assicurazioni in scadenza', 'Invio dei costi a SAL'],
+                ['Tariffe', 'Utilizzo', 'PDF + Excel'], 'mz',
+            ),
+            unsafe_allow_html=True,
+        )
+        if st.button('Apri Parco mezzi  →', key='hub_mz', width="stretch"):
+            vai_a('mz')
+    _ca, _cb = st.columns(2, gap="large")
+    with _ca:
+        st.markdown(
+            theme.hub_card(
+                'Strumento 12', '👷', 'Organico e carico di lavoro',
+                'Quanta gente serve nei prossimi mesi e quanto costano le ore ferme.',
+                ['Capacità e assegnazioni mese per mese', 'Sovraccarichi e mesi scarichi', 'Costo del personale per commessa', 'Dossier PDF ed Excel'],
+                ['Carico', 'Squadre', 'PDF + Excel'], 'og',
+            ),
+            unsafe_allow_html=True,
+        )
+        if st.button('Apri Organico  →', key='hub_og', width="stretch"):
+            vai_a('og')
     st.caption("Le simulazioni sono indicative e non costituiscono rating regolamentare, parere di credito o consulenza.")
     st.stop()
 
@@ -611,6 +679,11 @@ if MODULO == "sc":
 if MODULO == "sl":
     sl_ui.render(FCR_URI, audit, ss["utente"]["username"])
     st.stop()
+
+for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og", og_ui)):
+    if MODULO == _m:
+        _ui.render(FCR_URI, audit, ss["utente"]["username"])
+        st.stop()
 
 if MODULO == "dd":
     dd_ui.render(FCR_URI, audit)

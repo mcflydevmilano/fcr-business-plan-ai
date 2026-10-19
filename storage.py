@@ -57,6 +57,7 @@ def _schema_pg(con):
         "CREATE TABLE IF NOT EXISTS utenti (username TEXT PRIMARY KEY, hash TEXT NOT NULL, ruolo TEXT NOT NULL DEFAULT 'utente', "
         "attivo INTEGER NOT NULL DEFAULT 1, creato TEXT, ultimo_accesso TEXT, creato_da TEXT)",
         "CREATE TABLE IF NOT EXISTS audit_log (id SERIAL PRIMARY KEY, ts TEXT, utente TEXT, azione TEXT, dettaglio TEXT)",
+        "CREATE TABLE IF NOT EXISTS pratiche_storico (id SERIAL PRIMARY KEY, nome TEXT, salvato TEXT, autore TEXT, payload TEXT)",
     ):
         con.execute(ddl)
 
@@ -94,6 +95,10 @@ def _db(path=None):
             "attivo INTEGER NOT NULL DEFAULT 1, creato TEXT, ultimo_accesso TEXT, creato_da TEXT)"
         )
         con.execute(
+            "CREATE TABLE IF NOT EXISTS pratiche_storico ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, salvato TEXT, autore TEXT, payload TEXT)"
+        )
+        con.execute(
             "CREATE TABLE IF NOT EXISTS audit_log ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, utente TEXT, azione TEXT, dettaglio TEXT)"
         )
@@ -106,7 +111,10 @@ def _db(path=None):
         con.close()
 
 
-MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
+MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl", "ga", "fo", "sx", "mz", "og")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
+
+
+MAX_VERSIONI = 20          # versioni precedenti conservate per ogni salvataggio
 
 
 def _chiave(nome, modulo="credit"):
@@ -114,7 +122,7 @@ def _chiave(nome, modulo="credit"):
     if modulo in MODULI_ARCHIVIO:
         return f"{modulo}|{nome}" if nome else ""
     if any(nome.startswith(m + "|") for m in MODULI_ARCHIVIO):
-        raise ValueError("Il nome non puo' iniziare con 'bp|', 'cf|', 'pv|', 'sc|' o 'sl|' (prefissi riservati).")
+        raise ValueError("Il nome non puo' iniziare con un prefisso riservato (" + ", ".join(m + "|" for m in MODULI_ARCHIVIO) + ").")
     return nome
 
 
@@ -124,8 +132,12 @@ def salva_pratica(nome, payload, path=None, autore="", modulo="credit"):
         raise ValueError("Il nome non puo' essere vuoto.")
     testo = json.dumps(payload, ensure_ascii=False, default=str)
     with _db(path) as con:
-        esiste = con.execute("SELECT 1 FROM pratiche WHERE nome=?", (nome,)).fetchone()
+        esiste = con.execute("SELECT payload, aggiornato, autore FROM pratiche WHERE nome=?", (nome,)).fetchone()
         if esiste:
+            if esiste[0] != testo:                                   # conserva la versione che sta per essere sostituita
+                con.execute("INSERT INTO pratiche_storico (nome, salvato, autore, payload) VALUES (?,?,?,?)", (nome, esiste[1], esiste[2] or "", esiste[0]))
+                con.execute("DELETE FROM pratiche_storico WHERE nome=? AND id NOT IN "
+                            "(SELECT id FROM pratiche_storico WHERE nome=? ORDER BY id DESC LIMIT ?)", (nome, nome, MAX_VERSIONI))
             con.execute("UPDATE pratiche SET aggiornato=?, payload=?, autore=? WHERE nome=?", (_now(), testo, autore, nome))
         else:
             con.execute(
@@ -154,6 +166,20 @@ def carica_pratica(nome, path=None, modulo="credit"):
 def elimina_pratica(nome, path=None, modulo="credit"):
     with _db(path) as con:
         con.execute("DELETE FROM pratiche WHERE nome=?", (_chiave(nome, modulo),))
+        con.execute("DELETE FROM pratiche_storico WHERE nome=?", (_chiave(nome, modulo),))
+
+
+def storico_pratica(nome, path=None, modulo="credit"):
+    """Versioni precedenti di un salvataggio, dalla piu' recente: [{id, salvato, autore}]."""
+    with _db(path) as con:
+        righe = con.execute("SELECT id, salvato, autore FROM pratiche_storico WHERE nome=? ORDER BY id DESC", (_chiave(nome, modulo),)).fetchall()
+    return [{"id": r[0], "salvato": r[1], "autore": r[2] or ""} for r in righe]
+
+
+def carica_versione(id_versione, path=None):
+    with _db(path) as con:
+        r = con.execute("SELECT payload FROM pratiche_storico WHERE id=?", (int(id_versione),)).fetchone()
+    return json.loads(r[0]) if r else None
 
 
 def database_persistente():
@@ -269,6 +295,8 @@ def esporta_backup(path=None):
     with _db(path) as con:
         out["pratiche"] = [dict(zip(("nome", "creato", "aggiornato", "autore", "payload"), r)) for r in
                            con.execute("SELECT nome, creato, aggiornato, autore, payload FROM pratiche ORDER BY nome")]
+        out["storico"] = [dict(zip(("nome", "salvato", "autore", "payload"), r)) for r in
+                          con.execute("SELECT nome, salvato, autore, payload FROM pratiche_storico ORDER BY id")]
         out["utenti"] = [dict(zip(("username", "ruolo", "attivo", "creato", "ultimo_accesso", "creato_da"), r)) for r in
                          con.execute("SELECT username, ruolo, attivo, creato, ultimo_accesso, creato_da FROM utenti ORDER BY username")]
         out["report_log"] = [dict(zip(("pratica", "report_id", "creato", "modello", "hash_dati"), r)) for r in

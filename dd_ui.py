@@ -8,6 +8,11 @@ import dd_report
 import pv_ui
 import sc_ui
 import sl_ui
+import og_ui
+import mz_ui
+import sx_ui
+import fo_ui
+import ga_ui
 import storage
 import theme
 
@@ -15,9 +20,13 @@ ss = st.session_state
 
 MODULI = [("sc", "Scadenzario", "Cassa, crediti e debiti"), ("cf", "Cash Flow di cantiere", "Liquidità e margine dei cantieri"),
           ("pv", "Computo e Preventivo", "Margine del preventivo"), ("credit", "Credit Risk & Rating", "Rating indicativo"),
-          ("bp", "Business Plan Studio", "DSCR del piano"), ("sl", "SAL e contabilità lavori", "Margine a finire delle commesse")]
+          ("bp", "Business Plan Studio", "DSCR del piano"), ("sl", "SAL e contabilità lavori", "Margine a finire delle commesse"), ("ga", "Gare e offerte", "Scadenze delle gare"), ("fo", "Fornitori", "Documenti in scadenza"),
+          ("sx", "Sicurezza", "Formazioni e documenti di cantiere"), ("mz", "Parco mezzi", "Scadenze e utilizzo"), ("og", "Organico", "Carico di lavoro")]
 SESSIONE = "Dati della sessione"
 NESSUNO = "Non usare"
+
+
+_SESS_KEY = {"ga": "ga_gare", "fo": "fo_doc", "sx": "sx_pers", "mz": "mz_mezzi", "og": "og_ris"}
 
 
 def _sessione_disponibile(m):
@@ -29,13 +38,15 @@ def _sessione_disponibile(m):
         return "pv_df" in ss
     if m == "sl":
         return "sl_com" in ss
+    if m in _SESS_KEY:
+        return _SESS_KEY[m] in ss
     if m == "bp":
         return any(isinstance(k, str) and k.startswith("bp_") for k in ss)
     return False                              # il rating si legge dalle pratiche salvate
 
 
 def _payload_sessione(m):
-    return {"sc": sc_ui._raccogli, "cf": cf_ui._raccogli, "pv": pv_ui._raccogli, "bp": bp_ui._raccogli, "sl": sl_ui._raccogli}[m]()
+    return {"sc": sc_ui._raccogli, "cf": cf_ui._raccogli, "pv": pv_ui._raccogli, "bp": bp_ui._raccogli, "sl": sl_ui._raccogli, "ga": ga_ui._raccogli, "fo": fo_ui._raccogli, "sx": sx_ui._raccogli, "mz": mz_ui._raccogli, "og": og_ui._raccogli}[m]()
 
 
 def _elenco_salvati(m):
@@ -55,6 +66,8 @@ def _calcola(m, payload):
             return dd.metriche_pv(payload)
         if m == "sl":
             return dd.metriche_sl(payload)
+        if m in ("ga", "fo", "sx", "mz", "og"):
+            return getattr(dd, "metriche_" + m)(payload)
         if m == "credit":
             return dd.metriche_credit(payload)
         return dd.metriche_bp(payload)
@@ -79,7 +92,7 @@ def render(fcr_uri, audit=None):
                 continue
             if scelta == SESSIONE:
                 payload = _payload_sessione(m)
-                demo = (m in ("sc", "cf", "sl") and ss.get(f"{m}_demo"))
+                demo = (m in ("sc", "cf", "sl", "ga", "fo", "sx", "mz", "og") and ss.get(f"{m}_demo"))
                 fonti[nome] = "dati della sessione" + (" (esempio)" if demo else "")
             else:
                 payload = storage.carica_pratica(scelta, modulo=m)

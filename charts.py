@@ -537,3 +537,72 @@ def fig_sl_commessa(d, tema="light"):
     _k(ax)
     ax.set_title(f"{d['Commessa']}: costi e valore maturato", fontsize=10, loc="left")
     return fig
+
+
+# ----------------------------------------------------------------------------
+# GRAFICI DEI MODULI OPERATIVI (gare, scadenze, mezzi, organico)
+# ----------------------------------------------------------------------------
+def fig_scadenze(conteggi, titolo="Stato delle scadenze", tema="light"):
+    fig, (ax,) = _nuova(tema, w=6.4, h=2.4)
+    t = _t(tema)
+    voci = [("Scaduti", conteggi.get("bad", 0), ROSSO), ("In scadenza", conteggi.get("warn", 0), GIALLO), ("In regola", conteggi.get("ok", 0), VERDE)]
+    ax.barh(range(3), [v[1] for v in voci], color=[v[2] for v in voci], height=0.55)
+    for i, v in enumerate(voci):
+        ax.text(v[1], i, f" {v[1]}", va="center", fontsize=9, color=t["fg"])
+    ax.set_yticks(range(3))
+    ax.set_yticklabels([v[0] for v in voci], fontsize=9, color=t["fg"])
+    ax.invert_yaxis()
+    ax.set_xlim(0, max(1, max(v[1] for v in voci)) * 1.18)
+    ax.grid(axis="y", visible=False)
+    ax.set_title(titolo, fontsize=10, loc="left")
+    return fig
+
+
+def fig_ga_gare(det, target, tema="light"):
+    n = max(1, len(det))
+    fig, (ax,) = _nuova(tema, w=7.2, h=max(2.4, 0.5 * n + 1.3))
+    t = _t(tema)
+    for i, d in enumerate(det):
+        m = d["Margine %"]
+        ax.barh(i, m, height=0.55, color=VERDE if m >= target else (GIALLO if m > 0 else ROSSO))
+    ax.axvline(target, color=t["fg"], linewidth=1, linestyle="--")
+    ax.axvline(0, color=t["fg"], linewidth=0.8)
+    ax.set_yticks(range(n))
+    ax.set_yticklabels([d["Gara"][:26] for d in det], fontsize=8, color=t["fg"])
+    ax.invert_yaxis()
+    ax.set_xlabel(f"Margine % sull'offerta (tratteggio = obiettivo {fmt_num(target, 0)}%)", fontsize=8)
+    ax.grid(axis="y", visible=False)
+    ax.set_title("Margine atteso con il ribasso scelto", fontsize=10, loc="left")
+    return fig
+
+
+def fig_og_carico(mesi, tema="light"):
+    fig, (ax,) = _nuova(tema, w=7.2, h=3.0)
+    t = _t(tema)
+    x = list(range(len(mesi)))
+    col = [ROSSO if m["Saturazione %"] > 100 else (GIALLO if m["Saturazione %"] < 60 else VERDE) for m in mesi]
+    ax.bar(x, [m["Ore assegnate"] for m in mesi], color=col, width=0.6, label="Ore assegnate")
+    ax.plot(x, [m["Capacità ore"] for m in mesi], color=t["fg"], marker="o", linewidth=1.4, label="Capacità")
+    ax.set_xticks(x)
+    ax.set_xticklabels([m["Mese"] for m in mesi], fontsize=8, color=t["fg"])
+    ax.set_ylabel("ore", fontsize=8)
+    ax.set_title("Carico di lavoro e capacità per mese", fontsize=10, loc="left")
+    _legenda(ax, tema, loc="upper right")
+    return fig
+
+
+def fig_mz_costi(det, tema="light"):
+    n = max(1, len(det))
+    fig, (ax,) = _nuova(tema, w=7.2, h=max(2.4, 0.5 * n + 1.3))
+    t = _t(tema)
+    for i, d in enumerate(det):
+        ax.barh(i, d["Costo imputato"], height=0.55, color=SERIE[0], label="Costo imputato alle commesse" if i == 0 else None)
+        ax.barh(i, d["Fissi non assorbiti"], left=d["Costo imputato"], height=0.55, color=GIALLO, label="Costi fissi non assorbiti" if i == 0 else None)
+    ax.set_yticks(range(n))
+    ax.set_yticklabels([d["Mezzo"][:24] for d in det], fontsize=8, color=t["fg"])
+    ax.invert_yaxis()
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: fmt_num(v / 1000) + "k"))
+    ax.grid(axis="y", visible=False)
+    ax.set_title("Costo dei mezzi: imputato e non assorbito (12 mesi)", fontsize=10, loc="left")
+    _legenda(ax, tema, loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2)
+    return fig

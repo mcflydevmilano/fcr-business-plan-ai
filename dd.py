@@ -9,6 +9,11 @@ import core
 import pv
 import sc
 import sl
+import ga
+import fo
+import sx
+import mz
+import og
 import bp
 from core import fmt_num
 
@@ -59,6 +64,68 @@ def metriche_sl(payload, oggi=None):
         p["oggi"] = oggi
     out = sl.calcola_sl(com, sal, cos, p)
     return {"kpi": out["kpi"], "avvisi": out["avvisi"], "commesse": out["commesse"]}
+
+
+def metriche_ga(payload, oggi=None):
+    gare, _ = ga.normalizza_gare(payload.get("gare"))
+    if not gare:
+        return None
+    doc, _ = ga.normalizza_doc(payload.get("doc"), {g["Gara"] for g in gare})
+    p = dict(payload.get("params") or {})
+    if oggi is not None:
+        p["oggi"] = oggi
+    out = ga.calcola_ga(gare, doc, p)
+    return {"kpi": out["kpi"], "avvisi": out["avvisi"]}
+
+
+def metriche_fo(payload, oggi=None):
+    docs, _ = fo.normalizza_docfo(payload.get("docs"))
+    contr, _ = fo.normalizza_contratti(payload.get("contratti"))
+    if not docs and not contr:
+        return None
+    p = dict(payload.get("params") or {})
+    if oggi is not None:
+        p["oggi"] = oggi
+    out = fo.calcola_fo(docs, contr, [], p)
+    return {"kpi": out["kpi"], "avvisi": out["avvisi"]}
+
+
+def metriche_sx(payload, oggi=None):
+    pers, _ = sx.normalizza_pers(payload.get("pers"))
+    docc, _ = sx.normalizza_docc(payload.get("docc"))
+    if not pers and not docc:
+        return None
+    p = dict(payload.get("params") or {})
+    if oggi is not None:
+        p["oggi"] = oggi
+    out = sx.calcola_sx(pers, docc, p)
+    return {"kpi": out["kpi"], "avvisi": out["avvisi"]}
+
+
+def metriche_mz(payload, oggi=None):
+    mezzi, _ = mz.normalizza_mezzi(payload.get("mezzi"))
+    if not mezzi:
+        return None
+    nomi = {m["Mezzo"] for m in mezzi}
+    uso, _ = mz.normalizza_uso(payload.get("uso"), nomi)
+    scad, _ = mz.normalizza_scad(payload.get("scad"), nomi)
+    p = dict(payload.get("params") or {})
+    if oggi is not None:
+        p["oggi"] = oggi
+    out = mz.calcola_mz(mezzi, uso, scad, p)
+    return {"kpi": out["kpi"], "avvisi": out["avvisi"]}
+
+
+def metriche_og(payload, oggi=None):
+    ris, _ = og.normalizza_ris(payload.get("ris"))
+    if not ris:
+        return None
+    ass, _ = og.normalizza_ass(payload.get("ass"), {r["Risorsa"] for r in ris})
+    p = dict(payload.get("params") or {})
+    if oggi is not None:
+        p["oggi"] = oggi
+    out = og.calcola_og(ris, ass, p)
+    return {"kpi": out["kpi"], "avvisi": out["avvisi"]}
 
 
 def metriche_pv(payload):
@@ -193,6 +260,39 @@ def semafori(m, soglie=None):
             st12 = "warn"
             righe.append(_riga("Crediti", "Lavori eseguiti da fatturare", f"{fmt_num(k['da_fatturare'])} €", st12, "Emetti il prossimo SAL: è liquidità che aspetta"))
             azioni.append(("warn", f"Hai {fmt_num(k['da_fatturare'])} € di lavori eseguiti non ancora fatturati: emetti i SAL."))
+
+    if m.get("ga"):
+        k = m["ga"]["kpi"]
+        stg = "bad" if k["scadute"] or k["n_bad"] else ("warn" if k["in_scadenza"] or k["doc_mancanti"] else "ok")
+        righe.append(_riga("Commerciale", "Gare in scadenza o in ritardo", str(k["in_scadenza"] + k["scadute"]), stg,
+                           f"{k['n_aperte']} gare aperte · pipeline ponderata {fmt_num(k['ponderato'])} € · {k['doc_mancanti']} documenti mancanti"))
+        if stg != "ok":
+            azioni.append((stg, "Ci sono gare con scadenza vicina o superata, o documenti mancanti: completa le offerte in tempo."))
+    if m.get("fo"):
+        k = m["fo"]["kpi"]
+        stf = "bad" if k["doc_scaduti"] else ("warn" if k["doc_in_scadenza"] or k["sovrafatturati"] else "ok")
+        righe.append(_riga("Fornitori", "Documenti dei fornitori scaduti", str(k["doc_scaduti"]), stf, f"{k['doc_in_scadenza']} in scadenza · {k['forn_critici']} fornitori critici"))
+        if stf != "ok":
+            azioni.append((stf, "Chiedi il rinnovo dei documenti scaduti o in scadenza (DURC, assicurazioni) ai fornitori."))
+    if m.get("sx"):
+        k = m["sx"]["kpi"]
+        sts = "bad" if k["cantieri_a_rischio"] else ("warn" if k["in_scadenza"] else "ok")
+        righe.append(_riga("Sicurezza", "Cantieri con documenti o formazioni non in regola", str(k["cantieri_a_rischio"]), sts,
+                           f"{k['persone_non_in_regola']} persone non in regola · {k['doc_mancanti']} documenti mancanti"))
+        if sts != "ok":
+            azioni.append((sts, "Sicurezza: aggiorna formazioni, idoneità e documenti di cantiere in scadenza o mancanti (verifica con il RSPP)."))
+    if m.get("mz"):
+        k = m["mz"]["kpi"]
+        stm = "bad" if k["scad_scadute"] else ("warn" if k["scad_in_arrivo"] or k["sottoutilizzati"] else "ok")
+        righe.append(_riga("Mezzi", "Scadenze dei mezzi superate", str(k["scad_scadute"]), stm, f"{k['scad_in_arrivo']} in arrivo · fissi non assorbiti {fmt_num(k['fissi_non_assorbiti'])} €"))
+        if stm != "ok":
+            azioni.append((stm, "Parco mezzi: rinnova le scadenze e valuta i mezzi poco usati (costi fissi non coperti)."))
+    if m.get("og"):
+        k = m["og"]["kpi"]
+        sto = "bad" if k["mesi_sovraccarico"] else ("warn" if k["mesi_scarico"] else "ok")
+        righe.append(_riga("Organico", "Mesi in sovraccarico", str(k["mesi_sovraccarico"]), sto, f"saturazione media {fmt_num(k['saturazione_media'], 0)}% · {k['mesi_scarico']} mesi con poco lavoro"))
+        if sto != "ok":
+            azioni.append((sto, "Organico: nei mesi di sovraccarico servono più risorse; nei mesi scarichi ci sono ore ferme da riempire."))
 
     pres = [r["Stato"] for r in righe if r["Stato"] != "nd"]
     if not pres:
