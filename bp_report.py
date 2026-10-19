@@ -8,6 +8,7 @@ import time
 
 import charts
 import core
+from bp import confronto_scenari as bp_confronto
 from core import DISCLAIMER, LOGO_FCR_PATH, LOGO_PATH, PRIVACY_PUNTI, fmt_num, fmt_x
 from pdf_report import (
     BLU, BORDO, CHIARO, GIALLO_B, GRIGIO, NAVY, NL, ROSSO_B, TESTO, TRICOLORE, VERDE_B, _PDF, _strumenti, pdf_safe,
@@ -20,7 +21,7 @@ ETICHETTE_ASSUNZIONI = [
     ("capex", "Investimento iniziale (CAPEX)", "eur"), ("anni_amm", "Anni di ammortamento", "n"),
     ("mutuo", "Finanziamento bancario", "eur"), ("tasso", "Tasso d'interesse annuo", "pct"),
     ("durata", "Durata del finanziamento (anni)", "n"), ("equity", "Mezzi propri apportati", "eur"),
-    ("aliquota", "Aliquota fiscale (IRES + IRAP)", "pct"), ("ccn_pct", "Capitale circolante (% sulla variazione ricavi)", "pct"),
+    ("ccn_pct", "Capitale circolante (% sulla variazione ricavi)", "pct"),
 ]
 
 
@@ -37,7 +38,10 @@ def costruisci_ctx_bp(out, nome, descrizione="", modello="nessuno"):
 
 def grafici_bp(out):
     a, k = out["anni"], out["kpi"]
+    scen = out.get("scenari")
     return {
+        "scenari": charts.fig_png(charts.fig_bp_scenari(scen, "light")) if scen else None,
+        "tornado": charts.fig_png(charts.fig_tornado(out["sensibilita"], out.get("sens_metrica", ""), "light")) if out.get("sensibilita") else None,
         "economico": charts.fig_png(charts.fig_bp_economico(a, "light")),
         "finanza": charts.fig_png(charts.fig_bp_finanza(a, k["cassa_iniziale"], "light")),
         "mutuo": charts.fig_png(charts.fig_bp_mutuo(out["mutuo"], "light")) if out["params"]["mutuo"] > 0 else None,
@@ -191,7 +195,13 @@ def genera_pdf_bp(ctx, relazione="", grafici=None):
     if ctx.get("descrizione"):
         paragrafo(ctx["descrizione"], 9.2, TESTO, 4.9)
         pdf.ln(2)
-    tabella(["Ipotesi", "Valore"], [(et, _v(q[ch], tp)) for ch, et, tp in ETICHETTE_ASSUNZIONI], [126, 60], ["L", "R"])
+    righe_ip = [(et, _v(q[ch], tp)) for ch, et, tp in ETICHETTE_ASSUNZIONI]
+    if q["fisco"] == "semplice":
+        righe_ip.append(("Imposte (aliquota unica, senza riporto perdite)", _v(q["aliquota"], "pct")))
+    else:
+        righe_ip += [("IRES", _v(q["ires"], "pct")), ("IRAP", _v(q["irap"], "pct") + f" (personale deducibile {fmt_num(q['irap_ded_pers'], 0)}%)"),
+                     ("Riporto perdite fiscali", "si' (max 80% del reddito)" if q["riporto"] else "no")]
+    tabella(["Ipotesi", "Valore"], righe_ip, [126, 60], ["L", "R"])
     tabella(["Fonti e impieghi iniziali", "Importo"], [
         ("Investimento iniziale (CAPEX)", fmt_num(q["capex"]) + " EUR"),
         ("Finanziamento bancario", fmt_num(q["mutuo"]) + " EUR"),
@@ -203,7 +213,10 @@ def genera_pdf_bp(ctx, relazione="", grafici=None):
     voci_ce = [("Ricavi delle vendite", "Ricavi", 1), ("Costi variabili", "Costi variabili", -1), ("Costo del personale", "Personale", -1),
                ("Altri costi operativi", "Altri costi", -1), ("EBITDA", "EBITDA", 1), ("Ammortamenti", "Ammortamenti", -1),
                ("EBIT", "EBIT", 1), ("Interessi passivi", "Interessi", -1), ("Utile ante imposte", "Utile ante imposte", 1),
+               ("di cui IRES", "IRES", -1), ("di cui IRAP", "IRAP", -1),
                ("Imposte", "Imposte", -1), ("Utile netto", "Utile netto", 1)]
+    if q["fisco"] == "semplice":
+        voci_ce = [v for v in voci_ce if v[1] not in ("IRES", "IRAP")]
     righe = [(et, *[fmt_num(sg * r[ch]) for r in anni]) for et, ch, sg in voci_ce]
     righe.insert(5, ("Margine EBITDA %", *[fmt_num(r["Margine EBITDA %"], 1) + "%" for r in anni]))
     tabella(["Voce (EUR)"] + [str(r["AnnoNum"]) for r in anni], righe, larghezze, allin)
@@ -234,6 +247,21 @@ def genera_pdf_bp(ctx, relazione="", grafici=None):
                  for r in out["mutuo"]], [26, 40, 40, 40, 40], ["L", "R", "R", "R", "R"])
         immagine("mutuo", 150)
 
+    if out.get("scenari"):
+        sezione("Scenari e analisi di sensibilita'", prossima(), 100)
+        paragrafo("Gli scenari applicano scostamenti prudenziali e favorevoli alle ipotesi base (valori modificabili dall'utente). "
+                  "La sensibilita' mostra di quanto cambia la metrica variando una sola ipotesi per volta.", 8.8)
+        pdf.ln(1.5)
+        conf = bp_confronto(out["scenari"])
+        tabella(["Scenario", "EBITDA ult. anno", "Utile cum.", "Cassa min.", "DSCR min", "Payback"],
+                [(c["Scenario"], fmt_num(c["EBITDA ultimo anno"]), fmt_num(c["Utile netto cumulato"]), fmt_num(c["Cassa minima"]),
+                  fmt_x(c["DSCR minimo"]) if c["DSCR minimo"] is not None else "n.d.",
+                  (fmt_num(c["Payback (anni)"], 1) + " anni") if c["Payback (anni)"] is not None else "oltre")
+                 for c in conf], [34, 33, 31, 31, 24, 33], ["L", "R", "R", "R", "R", "R"])
+        immagine("scenari", 150)
+        if grafici.get("tornado"):
+            immagine("tornado", 150)
+
     sezione("Punti di attenzione", prossima(), 40)
     if out["avvisi"]:
         for a in out["avvisi"]:
@@ -259,13 +287,16 @@ def genera_pdf_bp(ctx, relazione="", grafici=None):
 
     sezione("Metodologia e limiti", prossima(), 70)
     paragrafo("Ricavi(t) = Ricavi(1) x (1 + crescita)^(t-1). EBITDA = ricavi - costi variabili - personale - altri costi fissi. "
-              "Gli interessi derivano dal piano di ammortamento del finanziamento (rate annuali). Le imposte sono calcolate sull'utile "
-              "ante imposte positivo, senza riporto delle perdite (ipotesi prudenziale). La variazione del capitale circolante e' "
+              "Gli interessi derivano dal piano di ammortamento del finanziamento (rate annuali). Le imposte seguono il modello scelto: "
+              "\"dettagliato\" = IRES sul reddito (al netto delle perdite pregresse, utilizzabili fino all'80% del reddito) piu' IRAP su EBIT + "
+              "personale non deducibile (dovuta anche in perdita civilistica); \"semplice\" = aliquota unica sugli utili positivi. "
+              "Il reddito imponibile e' assunto pari all'utile ante imposte: variazioni fiscali (indeducibilita', ACE, super-ammortamenti, "
+              "interessi passivi eccedenti il 30% del ROL, regime dei contributi) non sono modellate e vanno verificate dal commercialista. La variazione del capitale circolante e' "
               "una percentuale della variazione dei ricavi (nel primo anno, dei ricavi). Flusso operativo = EBITDA - imposte - variazione CCN; "
               "DSCR = flusso operativo / (interessi + quota capitale); PFN = debito residuo - cassa.", 8.5)
     pdf.ln(1.5)
     paragrafo("Limiti: il modello e' semplificato (anni solari interi, un solo finanziamento, nessuna stagionalita', IVA, "
-              "contributi, valore residuo o scenari alternativi). Ogni ipotesi e' definita dall'utente e va validata con dati di mercato.", 8.5)
+              "contributi, valore residuo). Ogni ipotesi e' definita dall'utente e va validata con dati di mercato.", 8.5)
 
     sezione("Informativa sulla privacy e avvertenze", prossima(), 70)
     for titolo_p, testo_p in PRIVACY_PUNTI:
