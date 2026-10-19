@@ -180,7 +180,7 @@ def render(fcr_uri, audit=None, utente=""):
             st.info("Aggiungi dei documenti per generare il dossier.")
         else:
             nome = st.text_input("Nome del documento", "Scadenzario", key="sc_nome")
-            if st.button("📄 Genera dossier PDF ed Excel", type="primary", key="sc_gen"):
+            if st.button("📄 Genera dossier PDF ed Excel", type="primary", key="gen_sc"):
                 with st.spinner("Preparo i documenti..."):
                     ctx = sc_report.costruisci_ctx_sc(out, docs, nome)
                     ss["sc_rep"] = {"pdf": sc_report.genera_pdf_sc(ctx), "xlsx": sc_report.genera_excel_sc(ctx), "id": ctx["report_id"]}

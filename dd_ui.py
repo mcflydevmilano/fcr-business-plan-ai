@@ -106,7 +106,7 @@ def render(fcr_uri, audit=None):
         st.info("Inserisci i dati nei moduli (o salvali) per popolare il cruscotto.")
     else:
         st.success("Nessuna azione urgente.")
-    if st.button("📄 Genera il rapporto PDF", type="primary", key="dd_gen"):
+    if st.button("📄 Genera il rapporto PDF", type="primary", key="gen_dd"):
         ctx = dd_report.costruisci_ctx_dd(righe, gen, azioni, fonti)
         ss["dd_rep"] = {"pdf": dd_report.genera_pdf_dd(ctx), "id": ctx["report_id"]}
         audit("dd_report", ctx["report_id"])

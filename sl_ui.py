@@ -123,7 +123,7 @@ def render(fcr_uri, audit=None, utente=""):
     with t1:
         if ss.get("sl_demo"):
             st.info("Commesse di esempio con date relative a oggi. Sostituiscile con le tue: modifica le tabelle o importa un file.")
-            if st.button("Svuota l'esempio e parti da zero", key="sl_svuota"):
+            if st.button("Svuota l'esempio e parti da zero", key="svuota_sl"):
                 for chiave, _u, _i, cols, _e in TABELLE:
                     sostituisci_tabella(chiave, pd.DataFrame(columns=cols))
                 ss["sl_demo"] = False
@@ -206,7 +206,7 @@ def render(fcr_uri, audit=None, utente=""):
         with a:
             st.markdown("**Scadenzario incassi e pagamenti**")
             st.write("SAL emessi → fatture attive; costi non pagati → fatture passive.")
-            if st.button("📅 Invia allo Scadenzario", key="sl_to_sc", disabled=not det):
+            if st.button("📅 Invia allo Scadenzario", key="to_sc_sl", disabled=not det):
                 if "sc_df" not in ss:
                     ss["sc_df"] = pd.DataFrame(columns=sc.COLONNE_DOC)
                 att = ss["sc_df"]
@@ -217,16 +217,16 @@ def render(fcr_uri, audit=None, utente=""):
                     att = att[~att["Documento"].astype(str).str.startswith(sl.PREFISSO_DOC)]
                 nuove = pd.DataFrame(sl.per_scadenzario(out, cos, p), columns=sc.COLONNE_DOC)
                 sostituisci_tabella("sc_df", pd.concat([att, nuove], ignore_index=True) if len(att) else nuove)
-                audit("sl_to_sc", str(len(nuove)))
+                audit("to_sc_sl", str(len(nuove)))
                 st.success(f"Inviate {len(nuove)} righe allo Scadenzario. Aprilo dall'Hub per vedere la cassa settimanale.")
         with b:
             st.markdown("**Cash Flow di cantiere**")
             st.write("Le commesse diventano cantieri, con i costi a finire attesi al posto del preventivo.")
-            if st.button("💶 Invia al Cash Flow", key="sl_to_cf", disabled=not det):
+            if st.button("💶 Invia al Cash Flow", key="to_cf_sl", disabled=not det):
                 righe = sl.per_cash_flow(out, com)
                 sostituisci_tabella("cf_df", pd.DataFrame(righe, columns=cf.COLONNE_CANTIERI))
                 ss["cf_demo"] = False
-                audit("sl_to_cf", str(len(righe)))
+                audit("to_cf_sl", str(len(righe)))
                 st.success(f"Portafoglio del Cash Flow sostituito con {len(righe)} commesse (mese 1 = prima partenza).")
         st.info("Il **Cruscotto di direzione** legge questo modulo dalla sessione o da un salvataggio e aggiunge i semafori su margine a finire e commesse critiche.")
 
@@ -235,7 +235,7 @@ def render(fcr_uri, audit=None, utente=""):
             st.info("Aggiungi delle commesse per generare il dossier.")
         else:
             nome = st.text_input("Nome del documento", "SAL e contabilità lavori", key="sl_nome")
-            if st.button("📄 Genera dossier PDF ed Excel", type="primary", key="sl_gen"):
+            if st.button("📄 Genera dossier PDF ed Excel", type="primary", key="gen_sl"):
                 with st.spinner("Preparo i documenti..."):
                     ctx = sl_report.costruisci_ctx_sl(out, com, sal, cos, nome)
                     ss["sl_rep"] = {"pdf": sl_report.genera_pdf_sl(ctx), "xlsx": sl_report.genera_excel_sl(ctx), "id": ctx["report_id"]}
