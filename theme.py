@@ -104,6 +104,31 @@ h3 { margin-top: .6rem; }
 .hub-card.pv .hub-badge { background: #f5f3ff; }
 .hub-card.pv .hub-num { color: #6d28d9; }
 .hub-card.pv li::before { background: #ede9fe; color: #6d28d9; }
+.hub-card.sc::before { background: linear-gradient(90deg, #0e7490, #22d3ee); }
+.hub-card.sc:hover { border-color: #a5f3fc; box-shadow: 0 2px 4px rgba(15,23,42,.06), 0 14px 34px rgba(14,116,144,.16); }
+.hub-card.sc .hub-badge { background: #ecfeff; }
+.hub-card.sc .hub-num { color: #0e7490; }
+.hub-card.sc li::before { background: #cffafe; color: #0e7490; }
+.hub-card.dd::before { background: linear-gradient(90deg, #be123c, #fb7185); }
+.hub-card.dd:hover { border-color: #fecdd3; box-shadow: 0 2px 4px rgba(15,23,42,.06), 0 14px 34px rgba(190,18,60,.16); }
+.hub-card.dd .hub-badge { background: #fff1f2; }
+.hub-card.dd .hub-num { color: #be123c; }
+.hub-card.dd li::before { background: #ffe4e6; color: #be123c; }
+.sem-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin: 10px 0 18px 0; }
+.sem { display: flex; gap: 12px; align-items: flex-start; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 13px 15px; box-shadow: var(--shadow); }
+.sem .dot { flex: 0 0 18px; width: 18px; height: 18px; border-radius: 50%; margin-top: 3px; box-shadow: 0 0 0 4px rgba(148,163,184,.18); }
+.sem.ok .dot { background: #22c55e; box-shadow: 0 0 0 4px rgba(34,197,94,.18); }
+.sem.warn .dot { background: #f59e0b; box-shadow: 0 0 0 4px rgba(245,158,11,.2); }
+.sem.bad .dot { background: #ef4444; box-shadow: 0 0 0 4px rgba(239,68,68,.2); }
+.sem.nd .dot { background: #cbd5e1; }
+.sem .area { font-size: .66rem; text-transform: uppercase; letter-spacing: .09em; color: var(--mut); }
+.sem .ind { font-size: .86rem; color: var(--ink); font-weight: 600; margin-top: 1px; }
+.sem .vl { font-size: 1.35rem; font-weight: 700; color: var(--navy); margin-top: 2px; }
+.sem .nt { font-size: .72rem; color: var(--mut); margin-top: 2px; }
+.sem-big { display: flex; align-items: center; gap: 16px; border-radius: 16px; padding: 18px 22px; margin: 6px 0 14px 0; border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); }
+.sem-big .dot { width: 34px; height: 34px; border-radius: 50%; }
+.sem-big.ok .dot { background: #22c55e; } .sem-big.warn .dot { background: #f59e0b; } .sem-big.bad .dot { background: #ef4444; } .sem-big.nd .dot { background: #cbd5e1; }
+.sem-big .tt { font-size: 1.25rem; font-weight: 700; color: var(--navy); } .sem-big .ss { font-size: .85rem; color: var(--mut); }
 .hub-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .hub-tag { font-size: .68rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--panel2); color: var(--mut); border: 1px solid var(--line); }
 
@@ -303,6 +328,20 @@ def hub_card(numero, icona, titolo, descrizione, voci, tags, variante=""):
     tg = "".join(f'<span class="hub-tag">{_e(t)}</span>' for t in tags)
     return (f'<div class="hub-card {variante}"><div class="hub-badge">{icona}</div><div class="hub-num">{_e(numero)}</div>'
             f'<h2>{_e(titolo)}</h2><p>{_e(descrizione)}</p><ul>{li}</ul><div class="hub-tags">{tg}</div></div>')
+
+
+def semafori_html(righe):
+    """Griglia di semafori. righe: dict con Area, Indicatore, Valore, Stato (ok|warn|bad|nd), Nota."""
+    celle = "".join(
+        f'<div class="sem {_e(r["Stato"])}"><div class="dot"></div><div><div class="area">{_e(r["Area"])}</div>'
+        f'<div class="ind">{_e(r["Indicatore"])}</div><div class="vl">{_e(r["Valore"])}</div><div class="nt">{_e(r["Nota"])}</div></div></div>'
+        for r in righe)
+    return f'<div class="sem-grid">{celle}</div>'
+
+
+def semaforo_generale(stato, titolo, sotto):
+    return (f'<div class="sem-big {_e(stato)}"><div class="dot"></div><div><div class="tt">{_e(titolo)}</div>'
+            f'<div class="ss">{_e(sotto)}</div></div></div>')
 
 
 def stat_strip(voci):

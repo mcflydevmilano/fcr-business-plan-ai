@@ -97,3 +97,46 @@ def test_nome_pratica_con_prefisso_riservato(monkeypatch):
     p = os.path.join(tempfile.mkdtemp(), "t.db")
     with pytest.raises(ValueError):
         storage.salva_pratica("cf|x", {}, path=p)
+
+
+def test_hub_sei_strumenti_e_nuovi_moduli(monkeypatch):
+    at = _nuovo(monkeypatch)
+    t = " ".join(m.value for m in at.markdown)
+    assert "Strumento 5" in t and "Strumento 6" in t
+    _btn(at, "Apri Scadenzario").click().run()
+    assert not at.exception and len(at.tabs) == 4
+    assert any("Sì, questa settimana" in m.value or "va in negativo" in m.value or "Attenzione" in m.value for m in list(at.success) + list(at.warning) + list(at.error))
+    _btn(at, "Torna all'Hub").click().run()
+    _btn(at, "Apri Cruscotto").click().run()
+    assert not at.exception
+    assert any("Cosa fare" in s.value for s in at.subheader)
+
+
+def test_cruscotto_legge_i_dati_della_sessione(monkeypatch):
+    at = _nuovo(monkeypatch, modulo="sc")
+    at.session_state["sc_fido"] = 50000.0
+    _btn(at, "Torna all'Hub").click().run()
+    _btn(at, "Apri Cruscotto").click().run()
+    testo = " ".join(m.value for m in at.markdown)
+    assert "Crediti scaduti sul totale da incassare" in testo and "Cassa a fine settimana 1" in testo
+
+
+def test_report_scadenzario_e_cruscotto(monkeypatch):
+    at = _nuovo(monkeypatch, modulo="sc")
+    at.button(key="sc_gen").click().run()
+    assert not at.exception and at.session_state["sc_rep"]["pdf"][:4] == b"%PDF"
+    at2 = _nuovo(monkeypatch, modulo="dd")
+    at2.button(key="dd_gen").click().run()
+    assert not at2.exception and at2.session_state["dd_rep"]["pdf"][:4] == b"%PDF"
+
+
+def test_salva_e_riapri_scadenzario(monkeypatch):
+    at = _nuovo(monkeypatch, modulo="sc")
+    at.number_input(key="sc_fido").set_value(77000.0).run()
+    at.text_input(key="sv_nome_sc").set_value("Ottobre").run()
+    at.button(key="sv_salva_sc").click().run()
+    import storage
+    assert [p["nome"] for p in storage.elenca_pratiche(modulo="sc")] == ["Ottobre"]
+    at.number_input(key="sc_fido").set_value(1.0).run()
+    at.button(key="sv_apri_sc").click().run()
+    assert not at.exception and at.number_input(key="sc_fido").value == 77000.0

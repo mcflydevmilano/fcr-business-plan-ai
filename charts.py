@@ -459,3 +459,39 @@ def fig_pv_sensibilita(righe, tema="light"):
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}%"))
     ax.set_title("Margine se i costi aumentano (prezzo al cliente invariato)", fontsize=10, loc="left")
     return fig
+
+
+# ----------------------------------------------------------------------------
+# SCADENZARIO E CRUSCOTTO
+# ----------------------------------------------------------------------------
+def fig_sc_settimane(sett, fido=None, tema="light"):
+    """Incassi e pagamenti previsti per settimana (barre) e cassa a fine settimana (linea)."""
+    fig, (ax,) = _nuova(tema, w=7.6, h=4.0)
+    t = _t(tema)
+    xs = [r["Settimana"] for r in sett]
+    ax.bar(xs, [r["Incassi"] for r in sett], color=VERDE, width=0.62, label="Incassi previsti")
+    ax.bar(xs, [-r["Pagamenti"] for r in sett], color=ROSSO, width=0.62, alpha=0.85, label="Pagamenti previsti")
+    ax.plot(xs, [r["Cassa finale"] for r in sett], color=SERIE[0], marker="o", markersize=3.5, linewidth=2, label="Cassa a fine settimana")
+    if fido:
+        ax.axhline(-fido, color=GIALLO, linestyle="--", linewidth=1.3, label=f"Limite del fido ({fmt_num(fido / 1000)}k)")
+    ax.axhline(0, color=t["fg"], linewidth=0.8)
+    ax.set_xticks(xs)
+    ax.set_xlabel("Settimana", fontsize=8)
+    _k(ax)
+    ax.set_title("Cassa settimana per settimana", fontsize=10, loc="left")
+    _legenda(ax, tema, loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=4)
+    return fig
+
+
+def fig_sc_fasce(fasce, tema="light"):
+    """Anzianita' dello scaduto: crediti (attive) e debiti (passive) per fascia di ritardo."""
+    fig, (ax,) = _nuova(tema, w=7.2, h=3.2)
+    xs = list(range(len(fasce)))
+    ax.bar([x - 0.2 for x in xs], [f["Attive"] for f in fasce], width=0.4, color=SERIE[1], label="Da incassare")
+    ax.bar([x + 0.2 for x in xs], [f["Passive"] for f in fasce], width=0.4, color=SERIE[3], label="Da pagare")
+    ax.set_xticks(xs)
+    ax.set_xticklabels([f["Fascia"] for f in fasce], fontsize=8, color=_t(tema)["fg"])
+    _k(ax)
+    ax.set_title("Anzianita' dei documenti aperti", fontsize=10, loc="left")
+    _legenda(ax, tema, loc="upper right")
+    return fig

@@ -106,7 +106,7 @@ def _db(path=None):
         con.close()
 
 
-MODULI_ARCHIVIO = ("bp", "cf", "pv")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
+MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
 
 
 def _chiave(nome, modulo="credit"):
@@ -114,7 +114,7 @@ def _chiave(nome, modulo="credit"):
     if modulo in MODULI_ARCHIVIO:
         return f"{modulo}|{nome}" if nome else ""
     if any(nome.startswith(m + "|") for m in MODULI_ARCHIVIO):
-        raise ValueError("Il nome non puo' iniziare con 'bp|', 'cf|' o 'pv|' (prefissi riservati).")
+        raise ValueError("Il nome non puo' iniziare con 'bp|', 'cf|', 'pv|' o 'sc|' (prefissi riservati).")
     return nome
 
 

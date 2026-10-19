@@ -32,6 +32,8 @@ import exports
 import storage
 import bp_ui
 import cf_ui
+import dd_ui
+import sc_ui
 import pv_ui
 import theme
 import xbrl
@@ -375,7 +377,7 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "dd": ("dd_",)}
 
 
 def vai_a(modulo):
@@ -543,6 +545,37 @@ if MODULO is None:
         )
         if st.button("Apri Computo e Preventivo  →", key="hub_pv", width="stretch"):
             vai_a("pv")
+    _c5, _c6 = st.columns(2, gap="large")
+    with _c5:
+        st.markdown(
+            theme.hub_card(
+                "Strumento 5", "📅", "Scadenzario incassi e pagamenti",
+                "Fatture attive e passive: quanto incassi e paghi, settimana per settimana.",
+                ["Risposta a «questa settimana ho cassa?»",
+                 "Scaduto per fasce di ritardo e clienti da sollecitare",
+                 "Bozze di sollecito pronte da rivedere",
+                 "Dossier PDF ed Excel con formule vive"],
+                ["Settimanale", "Solleciti", "PDF + Excel"], "sc",
+            ),
+            unsafe_allow_html=True,
+        )
+        if st.button("Apri Scadenzario  →", key="hub_sc", width="stretch"):
+            vai_a("sc")
+    with _c6:
+        st.markdown(
+            theme.hub_card(
+                "Strumento 6", "🚦", "Cruscotto di direzione",
+                "Lo stato dell'azienda in un colpo d'occhio, con i semafori e le azioni da fare.",
+                ["Margine, cassa, scoperto, crediti e rating",
+                 "Legge i dati dagli altri moduli, anche salvati",
+                 "Soglie dei semafori modificabili",
+                 "Rapporto PDF per la direzione"],
+                ["Semafori", "Azioni", "PDF"], "dd",
+            ),
+            unsafe_allow_html=True,
+        )
+        if st.button("Apri Cruscotto di direzione  →", key="hub_dd", width="stretch"):
+            vai_a("dd")
     st.caption("Le simulazioni sono indicative e non costituiscono rating regolamentare, parere di credito o consulenza.")
     st.stop()
 
@@ -552,6 +585,14 @@ if MODULO == "bp":
 
 if MODULO == "cf":
     cf_ui.render(FCR_URI, audit, ss["utente"]["username"])
+    st.stop()
+
+if MODULO == "sc":
+    sc_ui.render(FCR_URI, audit, ss["utente"]["username"])
+    st.stop()
+
+if MODULO == "dd":
+    dd_ui.render(FCR_URI, audit)
     st.stop()
 
 if MODULO == "pv":
