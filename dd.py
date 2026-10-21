@@ -151,7 +151,8 @@ def metriche_gt(payload, oggi=None):
     p = dict(payload.get("params") or {})
     if oggi is not None:
         p["oggi"] = oggi
-    out = gt.calcola_gt(fasi, p)
+    fermi, _ = gt.normalizza_fermi(payload.get("fermi"))
+    out = gt.calcola_gt(fasi, p, fermi)
     return {"kpi": out["kpi"], "avvisi": out["avvisi"]}
 
 

@@ -112,11 +112,13 @@ PASSI = {
     "gt": ("Vedere su una linea del tempo quando parte e finisce ogni fase e dove c'è ritardo.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:gt_demo"),
         ("Inserisci le fasi", "Nella scheda «1. Fasi» scrivi cantiere, fase, inizio, fine e avanzamento reale. Per partire veloce usa «Carica le commesse dal SAL».", "dati:gt_fasi"),
+        ("Collega le fasi", "Nella colonna «Parte dopo la fase…» scrivi quale fase deve finire prima (oppure premi «🔗 Collega le fasi in sequenza»). Così, se una fase slitta, il Gantt sposta da solo quelle successive. Per un'attesa scrivi «Strutture +5», per far partire una fase in anticipo «Strutture -10».", None),
+        ("Segna fermi e vincoli", "In «Giorni di fermo» scrivi ferie e maltempo (o premi «🎄 Aggiungi le festività italiane»): allungano le fasi. Nella colonna «Non prima del» metti la data di arrivo dei materiali o dei permessi.", None),
         ("Aggiorna l'avanzamento", "Ogni settimana cambia la percentuale di avanzamento reale delle fasi in corso.", None),
         ("Leggi il Gantt", "Nella scheda «2. Gantt e ritardi» la linea rossa è oggi: le barre in giallo o rosso sono in ritardo.", None),
         ("Scarica il dossier", "Nella scheda «3. Dossier» premi il pulsante per PDF ed Excel.", "dossier"),
         ("Salva", "Apri «💾 Salva e riapri il cronoprogramma» in alto e premi Salva.", "salvato"),
-    ], "Il Gantt non conosce i legami tra le fasi (una parte solo dopo l'altra): le date vanno pensate da te."),
+    ], "I legami valgono dentro lo stesso cantiere e il nome della fase va scritto uguale. I giorni di fermo e le date «Non prima del» le scrivi tu: il programma non sa da solo che piove o che il camion è in ritardo."),
     "ca": ("Una sola lista di tutte le scadenze: fatture, gare, documenti, formazioni, mezzi e fasi.", [
         ("Scegli cosa vedere", "In alto scegli quanti giorni mostrare e il tipo di scadenza.", None),
         ("Leggi le scadenze", "Nella scheda «1. Scadenze» in rosso ci sono quelle già scadute, in giallo quelle vicine.", None),

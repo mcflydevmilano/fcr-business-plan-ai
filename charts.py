@@ -638,22 +638,45 @@ def fig_gt(out, tema="light", solo_commesse=False, commessa=None):
     for c in out["commesse"]:
         if commessa and c["Commessa"] != commessa:
             continue
-        righe.append(("c", c["Commessa"], _dt.date.fromisoformat(c["Inizio"]), _dt.date.fromisoformat(c["Fine"]), c["Avanzamento"], c["Stato"], _dt.date.fromisoformat(c["Fine stimata"])))
+        righe.append(("c", c["Commessa"], _dt.date.fromisoformat(c["Inizio"]), _dt.date.fromisoformat(c["Fine"]), c["Avanzamento"], c["Stato"], _dt.date.fromisoformat(c["Fine stimata"]), _dt.date.fromisoformat(c["Inizio"]), 0))
         if not solo_commesse:
             for f in out["fasi"]:
                 if f["Commessa"] == c["Commessa"]:
-                    righe.append(("f", "   " + f["Fase"], f["d0"], f["d1"], f["Avanzamento"], f["Stato"], _dt.date.fromisoformat(f["Fine stimata"])))
+                    righe.append(("f", "   " + f["Fase"], f["d0"], f["d1"], f["Avanzamento"], f["Stato"], _dt.date.fromisoformat(f["Fine stimata"]), _dt.date.fromisoformat(f["Inizio stimato"]), f["Slitta gg"] + f["Giorni di fermo"]))
     n = max(1, len(righe))
     fig, (ax,) = _nuova(tema, w=9.0, h=max(2.4, 0.34 * n + 1.3))
     t = _t(tema)
     oggi = out["params"]["oggi"]
-    for i, (tipo, nome, d0, d1, av, st, fs) in enumerate(righe):
+    for i, (tipo, nome, d0, d1, av, st, fs, ist, slitta) in enumerate(righe):
         h = 0.62 if tipo == "c" else 0.42
         x0, w = mdates.date2num(d0), max(1, (d1 - d0).days)
         ax.barh(i, w, left=x0, height=h, color=t["fg"] if tipo == "c" else GT_COL["wait"], alpha=0.16 if tipo == "c" else 0.35, zorder=2)
         ax.barh(i, w * av / 100.0, left=x0, height=h, color=GT_COL[st], zorder=3)
         if fs > d1 and st in ("ok", "warn", "bad"):
             ax.barh(i, (fs - d1).days, left=mdates.date2num(d1), height=h * 0.7, color=ROSSO, alpha=0.35, hatch="////", edgecolor=ROSSO, linewidth=0, zorder=2)
+        if tipo == "f" and slitta > 0:
+            ax.barh(i, max(1, (fs - ist).days), left=mdates.date2num(ist), height=h, facecolor="none", edgecolor=ROSSO, linestyle="--", linewidth=1.1, zorder=3)
+    if not solo_commesse:
+        riga_di = {(r[1].strip().lower()): i for i, r in enumerate(righe) if r[0] == "f"}
+        # frecce dei legami: dalla fine (stimata) della fase precedente all'inizio (stimato) di quella che la segue
+        corr, cur = {}, None
+        for i, r in enumerate(righe):
+            if r[0] == "c":
+                cur = r[1]
+            else:
+                corr[(cur, r[1].strip().lower())] = i
+        for f in out["fasi"]:
+            if commessa and f["Commessa"] != commessa:
+                continue
+            j = corr.get((f["Commessa"], f["Fase"].strip().lower()))
+            for nome in f.get("Predecessori") or []:
+                i = corr.get((f["Commessa"], nome.strip().lower()))
+                if i is None or j is None:
+                    continue
+                p = next(x for x in out["fasi"] if x["Commessa"] == f["Commessa"] and x["Fase"] == nome)
+                xa = mdates.date2num(_dt.date.fromisoformat(p["Fine stimata"]) if p["Stato"] != "done" else min(p["d1"], oggi))
+                xb = mdates.date2num(_dt.date.fromisoformat(f["Inizio stimato"]))
+                ax.annotate("", xy=(xb, j), xytext=(xa, i), arrowprops=dict(arrowstyle="-|>", color=t["fg"], alpha=0.45, lw=0.8, shrinkA=0, shrinkB=0, connectionstyle="angle,angleA=0,angleB=90,rad=0"), zorder=5)
     ax.axvline(mdates.date2num(oggi), color=ROSSO, linestyle="--", linewidth=1.2, zorder=4)
     ax.text(mdates.date2num(oggi), -0.9, "oggi", color=ROSSO, fontsize=7, ha="center")
     ax.set_yticks(range(n))
@@ -671,5 +694,5 @@ def fig_gt(out, tema="light", solo_commesse=False, commessa=None):
     ax.set_title("Cronoprogramma dei cantieri", fontsize=10, loc="left")
     ax.legend(handles=[Patch(color=GT_COL["ok"], label="Nei tempi"), Patch(color=GT_COL["warn"], label="In ritardo"), Patch(color=GT_COL["bad"], label="Critica"),
                        Patch(color=GT_COL["done"], label="Completata"), Patch(color=GT_COL["wait"], alpha=0.5, label="Da iniziare"),
-                       Patch(facecolor=ROSSO, alpha=0.35, hatch="////", label="Ritardo stimato")], fontsize=7, ncol=6, loc="upper center", bbox_to_anchor=(0.5, -0.08), frameon=False)
+                       Patch(facecolor=ROSSO, alpha=0.35, hatch="////", label="Ritardo stimato"), Patch(facecolor="none", edgecolor=ROSSO, linestyle="--", label="Nuova posizione (slitta)")], fontsize=7, ncol=4, loc="upper center", bbox_to_anchor=(0.5, -0.08), frameon=False)
     return fig
