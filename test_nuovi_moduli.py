@@ -483,3 +483,21 @@ def test_foto_profilo(tmp_path):
     import theme
     assert "background-image" in theme.sidebar_utente("mario", "utente", "x", "AAAA")
     assert "background-image" not in theme.sidebar_utente("mario", "utente", "x", '");x')       # base64 non valido: nessuna iniezione
+
+
+def test_classifica_arkanoid(tmp_path):
+    import ark
+    p = str(tmp_path / "a.db")
+    assert ark.classifica(10, p) == []
+    assert ark.registra("Mario", 450, p) == "record"
+    assert ark.registra("mario", 300, p) == "partita"            # non migliora: resta 450, ma conta la partita
+    assert ark.registra("luca", 800, p) == "record"
+    assert ark.registra("luca", -5, p) == "scartato" and ark.registra("luca", 10**9, p) == "scartato" and ark.registra("", 50, p) == "scartato"
+    assert ark.registra("luca", "abc", p) == "scartato"
+    c = ark.classifica(10, p)
+    assert [(r[1], r[2], r[3]) for r in c] == [("luca", 800, 1), ("mario", 450, 2)]
+    h = ark.classifica_html("mario", 10, p)
+    assert "🥇" in h and "(tu)" in h
+    assert "<script" not in ark.classifica_html("x", 10, p)
+    ark.registra("<script>", 5, p)
+    assert "<script>" not in ark.classifica_html("x", 10, p)

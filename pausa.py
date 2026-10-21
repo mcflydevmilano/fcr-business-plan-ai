@@ -147,9 +147,15 @@ def inietta():
         pass
 
 
+@st.dialog("🧱 Mattoncini FCR · la pausa dei colleghi", width="large")
+def _finestra_svago():
+    import ark
+    ark.finestra_gioco((st.session_state.get("utente") or {}).get("username", ""), st)
+
+
 def pannello():
     """Riquadro per la barra laterale: spiega le tempistiche e permette di vedere un esempio di ogni avviso."""
-    with st.expander("☕ Pause e benessere"):
+    with st.expander("☕ Pause e piccolo svago"):
         st.markdown(
             "Ti ricordiamo di fare pause mentre lavori:  \n"
             "👁️ **ogni 30 min** guarda lontano 20 secondi  \n"
@@ -161,3 +167,7 @@ def pannello():
             st.components.v2.component("fcr_pausa_pannello", js=_JS_PANNELLO)(key="fcr_pausa_pannello_c")
         except Exception:
             pass
+        st.markdown("---")
+        st.markdown("**🎮 Un momento di svago**  \nTi va di rompere qualche mattone? Sfida i colleghi: la classifica è di tutti.")
+        if st.button("🧱 Gioca a Mattoncini FCR", key="svago_apri", width="stretch"):
+            _finestra_svago()
