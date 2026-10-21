@@ -45,6 +45,7 @@ import gt_ui
 import ca_ui
 import hub
 import guida
+import assistenza
 import ora_meteo
 import pv_ui
 import theme
@@ -500,6 +501,8 @@ with st.sidebar:
 if MODULO == "admin":
     admin_ui.render(ss["utente"], UTENTI_SECRETS, audit)
     st.stop()
+
+assistenza.render((ss.get("utente") or {}).get("username", ""), MODULO or "Hub")
 
 if MODULO is None:
     st.markdown(theme.hub_header(FCR_URI), unsafe_allow_html=True)

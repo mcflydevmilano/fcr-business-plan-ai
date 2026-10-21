@@ -27,3 +27,10 @@ def test_dettagli_cruscotto_e_messaggio():
     ogg, testo = dd.messaggio_team(bl, "Amministrazione", da="mario", oggi=oggi)
     assert "Cliente A" in testo and "Fornitore B" in testo and "mario" in testo
     assert dd.messaggio_team(bl, "Acquisti", oggi=oggi)[1].count("Cliente A") == 0
+
+
+def test_messaggio_assistenza():
+    import datetime as dt
+    import assistenza
+    t = assistenza.costruisci_messaggio("⚠️ Segnalo un problema", "Non salva", utente="mario", strumento="rp", quando=dt.datetime(2026, 10, 21, 9, 5))
+    assert "Non salva" in t and "mario" in t and "rp" in t and "21/10/2026 09:05" in t
