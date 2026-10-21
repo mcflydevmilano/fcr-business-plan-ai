@@ -117,7 +117,7 @@ def _db(path=None):
         con.close()
 
 
-MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl", "ga", "fo", "sx", "mz", "og", "rp", "gt")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
+MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl", "ga", "fo", "sx", "mz", "og", "rp", "gt", "cfg", "ru", "lg", "bk", "oa", "al")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
 
 
 MAX_VERSIONI = 20          # versioni precedenti conservate per ogni salvataggio
@@ -179,6 +179,9 @@ def salva_pratica(nome, payload, path=None, autore="", modulo="credit", atteso=N
 def _registra_modifiche(chiave, modulo, vecchio_testo, nuovo, autore, path):
     """Registro attivita': ogni salvataggio scrive chi, quando, quale strumento e COSA e' cambiato. Non blocca mai il salvataggio."""
     try:
+        if modulo == "al":                                           # foto e firme: niente confronto sui dati binari, solo chi e quando
+            log_evento(autore, "allegati_salvati", f"«{chiave.split('|', 1)[-1]}»: foto o firme aggiornate", path)
+            return
         import registro
         vecchio = json.loads(vecchio_testo) if vecchio_testo else None
         nome = chiave.split("|", 1)[1] if modulo in MODULI_ARCHIVIO and "|" in chiave else chiave

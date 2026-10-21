@@ -42,7 +42,7 @@ def _payloads(includi_demo):
     return pay, fonti
 
 
-def render(fcr_uri, audit=None):
+def render(fcr_uri, audit=None, consentiti=None):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Calendario scadenze", "Fatture, gare, documenti, formazioni e mezzi: tutte le scadenze in un'unica lista, anche sul telefono."), unsafe_allow_html=True)
     guida.mostra("ca")
@@ -54,6 +54,10 @@ def render(fcr_uri, audit=None):
     c.markdown("<div style='height:1.9rem'></div>", unsafe_allow_html=True)
     c.checkbox("Includi i dati di esempio", key="ca_demo")
     pay, fonti = _payloads(ss["ca_demo"])
+    if consentiti is not None:                                 # chi non vede uno strumento non ne vede nemmeno le scadenze
+        pay = {k: v for k, v in pay.items() if k in consentiti}
+        ok = {calendario.NOMI_MODULO[m] for m in consentiti if m in calendario.NOMI_MODULO}
+        fonti = {k: v for k, v in fonti.items() if k in ok}
     oggi = dt.date.today()
     ev = calendario.eventi(pay, oggi, ss["ca_orizzonte"], ss.get("ca_cat") or None)
     r = calendario.riassunto(ev)

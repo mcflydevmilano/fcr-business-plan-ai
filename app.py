@@ -42,11 +42,17 @@ import mz_ui
 import og_ui
 import rp_ui
 import gt_ui
+import ru_ui
+import lg_ui
+import bk_ui
+import oa_ui
 import ca_ui
 import hub
 import guida
 import assistenza
 import ora_meteo
+import permessi
+import pwa
 import pv_ui
 import theme
 import ui_util
@@ -391,11 +397,20 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ca": ("ca_",), "dd": ("dd_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "ca": ("ca_",), "dd": ("dd_",)}
+
+
+pwa.inietta()
+PERM = permessi.carica_config()
+CONSENTITI = permessi.moduli_consentiti(ss["utente"], PERM)
+PROFILO = "accesso completo" if ss["utente"].get("ruolo") == "admin" else permessi.profilo_di(ss["utente"], PERM)
 
 
 def vai_a(modulo):
     """Cambia modulo ripristinando i valori dei widget che Streamlit altrimenti dimentica."""
+    if modulo not in (None, "admin") and modulo not in CONSENTITI:
+        st.toast("Questo strumento non è abilitato per il tuo profilo.", icon="🔒")
+        return
     if MODULO in PREFISSI_STATO:
         pf = PREFISSI_STATO[MODULO]
         ss["_snap_" + MODULO] = {k: v for k, v in ss.items() if isinstance(k, str) and k.startswith(pf)}
@@ -410,8 +425,9 @@ with st.sidebar:
     if not AETH_URI:
         st.caption("Logo Aetheris non trovato: carica aetheris_labs_logo.jpg accanto ad app.py.")
     ora_meteo.render_sidebar()
+    pwa.pannello()
     _u = ss["utente"]
-    st.markdown(f"<div style='font-size:.82rem;color:#475569;text-align:center'>👤 <b>{_u['username']}</b> · {_u['ruolo']}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='font-size:.82rem;color:#475569;text-align:center'>👤 <b>{_u['username']}</b> · {_u['ruolo']} · {PROFILO if _u['ruolo'] == 'admin' else 'profilo ' + PROFILO}</div>", unsafe_allow_html=True)
     _ca, _cb = st.columns(2)
     if _u["ruolo"] == "admin" and _ca.button("👥 Utenti", key="btn_admin", width="stretch"):
         vai_a("admin")
@@ -502,11 +518,20 @@ if MODULO == "admin":
     admin_ui.render(ss["utente"], UTENTI_SECRETS, audit)
     st.stop()
 
+if MODULO is not None and MODULO not in CONSENTITI:            # anche se qualcuno arrivasse qui in altro modo, lo strumento resta chiuso
+    audit("accesso_negato", f"{MODULO} (profilo {PROFILO})")
+    st.error(f"🔒 Lo strumento «{permessi.NOMI.get(MODULO, MODULO)}» non è abilitato per il tuo profilo ({PROFILO}). "
+             "Se ti serve, chiedilo all'amministratore.")
+    if st.button("🏠 Torna all'Hub", key="neg_hub"):
+        ss["active_module"] = None
+        st.rerun()
+    st.stop()
+
 assistenza.render((ss.get("utente") or {}).get("username", ""), MODULO or "Hub")
 
 if MODULO is None:
-    st.markdown(theme.hub_header(FCR_URI, len(hub.CARDS)), unsafe_allow_html=True)
-    hub.render(vai_a)
+    st.markdown(theme.hub_header(FCR_URI, len([c for c in hub.CARDS if c in CONSENTITI])), unsafe_allow_html=True)
+    hub.render(vai_a, CONSENTITI)
     st.stop()
 
 if MODULO == "bp":
@@ -525,13 +550,13 @@ if MODULO == "sl":
     sl_ui.render(FCR_URI, audit, ss["utente"]["username"])
     st.stop()
 
-for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og", og_ui), ("rp", rp_ui), ("gt", gt_ui)):
+for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og", og_ui), ("rp", rp_ui), ("gt", gt_ui), ("ru", ru_ui), ("lg", lg_ui), ("bk", bk_ui), ("oa", oa_ui)):
     if MODULO == _m:
         _ui.render(FCR_URI, audit, ss["utente"]["username"])
         st.stop()
 
 if MODULO == "ca":
-    ca_ui.render(FCR_URI, audit)
+    ca_ui.render(FCR_URI, audit, CONSENTITI)
     st.stop()
 
 if MODULO == "dd":

@@ -105,6 +105,42 @@ CARDS = {'credit': {'icona': '📊',
                  'Invio dei costi a SAL'],
         'tag': ['Tariffe', 'Utilizzo', 'PDF + Excel'],
         'bottone': 'Parco mezzi'},
+ 'ru': {'icona': '📇',
+        'titolo': 'Rubrica e cantieri',
+        'desc': 'Tutti i contatti in un posto solo e ogni cantiere con il suo codice unico.',
+        'voci': ['Telefono, email e referente di fornitori, clienti ed enti',
+                 'Chiama, scrivi o manda un WhatsApp con un tocco',
+                 'Per ogni contatto: documenti, fatture e cantieri collegati',
+                 'Codice cantiere unico, pronto per monday e altri sistemi'],
+        'tag': ['Rubrica', 'Codici cantiere', 'PDF + Excel'],
+        'bottone': 'Rubrica e cantieri'},
+ 'lg': {'icona': '⚖️',
+        'titolo': 'Studio legale',
+        'desc': 'Passa un cliente allo studio con il fascicolo completo e tieni sotto controllo riserve, contratti e penali.',
+        'voci': ['Fascicolo del cliente: fatture scadute, solleciti già fatti, importi',
+                 'Invio allo studio per email o Slack con un clic',
+                 'Registro di riserve, varianti e contestazioni con i termini',
+                 'Penali di ritardo calcolate dal Cronoprogramma'],
+        'tag': ['Fascicolo', 'Riserve', 'Penali'],
+        'bottone': 'Studio legale'},
+ 'bk': {'icona': '🏦',
+        'titolo': 'Riconciliazione bancaria',
+        'desc': 'Abbina i movimenti del conto alle fatture e segna da solo cosa è pagato o incassato.',
+        'voci': ['Importa l\'estratto conto in Excel o CSV',
+                 'Abbinamenti con punteggio e motivo, da confermare',
+                 'Aggiorna lo Scadenzario con un clic',
+                 'Elenco dei movimenti senza fattura'],
+        'tag': ['Banca', 'Abbinamenti', 'PDF + Excel'],
+        'bottone': 'Riconciliazione bancaria'},
+ 'oa': {'icona': '🛒',
+        'titolo': 'Ordini e approvazioni',
+        'desc': 'Chi chiede, chi approva, fino a quanto: ogni ordine ha il suo via libera e resta tracciato.',
+        'voci': ['Soglie d\'importo: capocantiere, direttore tecnico, presidente',
+                 'Chi chiede un ordine non può approvarlo',
+                 'Fornitore con documenti scaduti: approvazione bloccata',
+                 'Storico di ogni decisione con nome e ora'],
+        'tag': ['Approvazioni', 'Tracciabilità', 'PDF + Excel'],
+        'bottone': 'Ordini e approvazioni'},
  'gt': {'icona': '📅',
         'titolo': 'Cronoprogramma dei cantieri (Gantt)',
         'desc': 'Quando parte e finisce ogni fase, a che punto è davvero e dove si accumula ritardo.',
@@ -145,13 +181,15 @@ CARDS = {'credit': {'icona': '📊',
 # (titolo sezione, sottotitolo, [sigle])  -  ogni gruppo ha un numero pari di schede, tranne l'ultimo (a tutta larghezza)
 GRUPPI = [
     ("Parte finanziaria", "Dott. Claudio Arosio",
-     ["credit", "bp", "cf", "sc"]),
+     ["credit", "bp", "cf", "sc", "bk"]),
     ("Offerte e commesse", "Dalla gara al preventivo, fino all'avanzamento lavori",
      ["ga", "pv", "sl", "gt"]),
     ("Cantiere e risorse", "Rapportini, sicurezza, mezzi e persone",
      ["rp", "sx", "mz", "og"]),
-    ("Fornitori e scadenze", "Documenti dei fornitori e calendario unico",
-     ["fo", "ca"]),
+    ("Fornitori, acquisti e scadenze", "Contatti, ordini approvati, documenti dei fornitori e calendario unico",
+     ["ru", "fo", "oa", "ca"]),
+    ("Studio legale", "Riserve, contratti e passaggio dei crediti allo studio",
+     ["lg"]),
     ("Direzione", "La sintesi di tutta l'azienda",
      ["dd"]),
 ]
@@ -184,11 +222,16 @@ PERCORSI = [
 ]
 
 
-def _da_dove_comincio(vai_a):
+def _da_dove_comincio(vai_a, consentiti=None):
     with st.expander("🚀 Da dove comincio? Scegli chi sei", expanded=False):
         st.caption("Ogni strumento ha in alto il riquadro «🧭 Come si usa»: ti dice cosa fare, passo per passo. Gli esempi che vedi sono finti: li togli con «Svuota l'esempio».")
-        cols = st.columns(len(PERCORSI), gap="large")
-        for col, (titolo, testo, bottoni) in zip(cols, PERCORSI):
+        percorsi = [(t, x, [(s, e) for s, e in b if consentiti is None or s in consentiti]) for t, x, b in PERCORSI]
+        percorsi = [p for p in percorsi if p[2]]
+        if not percorsi:
+            st.caption("Apri uno strumento dall'elenco qui sotto.")
+            return
+        cols = st.columns(len(percorsi), gap="large")
+        for col, (titolo, testo, bottoni) in zip(cols, percorsi):
             with col:
                 st.markdown(f"**{titolo}**")
                 st.caption(testo)
@@ -197,9 +240,13 @@ def _da_dove_comincio(vai_a):
                         vai_a(s)
 
 
-def render(vai_a):
-    _da_dove_comincio(vai_a)
+def render(vai_a, consentiti=None):
+    """consentiti: insieme di sigle visibili a chi guarda (None = tutte). I gruppi rimasti vuoti spariscono."""
+    _da_dove_comincio(vai_a, consentiti)
     for n, (titolo, sotto, sigle) in enumerate(GRUPPI):
+        sigle = [s for s in sigle if consentiti is None or s in consentiti]
+        if not sigle:
+            continue
         st.markdown(theme.hub_sezione(titolo, sotto), unsafe_allow_html=True)
         for i in range(0, len(sigle), 2):
             riga = sigle[i:i + 2]

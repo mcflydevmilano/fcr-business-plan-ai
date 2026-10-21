@@ -8,15 +8,16 @@ import hashlib
 import fo
 import ga
 import gt
+import lg
 import mz
 import rp
 import sc
 import sx
 from sc import data_da
 
-MODULI_CALENDARIO = ("sc", "ga", "fo", "sx", "mz", "rp", "gt")
-NOMI_MODULO = {"sc": "Scadenzario", "ga": "Gare e offerte", "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "rp": "Rapportini di cantiere", "gt": "Cronoprogramma"}
-CATEGORIE = ["Incasso", "Pagamento", "Gara", "Documento gara", "Documento fornitore", "Formazione / idoneità", "Documento di cantiere", "Mezzo", "Segnalazione", "Fine fase"]
+MODULI_CALENDARIO = ("sc", "ga", "fo", "sx", "mz", "rp", "gt", "lg")
+NOMI_MODULO = {"sc": "Scadenzario", "ga": "Gare e offerte", "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "rp": "Rapportini di cantiere", "gt": "Cronoprogramma", "lg": "Studio legale"}
+CATEGORIE = ["Incasso", "Pagamento", "Gara", "Documento gara", "Documento fornitore", "Formazione / idoneità", "Documento di cantiere", "Mezzo", "Segnalazione", "Fine fase", "Termine legale", "Contratto"]
 
 
 def _stato(giorni, preavviso):
@@ -86,6 +87,14 @@ def eventi(payloads, oggi=None, orizzonte_gg=60, categorie=None):
         for x in fasi:
             if x["Avanzamento"] < 100:
                 ev.append(_ev(data_da(x["Fine"]), oggi, "gt", "Fine fase", f"{x['Fase']} - {x['Commessa']}", f"avanzamento {x['Avanzamento']:.0f}%" + (f" - {x['Responsabile']}" if x["Responsabile"] else ""), None, prev))
+    if p.get("lg"):
+        prev = int((p["lg"].get("params") or {}).get("preavviso_gg", lg.LG_DEFAULT["preavviso_gg"]))
+        for r in lg.normalizza_riserve(p["lg"].get("riserve"))[0]:
+            if r["Stato"] in lg.APERTI and r["Termine"]:
+                ev.append(_ev(data_da(r["Termine"]), oggi, "lg", "Termine legale", f"{r['Tipo']}: {r['Descrizione'][:60]} ({r['Cantiere']})", "termine comunicato dallo studio", r["Importo"] or None, prev))
+        for x in lg.normalizza_contratti(p["lg"].get("contratti"))[0]:
+            if x["Scadenza"]:
+                ev.append(_ev(data_da(x["Scadenza"]), oggi, "lg", "Contratto", x["Contratto"], x["Controparte"], None, prev))
     if categorie:
         ev = [e for e in ev if e["Categoria"] in categorie]
     ev = [e for e in ev if e["Giorni"] <= orizzonte_gg]

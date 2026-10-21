@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 
 import auth
+import permessi
 import storage
 
 
@@ -14,7 +15,7 @@ def render(utente, utenti_secrets, audit):
     if utente.get("ruolo") != "admin":
         st.error("Accesso riservato agli amministratori.")
         return
-    t1, t2, t3 = st.tabs(["Utenti", "Registro attività", "Backup"])
+    t1, t2, t3, t4 = st.tabs(["Utenti", "Registro attività", "Backup", "🔒 Permessi"])
 
     with t1:
         st.markdown("#### Utenti configurati nei secrets")
@@ -128,3 +129,47 @@ def render(utente, utenti_secrets, audit):
                 st.error(f"Backup non riuscito: {e}")
         if st.session_state.get("adm_backup"):
             st.download_button("📥 Scarica il backup (JSON)", st.session_state["adm_backup"], file_name="backup_fcr_suite.json", mime="application/json")
+
+
+    with t4:
+        _permessi(utente, utenti_secrets, audit)
+
+
+def _permessi(utente, utenti_secrets, audit):
+    cfg = permessi.carica_config()
+    st.markdown("#### Chi vede quali strumenti")
+    st.caption("Ogni persona ha un **profilo**; ogni profilo apre solo gli strumenti spuntati. L'amministratore vede sempre tutto. "
+               "Il **ruolo** (admin / utente / lettore) decide invece chi può modificare i dati: sono due cose separate. "
+               "Il Cruscotto di direzione è riservato al profilo «presidente» (e all'amministratore).")
+    nomi_profili = list(cfg["profili"])
+    st.markdown("**1. Assegna un profilo a ciascun utente**")
+    nomi_utenti = sorted({*(utenti_secrets or {}), *(u["username"] for u in storage.elenca_utenti()), *cfg["utenti"]})
+    nuovi = dict(cfg["utenti"])
+    if not nomi_utenti:
+        st.info("Non ci sono ancora utenti da abilitare: creali dalla scheda «Utenti».")
+    for n in nomi_utenti:
+        corrente = cfg["utenti"].get(n, cfg["predefinito"])
+        nuovi[n] = st.selectbox(n, nomi_profili, index=nomi_profili.index(corrente), key=f"perm_u_{n}",
+                                help="Se non scegli nulla, vale il profilo predefinito." if n not in cfg["utenti"] else None)
+    predef = st.selectbox("Profilo per chi non ha ancora un profilo assegnato", nomi_profili, index=nomi_profili.index(cfg["predefinito"]), key="perm_pred")
+
+    st.markdown("**2. Cosa apre ciascun profilo**")
+    profili = {}
+    for p in nomi_profili:
+        with st.expander(f"{p} · {len(cfg['profili'][p])} strumenti", expanded=False):
+            sel = st.multiselect("Strumenti abilitati", permessi.TUTTI, default=cfg["profili"][p], format_func=lambda s: permessi.NOMI[s],
+                                 key=f"perm_p_{p}", disabled=(p == "presidente"))
+            profili[p] = sel
+    with st.expander("➕ Nuovo profilo"):
+        c1, c2 = st.columns([2, 1])
+        nuovo = c1.text_input("Nome del profilo", key="perm_nuovo", placeholder="es. segreteria")
+        if c2.button("Aggiungi", key="perm_add", width="stretch") and nuovo.strip():
+            cfg["profili"][nuovo.strip().lower()] = []
+            permessi.salva_config(cfg, utente["username"])
+            audit("permessi_modificati", f"nuovo profilo {nuovo.strip().lower()}")
+            st.rerun()
+    if st.button("💾 Salva i permessi", key="perm_salva", type="primary"):
+        salvato = permessi.salva_config({"profili": profili, "utenti": nuovi, "predefinito": predef}, utente["username"])
+        audit("permessi_modificati", "; ".join(f"{u}→{p}" for u, p in sorted(salvato["utenti"].items())) or "profili aggiornati")
+        st.success("Permessi salvati. Hanno effetto al prossimo caricamento di pagina di ciascun utente.")
+        st.rerun()

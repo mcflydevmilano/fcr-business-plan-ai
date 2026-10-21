@@ -230,3 +230,11 @@ def report_gt(out, nome=""):
                               {"nome": "Cantieri", "intest": ["Cantiere", "Inizio", "Fine prevista", "Avanzamento %", "Previsto %", "Fine stimata", "Ritardo gg", "Fasi"],
                                "righe": [[c["Commessa"], c["Inizio"], c["Fine"], c["Avanzamento"], c["Prevista"], c["Fine stimata"], c["Ritardo gg"], c["Fasi"]] for c in com]}])
     return pdf, x, ctx["report_id"]
+
+
+# ----------------------------------------------------------------------------- DOSSIER GENERICO (Rubrica, Studio legale, Banca, Ordini)
+def report_generico(titolo, sotto, nome, oggi, meta, tiles, esito, sezioni, fogli, firma):
+    """Dossier PDF + Excel costruito dal modulo stesso: sezioni = [{"titolo","testo","tabella":(intest,righe)}], fogli = fogli per genera_excel."""
+    ctx = rep_gen.costruisci_ctx(titolo, sotto, nome, {"f": firma, "n": nome, "o": str(oggi)})
+    pdf = rep_gen.genera_pdf(ctx, titolo, sotto, f"Situazione al {oggi.strftime('%d/%m/%Y')}", meta, tiles, esito, sezioni)
+    return pdf, rep_gen.genera_excel(fogli), ctx["report_id"]

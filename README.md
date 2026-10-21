@@ -145,3 +145,18 @@ con scenari pessimistico/base/ottimistico modificabili, grafico tornado e mappa 
 ## Cronoprogramma (Gantt)
 
 `gt.py`, `gt_ui.py`: fasi dei cantieri con inizio, fine e avanzamento; diagramma di Gantt con la linea di oggi, ritardi e fine stimata. Si può partire dalle commesse del SAL o dalle assegnazioni di Organico. Alimenta Cruscotto e Calendario (categoria «Fine fase»).
+
+## Permessi per profilo (chi vede cosa)
+
+`permessi.py`, scheda **Utenti → 🔒 Permessi**: ogni persona ha un *profilo* (presidente, direzione, amministrazione, commerciale, cantiere, legale…) e ogni profilo apre solo gli strumenti spuntati. L'amministratore vede sempre tutto. Il **Cruscotto di direzione** è riservato al profilo *presidente* (e all'amministratore). Chi non ha un profilo assegnato riceve «direzione» (tutto tranne il Cruscotto). Il *ruolo* (admin / utente / lettore) decide invece chi può modificare i dati: sono due cose separate. Gli strumenti chiusi spariscono dall'Hub, dalle scorciatoie e dal Calendario, e un accesso diretto viene rifiutato e scritto nel registro («accesso_negato»). La configurazione è salvata nel database.
+
+## Rubrica e cantieri, Studio legale, Riconciliazione bancaria, Ordini e approvazioni
+
+- **Rubrica e cantieri** (`ru.py`, `ru_ui.py`): contatti con chiama / scrivi / WhatsApp, documenti e fatture collegati (per nome), cantieri con codice unico `CAN-anno-numero` e colonna per il codice di monday.
+- **Studio legale** (`lg.py`, `lg_ui.py`): fascicolo del cliente con fatture scadute e solleciti già fatti, invio allo studio per email (con PDF allegato) e/o Slack, registro di riserve/varianti/contestazioni con i termini fissati dallo studio, contratti e polizze in scadenza, penali di ritardo calcolate dal Cronoprogramma. Promemoria organizzativo: non è consulenza legale. Segreti: `STUDIO_LEGALE_EMAIL` (con `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`) e/o `STUDIO_LEGALE_SLACK_WEBHOOK_URL`.
+- **Riconciliazione bancaria** (`bk.py`, `bk_ui.py`): abbina i movimenti dell'estratto conto alle fatture dello Scadenzario (importo, numero fattura, nome nella causale, data), propone e fa confermare, poi aggiorna lo Scadenzario.
+- **Ordini e approvazioni** (`oa.py`, `oa_ui.py`): soglie d'importo per chi approva, chi chiede non approva, fornitori con documenti scaduti bloccati, decisioni tracciate con nome e ora, nuova approvazione se l'importo cambia.
+
+## Foto, firma e app sul telefono
+
+Nel Rapportino e nelle Segnalazioni si possono allegare foto (ridotte a 1280 px) e, nel rapportino, la firma disegnata con il dito (`firma.py`). Gli allegati stanno in un salvataggio a parte, legati all'Id, e il registro attività scrive solo «chi e quando». `pwa.py` rende la suite installabile (Android: menu ⋮ → Installa app; iPhone: Condividi → Aggiungi alla schermata Home).

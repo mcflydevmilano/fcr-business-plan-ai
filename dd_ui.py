@@ -34,7 +34,7 @@ SESSIONE = "Dati della sessione"
 NESSUNO = "Non usare"
 
 
-_SESS_KEY = {"ga": "ga_gare", "fo": "fo_doc", "sx": "sx_pers", "mz": "mz_mezzi", "og": "og_ris", "rp": "rp_rapp", "gt": "gt_fasi"}
+_SESS_KEY = {"ga": "ga_gare", "fo": "fo_doc", "sx": "sx_pers", "mz": "mz_mezzi", "og": "og_ris", "rp": "rp_rapp", "gt": "gt_fasi", "lg": "lg_riserve"}
 
 
 def _sessione_disponibile(m):
@@ -54,7 +54,7 @@ def _sessione_disponibile(m):
 
 
 def _payload_sessione(m):
-    return {"sc": sc_ui._raccogli, "cf": cf_ui._raccogli, "pv": pv_ui._raccogli, "bp": bp_ui._raccogli, "sl": sl_ui._raccogli, "ga": ga_ui._raccogli, "fo": fo_ui._raccogli, "sx": sx_ui._raccogli, "mz": mz_ui._raccogli, "og": og_ui._raccogli, "rp": rp_ui._dati, "gt": gt_ui._raccogli}[m]()
+    return {"sc": sc_ui._raccogli, "cf": cf_ui._raccogli, "pv": pv_ui._raccogli, "bp": bp_ui._raccogli, "sl": sl_ui._raccogli, "ga": ga_ui._raccogli, "fo": fo_ui._raccogli, "sx": sx_ui._raccogli, "mz": mz_ui._raccogli, "og": og_ui._raccogli, "rp": rp_ui._dati, "gt": gt_ui._raccogli, "lg": __import__("lg_ui")._raccogli}[m]()
 
 
 def _elenco_salvati(m):

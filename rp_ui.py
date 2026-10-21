@@ -6,6 +6,7 @@ import streamlit as st
 import guida
 
 import charts
+import firma
 import ops_report
 import rp
 import storage
@@ -130,7 +131,57 @@ def _aggiungi(tabella, colonne, riga, utente, audit):
         st.toast("Salvato e condiviso ✅")
     else:
         st.warning(err + " I dati restano sul tuo schermo: riprova a salvare dal pannello «Salva e riapri».")
-    return True
+    return nuova["Id"]
+
+
+def _allegati():
+    """Allegati dal database, riletti solo quando qualcuno li ha cambiati (le foto pesano)."""
+    try:
+        meta = storage.meta_pratica(firma.NOME_ALLEGATI, modulo="al")
+    except Exception:
+        return {}
+    if not meta:
+        return {}
+    c = ss.get("_al_cache")
+    if not c or c[0] != meta["aggiornato"]:
+        c = (meta["aggiornato"], firma.carica())
+        ss["_al_cache"] = c
+    return c[1]
+
+
+def _salva_allegati(id_, foto, png_firma, utente, audit):
+    """Riduce e salva le foto (e la firma) del rapportino o della segnalazione appena creati."""
+    try:
+        ridotte = []
+        for f in (foto or [])[:firma.MAX_FOTO]:
+            try:
+                ridotte.append(firma.riduci_foto(f.getvalue()))
+            except Exception:
+                st.warning(f"La foto «{getattr(f, 'name', '')}» non si legge e non è stata allegata.")
+        if png_firma and firma.firma_vuota(png_firma):
+            png_firma = None
+        if ridotte or png_firma:
+            if firma.aggiungi(id_, ridotte, png_firma, utente, utente):
+                audit("rp_allegati", f"{id_}: {len(ridotte)} foto" + (", firma" if png_firma else ""))
+                st.toast(f"Allegate {len(ridotte)} foto" + (" e la firma" if png_firma else "") + " 📷")
+            else:
+                st.warning("Foto e firma non salvate (troppi salvataggi insieme): riprova.")
+    except Exception as e:
+        st.warning(f"Allegati non salvati: {e}")
+
+
+def _mostra_allegati(id_, al):
+    rec = al.get(id_)
+    if not rec:
+        return
+    foto, fi = rec.get("foto") or [], rec.get("firma")
+    with st.expander(f"📷 {len(foto)} foto" + (" · ✍️ firmato" if fi else "")):
+        if foto:
+            cols = st.columns(min(3, len(foto)))
+            for i, f in enumerate(foto):
+                cols[i % len(cols)].image(firma.da_b64(f["jpg"]), caption=f"{f.get('quando', '')} · {f.get('da', '')}", width="stretch")
+        if fi:
+            st.image(firma.da_b64(fi["png"]), width=240, caption=f"Firma di {fi.get('nome', '')} · {fi.get('quando', '')}")
 
 
 def _cantieri():
@@ -144,6 +195,12 @@ def _scelta_cantiere(sel, nuovo):
 def _tab_rapportino(utente, audit):
     st.markdown("##### Rapportino del giorno")
     cant = _cantieri()
+    n_pad = ss.setdefault("rp_firma_n", 0)
+    with st.expander("✍️ Firma (facoltativa): disegna con il dito"):
+        st.caption("Firma qui sotto e premi «Conferma la firma». Poi compila e salva il rapportino: la firma resta legata a questo rapportino.")
+        png_firma = firma.pad(f"rp_pad_{n_pad}")
+        if png_firma:
+            st.success("Firma acquisita: verrà allegata al rapportino.")
     with st.form("form_rapp", clear_on_submit=True):
         sel = st.selectbox("Cantiere", cant + [NUOVO] if cant else [NUOVO], key="nr_cantiere")
         nuovo = st.text_input("Se è un cantiere nuovo, scrivi qui il nome", key="nr_nuovo")
@@ -156,6 +213,8 @@ def _tab_rapportino(utente, audit):
         lav = st.text_area("Lavorazioni eseguite", key="nr_lav", height=90, placeholder="Es. Getto solaio primo piano, posa tubazioni bagno…")
         mezzi = st.text_input("Mezzi usati (facoltativo)", key="nr_mezzi")
         note = st.text_area("Note (facoltative)", key="nr_note", height=70)
+        foto = st.file_uploader("📷 Foto del cantiere (facoltative)", type=["jpg", "jpeg", "png", "webp"], accept_multiple_files=True, key="nr_foto",
+                                help=f"Dal telefono puoi scattare direttamente. Massimo {firma.MAX_FOTO} foto: vengono ridotte per pesare poco.")
         invia = st.form_submit_button("➕ Salva il rapportino", type="primary", width="stretch", disabled=sola_lettura())
     if invia:
         cantiere = _scelta_cantiere(sel, nuovo)
@@ -165,13 +224,18 @@ def _tab_rapportino(utente, audit):
             st.error("Scrivi almeno una riga sulle lavorazioni eseguite.")
         else:
             riga = {"Data": data, "Cantiere": cantiere, "Compilato_da": utente, "Meteo": meteo, "Presenti": pres, "Ore": ore, "Lavorazioni": lav, "Mezzi": mezzi, "Note": note}
-            if _aggiungi("rp_rapp", rp.COLONNE_RAPP, riga, utente, audit):
+            id_new = _aggiungi("rp_rapp", rp.COLONNE_RAPP, riga, utente, audit)
+            if id_new:
+                _salva_allegati(id_new, foto, png_firma, utente, audit)
+                ss["rp_firma_n"] = n_pad + 1                 # azzera il riquadro della firma
                 st.rerun()
     r, _ = rp.normalizza_rapp(_records("rp_rapp"))
     if r:
         st.markdown("##### Ultimi inseriti")
+        al = _allegati()
         for x in sorted(r, key=lambda q: q["Data"], reverse=True)[:6]:
             st.markdown(f"**{x['Cantiere']}** · {pd.Timestamp(x['Data']).strftime('%d/%m')} · {x['Presenti']:.0f} persone, {x['Ore']:.0f} ore  \n<span style='color:#64748b;font-size:.88rem'>{x['Lavorazioni'][:110]}</span>", unsafe_allow_html=True)
+            _mostra_allegati(x["Id"], al)
 
 
 def _tab_segnalazioni(utente, audit, out):
@@ -187,6 +251,8 @@ def _tab_segnalazioni(utente, audit, out):
         c, d = st.columns(2)
         resp = c.text_input("Chi deve intervenire", key="ns_resp")
         entro = d.date_input("Da risolvere entro", value=None, key="ns_entro", format="DD/MM/YYYY")
+        foto = st.file_uploader("📷 Foto del problema (facoltative)", type=["jpg", "jpeg", "png", "webp"], accept_multiple_files=True, key="ns_foto",
+                                help="Una foto vale più di mille parole: mostra il problema a chi deve intervenire.")
         invia = st.form_submit_button("⚠️ Invia la segnalazione", type="primary", width="stretch", disabled=sola_lettura())
     if invia:
         cantiere = _scelta_cantiere(sel, nuovo)
@@ -196,9 +262,12 @@ def _tab_segnalazioni(utente, audit, out):
             st.error("Descrivi il problema.")
         else:
             riga = {"Data": rp.oggi_italia(), "Cantiere": cantiere, "Tipo": tipo, "Gravita": grav, "Descrizione": desc, "Responsabile": resp, "Scadenza": entro or "", "Stato": "Aperta"}
-            if _aggiungi("rp_segn", rp.COLONNE_SEGN, riga, utente, audit):
+            id_new = _aggiungi("rp_segn", rp.COLONNE_SEGN, riga, utente, audit)
+            if id_new:
+                _salva_allegati(id_new, foto, None, utente, audit)
                 st.rerun()
     seg = out["segnalazioni"]
+    al_seg = _allegati() if seg else {}
     st.markdown(f"##### Segnalazioni aperte ({len(seg)})")
     if not seg:
         st.success("Nessuna segnalazione aperta.")
@@ -207,6 +276,7 @@ def _tab_segnalazioni(utente, audit, out):
         scad = f" · entro {pd.Timestamp(s['Scadenza']).strftime('%d/%m')}" + (" (scaduta)" if s["Stato scadenza"] == "bad" else "") if s["Scadenza"] else ""
         with st.container(border=True):
             st.markdown(f"{ico} **{s['Cantiere']}** · {s['Tipo']} · gravità {s['Gravita'].lower()}{scad}  \n{s['Descrizione']}  \n<span style='color:#64748b;font-size:.85rem'>{s['Stato']}" + (f" · {s['Responsabile']}" if s["Responsabile"] else "") + "</span>", unsafe_allow_html=True)
+            _mostra_allegati(s["Id"], al_seg)
             c1, c2 = st.columns(2)
             if s["Stato"] == "Aperta" and c1.button("In corso", key=f"inc_{s['Id']}", width="stretch", disabled=sola_lettura()):
                 _cambia_stato(s["Id"], "In corso", utente, audit)

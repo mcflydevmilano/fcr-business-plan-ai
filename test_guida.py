@@ -61,3 +61,18 @@ def test_versione_e_proprieta_nel_tema():
     h = theme.hub_header("", 15)
     assert "Aetheris Labs" in h and versione.VERSIONE in h and "15 strumenti" in h
     assert versione.VERSIONE in theme.sidebar_brand("") and "Software di proprietà di Aetheris Labs" in theme.CSS
+
+
+def test_proprieta_nei_documenti():
+    import io
+
+    import openpyxl
+
+    import rep_gen
+    import versione
+    x = rep_gen.genera_excel([{"nome": "A", "intest": ["x"], "righe": [[1]]}])
+    wb = openpyxl.load_workbook(io.BytesIO(x))
+    assert wb.sheetnames[-1] == "Informazioni"
+    testo = " ".join(str(c.value) for r in wb["Informazioni"].iter_rows() for c in r)
+    assert versione.PROPRIETARIO in testo and versione.VERSIONE in testo
+    assert versione.riga_pdf().isascii() and versione.nota_copertina().isascii()

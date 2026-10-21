@@ -257,6 +257,8 @@ h3 { margin-top: .6rem; }
 [data-testid="stBaseButton-primary"] p, [data-testid="stBaseButton-secondary"] p, [data-testid="stBaseButton-primary"] span, [data-testid="stBaseButton-secondary"] span,
 .stButton button p, .stDownloadButton button p { color: #fff !important; }
 [data-testid="stBaseButton-primary"]:disabled p, [data-testid="stBaseButton-secondary"]:disabled p { color: #fff !important; }
+/* «Sfoglia i file» del caricamento file: Streamlit gli dà sfondo bianco, ma il testo e' forzato bianco sopra */
+[data-testid="stFileUploaderDropzone"] button, [data-testid="stFileUploaderDropzone"] [data-testid="stBaseButton-secondary"] { background: var(--acc) !important; border: none !important; }
 /* pulsanti di invio dei form (login, nuovo utente, cambio password) */
 [data-testid="stFormSubmitButton"] > button, [data-testid="stBaseButton-primaryFormSubmit"], [data-testid="stBaseButton-secondaryFormSubmit"] {
   background: var(--acc) !important; color: #fff !important; border: none !important; border-radius: 10px; font-weight: 600; box-shadow: 0 2px 8px rgba(30,64,175,.28); }
