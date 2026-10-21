@@ -55,6 +55,7 @@ import ora_meteo
 import freschezza
 import permessi
 import pausa
+import profilo
 import pwa
 import pv_ui
 import theme
@@ -459,7 +460,23 @@ with st.sidebar:
         ora_meteo.render_sidebar()
     _u = ss["utente"]
     with st.container(key="sb_utente"):
-        st.markdown(theme.sidebar_utente(_u["username"], _u["ruolo"], PROFILO), unsafe_allow_html=True)
+        if ss.get("_fp_u") != _u["username"]:                # la foto si legge una volta per accesso, non a ogni clic
+            ss["_fp_u"], ss["_fp"] = _u["username"], profilo.foto_di(_u["username"])
+        st.markdown(theme.sidebar_utente(_u["username"], _u["ruolo"], PROFILO, ss.get("_fp")), unsafe_allow_html=True)
+        with st.expander("📷 La mia foto"):
+            _f = st.file_uploader("Scegli una foto (o scattala dal telefono)", type=["jpg", "jpeg", "png", "webp"], key="foto_profilo_up")
+            _c1, _c2 = st.columns(2)
+            if _c1.button("Usa questa", key="foto_profilo_ok", width="stretch", disabled=_f is None):
+                try:
+                    profilo.imposta(_u["username"], _f.getvalue())
+                    ss["_fp"] = profilo.foto_di(_u["username"])
+                    st.rerun()
+                except (ValueError, RuntimeError) as _e:
+                    st.error(str(_e))
+            if _c2.button("Togli", key="foto_profilo_no", width="stretch", disabled=not ss.get("_fp")):
+                profilo.rimuovi(_u["username"])
+                ss["_fp"] = None
+                st.rerun()
         _ca, _cb = st.columns(2)
         if _u["ruolo"] == "admin" and _ca.button("👥 Utenti", key="btn_admin", width="stretch"):
             vai_a("admin")

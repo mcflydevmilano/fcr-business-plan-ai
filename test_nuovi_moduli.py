@@ -460,3 +460,26 @@ def test_benvenuto_e_addio_una_volta_sola():
     [b for b in at.button if b.key == "btn_logout"][0].click().run()
     assert not at.exception
     assert any("as-ben'" in m.value and "as-ben-av" in m.value for m in at.markdown)   # arrivederci con foto nella pagina di login
+
+
+def test_foto_profilo(tmp_path):
+    import io
+    import pytest
+    from PIL import Image
+    import profilo
+    p = str(tmp_path / "f.db")
+    im = Image.new("RGB", (900, 400), (200, 30, 30))
+    buf = io.BytesIO(); im.save(buf, "PNG")
+    profilo.imposta("Mario", buf.getvalue(), p)
+    b64 = profilo.foto_di("mario", p)
+    assert b64 and Image.open(io.BytesIO(__import__("base64").b64decode(b64))).size == (256, 256)    # quadrata
+    assert profilo.foto_di("altro", p) is None
+    profilo.imposta("luca", buf.getvalue(), p)
+    assert profilo.foto_di("mario", p)                                                         # la foto di uno non cancella quella di un altro
+    profilo.rimuovi("mario", p)
+    assert profilo.foto_di("mario", p) is None and profilo.foto_di("luca", p)
+    with pytest.raises(ValueError):
+        profilo.imposta("mario", b"non e' una foto", p)
+    import theme
+    assert "background-image" in theme.sidebar_utente("mario", "utente", "x", "AAAA")
+    assert "background-image" not in theme.sidebar_utente("mario", "utente", "x", '");x')       # base64 non valido: nessuna iniezione

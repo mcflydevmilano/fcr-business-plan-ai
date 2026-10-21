@@ -394,6 +394,7 @@ SIDEBAR_CSS = """
 .sb-urow { display: flex; align-items: center; gap: 11px; padding: 4px 2px 8px; }
 .sb-avatar { flex: 0 0 auto; width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 1rem;
   background: linear-gradient(135deg, #1e3fae, #2563eb); box-shadow: 0 0 0 3px #dbeafe, 0 4px 10px rgba(30,64,175,.3); }
+.sb-avatar.sb-foto { background-size: cover; background-position: center; color: transparent; }
 .sb-uname { font-weight: 700; color: var(--navy); font-size: .95rem; line-height: 1.2; word-break: break-word; }
 .sb-chips { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
 .chip { font-size: .64rem; font-weight: 700; letter-spacing: .03em; padding: 2px 8px; border-radius: 99px; text-transform: capitalize; }
@@ -509,12 +510,16 @@ def sidebar_brand(uri_aeth):
             f'<div class="sb-ver">{_e(versione.NOME)} <b>v{_e(versione.VERSIONE)}</b></div></div>')
 
 
-def sidebar_utente(username, ruolo, profilo):
+def sidebar_utente(username, ruolo, profilo, foto_b64=None):
     """Scheda dell'utente: iniziali in un cerchio, nome, ruolo e profilo come etichette colorate."""
     nome = _e(username)
     sigla = _e("".join(p[0] for p in str(username).replace(".", " ").replace("_", " ").split()[:2]).upper() or str(username)[:1].upper())
     cl = ruolo if ruolo in ("admin", "utente", "lettore") else "utente"
-    return (f'<div class="sb-urow"><div class="sb-avatar">{sigla}</div><div><div class="sb-uname">{nome}</div>'
+    if foto_b64 and all(c.isalnum() or c in "+/=" for c in foto_b64):          # solo base64 pulito dentro lo stile
+        av = f'<div class="sb-avatar sb-foto" style="background-image:url(data:image/jpeg;base64,{foto_b64})"></div>'
+    else:
+        av = f'<div class="sb-avatar">{sigla}</div>'
+    return (f'<div class="sb-urow">{av}<div><div class="sb-uname">{nome}</div>'
             f'<div class="sb-chips"><span class="chip {cl}">{_e(ruolo)}</span><span class="chip prof">{_e(profilo)}</span></div></div></div>')
 
 
