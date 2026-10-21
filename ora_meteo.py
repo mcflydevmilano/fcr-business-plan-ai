@@ -91,9 +91,12 @@ def render_sidebar():
     m = meteo(lat, lon)
     if not m:
         return
+    dati = [("min", f"{m['min']}°"), ("max", f"{m['max']}°"), ("vento", f"{m['vento']} km/h")]
+    if m["pioggia"]:
+        dati.append(("pioggia", f"{m['pioggia']}%"))
+    celle = "".join(f"<div class='mt-c'><span>{k}</span><b>{v}</b></div>" for k, v in dati)
     st.markdown(
-        f"<div class='sb-meteo'><span style='font-size:1.4rem;vertical-align:middle'>{m['icona']}</span> "
-        f"<b>{m['temp']}°C</b> · {m['testo']}<br>"
-        f"<small>{citta} · min {m['min']}° / max {m['max']}° · vento {m['vento']} km/h"
-        f"{' · pioggia ' + str(m['pioggia']) + '%' if m['pioggia'] else ''}</small></div>",
+        f"<div class='sb-meteo'><div class='mt-top'><span class='mt-ico'>{m['icona']}</span>"
+        f"<div><div class='mt-temp'>{m['temp']}°C</div><div class='mt-txt'>{m['testo']}</div></div></div>"
+        f"<div class='mt-citta'>📍 {citta}</div><div class='mt-grid'>{celle}</div></div>",
         unsafe_allow_html=True)

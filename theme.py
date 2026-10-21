@@ -380,9 +380,17 @@ SIDEBAR_CSS = """
 
 .st-key-sb_ora, .st-key-sb_utente { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 8px 10px 6px; margin-bottom: 10px; box-shadow: var(--shadow); }
 .st-key-sb_ora iframe { border-radius: 10px; }
-.sb-meteo { text-align: center; font-size: .8rem; color: #334155; line-height: 1.45; border-top: 1px dashed var(--line2); padding-top: 7px; margin-top: 2px; }
-.sb-meteo b { font-size: 1.05rem; color: var(--navy); }
-.sb-meteo small { color: var(--mut); }
+.sb-meteo { border-top: 1px dashed var(--line2); padding: 9px 2px 14px; margin-top: 2px; overflow: visible; }
+.st-key-sb_ora, .st-key-sb_ora [data-testid="stMarkdownContainer"], .st-key-sb_ora [data-testid="stElementContainer"] { overflow: visible !important; }
+.sb-meteo .mt-top { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.sb-meteo .mt-ico { font-size: 2rem; line-height: 1; }
+.sb-meteo .mt-temp { font-size: 1.35rem; font-weight: 800; color: var(--navy); line-height: 1.05; }
+.sb-meteo .mt-txt { font-size: .8rem; color: #334155; }
+.sb-meteo .mt-citta { text-align: center; font-size: .72rem; font-weight: 700; color: var(--acc); margin: 7px 0 7px; letter-spacing: .04em; }
+.sb-meteo .mt-grid { display: flex; gap: 6px; }
+.sb-meteo .mt-c { flex: 1 1 0; min-width: 0; text-align: center; background: var(--panel2); border-radius: 9px; padding: 5px 2px; }
+.sb-meteo .mt-c span { display: block; font-size: .6rem; text-transform: uppercase; letter-spacing: .08em; color: var(--mut); }
+.sb-meteo .mt-c b { font-size: .8rem; color: var(--navy); white-space: nowrap; }
 .sb-urow { display: flex; align-items: center; gap: 11px; padding: 4px 2px 8px; }
 .sb-avatar { flex: 0 0 auto; width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 1rem;
   background: linear-gradient(135deg, #1e3fae, #2563eb); box-shadow: 0 0 0 3px #dbeafe, 0 4px 10px rgba(30,64,175,.3); }
