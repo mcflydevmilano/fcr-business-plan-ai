@@ -90,3 +90,25 @@ def test_pagina_calendario(monkeypatch):
     _btn(at, "Apri Calendario scadenze").click().run()
     assert not at.exception and len(at.tabs) == 3
     assert any("Scadute" in m.value for m in at.markdown)
+
+
+def test_riepilogo_slack(monkeypatch):
+    import json
+
+    import riepilogo
+    testo = "RIEPILOGO FCR - 20/10/2026\n\nCOSA FARE\n- [critico] Incassi in ritardo\n\nSCADUTE (1)\n- 19/10 [Incasso] Rossi\n\nSEMAFORI\n- Cassa: 5 [CRITICO]"
+    m = riepilogo.per_slack("FCR - Riepilogo", testo)
+    t = m["blocks"][1]["text"]["text"]
+    assert m["blocks"][0]["type"] == "header" and "*COSA FARE*" in t and "*SCADUTE (1)*" in t and ":red_circle:" in t
+    inviati = []
+
+    class R:
+        status = 200
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+
+    monkeypatch.setattr(riepilogo.urllib.request, "urlopen", lambda req, timeout=0: (inviati.append(json.loads(req.data)), R())[1])
+    assert riepilogo.invia_slack("x", testo, {"SLACK_WEBHOOK_URL": "https://hooks.slack.com/services/T/B/X"}) and inviati[0]["text"] == "x"
+    import pytest
+    with pytest.raises(RuntimeError):
+        riepilogo.invia_slack("x", testo, {"SLACK_WEBHOOK_URL": "http://altro.it"})

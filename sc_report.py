@@ -6,7 +6,7 @@ import charts
 import core
 import sc
 from core import DISCLAIMER, fmt_num
-from pdf_report import BLU, CHIARO, GIALLO_B, GRIGIO, ROSSO_B, VERDE_B, _PDF, _strumenti
+from pdf_report import BLU, GIALLO_B, GRIGIO, ROSSO_B, VERDE_B, _PDF, _strumenti
 from report_util import copertina
 
 

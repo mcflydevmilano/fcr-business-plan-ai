@@ -4,6 +4,7 @@ import io
 
 import pandas as pd
 import streamlit as st
+import guida
 
 import calendario
 import dd
@@ -44,6 +45,7 @@ def _payloads(includi_demo):
 def render(fcr_uri, audit=None):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Calendario scadenze", "Fatture, gare, documenti, formazioni e mezzi: tutte le scadenze in un'unica lista, anche sul telefono."), unsafe_allow_html=True)
+    guida.mostra("ca")
     a, b, c = st.columns([1, 2, 1])
     ss.setdefault("ca_orizzonte", 30)
     ss.setdefault("ca_demo", True)
@@ -98,6 +100,8 @@ def render(fcr_uri, audit=None):
 2. Su GitHub apri il repository → **Settings → Secrets and variables → Actions → New repository secret** e crea questi 6 segreti
    (mai nel codice): `DATABASE_URL` (la stessa dei Secrets di Streamlit), `SMTP_HOST` (es. `smtp.gmail.com`), `SMTP_PORT` (`587`),
    `SMTP_USER` (l'indirizzo che invia), `SMTP_PASSWORD` (la password per le app), `MAIL_TO` (destinatari separati da virgola).
+   **Per Slack** (anche al posto dell'email): in Slack crea un'app con un *Incoming Webhook* per il canale scelto, copia l'indirizzo che inizia con
+   `https://hooks.slack.com/` e salvalo come segreto `SLACK_WEBHOOK_URL`. Basta uno dei due canali; se li configuri entrambi il riepilogo arriva su tutti e due.
 3. Carica nel repository il file `.github/workflows/riepilogo.yml` (e `riepilogo.py`, `calendario.py`).
 4. Vai su **Actions → Riepilogo mattutino → Run workflow** per provarlo subito. Poi parte da solo ogni giorno feriale (06:00 UTC: le 8 in estate, le 7 in inverno).
 """)

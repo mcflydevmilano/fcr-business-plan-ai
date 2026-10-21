@@ -3,6 +3,7 @@ import datetime as dt
 
 import pandas as pd
 import streamlit as st
+import guida
 
 import charts
 import ops_report
@@ -47,6 +48,7 @@ def _applica(p, nome):
 def render(fcr_uri, audit=None, utente=""):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Sicurezza e documenti di cantiere", "Formazioni e idoneità in scadenza, documenti obbligatori per ogni cantiere."), unsafe_allow_html=True)
+    guida.mostra("sx")
     if "sx_pers" not in ss:
         ss["sx_pers"], ss["sx_docc"] = _esempio()
         ss["sx_demo"] = True

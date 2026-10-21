@@ -1,7 +1,6 @@
 """
 bp_report.py - Dossier PDF del Business Plan Studio (stesso stile del report di credito).
 """
-import io
 import os
 import re
 import time

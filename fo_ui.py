@@ -3,6 +3,7 @@ import datetime as dt
 
 import pandas as pd
 import streamlit as st
+import guida
 
 import charts
 import fo
@@ -60,6 +61,7 @@ def _dati():
 def render(fcr_uri, audit=None, utente=""):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Fornitori e subappaltatori", "Documenti in scadenza, contratti e ordini aperti, e il confronto dei preventivi."), unsafe_allow_html=True)
+    guida.mostra("fo")
     if "fo_doc" not in ss:
         ss["fo_doc"], ss["fo_contr"], ss["fo_off"] = _esempio()
         ss["fo_demo"] = True

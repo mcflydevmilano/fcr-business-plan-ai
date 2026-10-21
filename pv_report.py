@@ -2,10 +2,9 @@
 import io
 import time
 
-import charts
 import core
 from core import fmt_num
-from pdf_report import BLU, GRIGIO, NAVY, VERDE_B, _PDF, _strumenti
+from pdf_report import BLU, VERDE_B, _PDF, _strumenti
 from report_util import copertina
 
 

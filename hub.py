@@ -105,6 +105,15 @@ CARDS = {'credit': {'icona': '📊',
                  'Invio dei costi a SAL'],
         'tag': ['Tariffe', 'Utilizzo', 'PDF + Excel'],
         'bottone': 'Parco mezzi'},
+ 'gt': {'icona': '📅',
+        'titolo': 'Cronoprogramma dei cantieri (Gantt)',
+        'desc': 'Quando parte e finisce ogni fase, a che punto è davvero e dove si accumula ritardo.',
+        'voci': ['Diagramma di Gantt con la linea di oggi',
+                 'Avanzamento reale contro previsto, per fase e cantiere',
+                 'Fine stimata e giorni di ritardo',
+                 'Parte dalle commesse del SAL e dalle squadre di Organico'],
+        'tag': ['Gantt', 'Ritardi', 'PDF + Excel'],
+        'bottone': 'Cronoprogramma'},
  'rp': {'icona': '📝',
         'titolo': 'Rapportini di cantiere',
         'desc': 'Il giornale del cantiere dal telefono: presenze, ore, lavorazioni e segnalazioni.',
@@ -138,11 +147,13 @@ GRUPPI = [
     ("Parte finanziaria", "Dott. Claudio Arosio",
      ["credit", "bp", "cf", "sc"]),
     ("Offerte e commesse", "Dalla gara al preventivo, fino all'avanzamento lavori",
-     ["ga", "pv", "sl", "fo"]),
+     ["ga", "pv", "sl", "gt"]),
     ("Cantiere e risorse", "Rapportini, sicurezza, mezzi e persone",
      ["rp", "sx", "mz", "og"]),
-    ("Direzione", "La sintesi di tutta l'azienda e le scadenze",
-     ["dd", "ca"]),
+    ("Fornitori e scadenze", "Documenti dei fornitori e calendario unico",
+     ["fo", "ca"]),
+    ("Direzione", "La sintesi di tutta l'azienda",
+     ["dd"]),
 ]
 
 
@@ -166,7 +177,28 @@ def _scheda(sigla, vai_a):
 NOTA = "Le simulazioni sono indicative e non costituiscono rating regolamentare, parere di credito o consulenza."
 
 
+PERCORSI = [
+    ("👷 Sono in cantiere", "Scrivi il rapportino e segnala i problemi, dal telefono.", [("rp", "✍️ Scrivi il rapportino")]),
+    ("🗂️ Lavoro in ufficio", "Fatture, commesse, fornitori, gare e scadenze.", [("sc", "🧾 Fatture e cassa"), ("sl", "🏗️ Commesse e SAL"), ("ca", "📅 Scadenze")]),
+    ("📊 Dirigo l'azienda", "La situazione in un colpo d'occhio.", [("dd", "📊 Apri il Cruscotto")]),
+]
+
+
+def _da_dove_comincio(vai_a):
+    with st.expander("🚀 Da dove comincio? Scegli chi sei", expanded=False):
+        st.caption("Ogni strumento ha in alto il riquadro «🧭 Come si usa»: ti dice cosa fare, passo per passo. Gli esempi che vedi sono finti: li togli con «Svuota l'esempio».")
+        cols = st.columns(len(PERCORSI), gap="large")
+        for col, (titolo, testo, bottoni) in zip(cols, PERCORSI):
+            with col:
+                st.markdown(f"**{titolo}**")
+                st.caption(testo)
+                for s, etichetta in bottoni:
+                    if st.button(etichetta, key=f"start_{s}", use_container_width=True):
+                        vai_a(s)
+
+
 def render(vai_a):
+    _da_dove_comincio(vai_a)
     for n, (titolo, sotto, sigle) in enumerate(GRUPPI):
         st.markdown(theme.hub_sezione(titolo, sotto), unsafe_allow_html=True)
         for i in range(0, len(sigle), 2):

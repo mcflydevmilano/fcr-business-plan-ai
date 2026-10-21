@@ -9,6 +9,7 @@ import json
 
 import pandas as pd
 import streamlit as st
+import guida
 
 import bp
 import bp_report
@@ -126,6 +127,7 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None, utente=""):
                    "da 3 a 5 anni, con wizard AI e dossier PDF."),
         unsafe_allow_html=True,
     )
+    guida.mostra("bp")
     for k, v in (("bp_nome", "Divisione riqualificazioni NZEB"), ("bp_descr", ESEMPIO_PROGETTO)):
         ss.setdefault(k, v)
 

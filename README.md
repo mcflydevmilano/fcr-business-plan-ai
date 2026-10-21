@@ -141,3 +141,7 @@ con scenari pessimistico/base/ottimistico modificabili, grafico tornado e mappa 
 - **Import fatture elettroniche** (`fatture.py`, nello Scadenzario): file FatturaPA `.xml` o `.xml.p7m`. Le emesse diventano incassi, le ricevute pagamenti (in base alla tua partita IVA); una riga per ogni rata. Le note di credito non vengono importate; i doppioni sono saltati; lo split payment toglie l'IVA.
 - **Rapportini di cantiere** (`rp.py`, `rp_ui.py`, `ops_report.py`): moduli rapidi da telefono per rapportino giornaliero e segnalazioni, salvati nel registro condiviso «Rapportini» con fusione automatica tra telefoni diversi. Alimentano Cruscotto, Calendario e riepilogo email.
 - L'Hub è organizzato in gruppi (`hub.py`): per spostare o aggiungere uno strumento basta modificare `GRUPPI`.
+
+## Cronoprogramma (Gantt)
+
+`gt.py`, `gt_ui.py`: fasi dei cantieri con inizio, fine e avanzamento; diagramma di Gantt con la linea di oggi, ritardi e fine stimata. Si può partire dalle commesse del SAL o dalle assegnazioni di Organico. Alimenta Cruscotto e Calendario (categoria «Fine fase»).

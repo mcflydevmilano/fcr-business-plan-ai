@@ -63,6 +63,16 @@ def data_da(v, default=None):
         return default
 
 
+SINONIMI_DOC = {"Tipo": ("Natura", "Tipo documento", "Attiva/Passiva", "Registro"),
+                "Controparte": ("Cliente", "Fornitore", "Cliente/Fornitore", "Ragione sociale", "Intestatario", "Anagrafica", "Descrizione cliente"),
+                "Cantiere": ("Commessa", "Cantiere/Commessa", "Centro di costo"),
+                "Documento": ("N. documento", "Numero", "Numero fattura", "N. fattura", "Nr. doc", "Num. doc", "Protocollo"),
+                "Data_doc": ("Data documento", "Data fattura", "Data emissione", "Data reg", "Data registrazione"),
+                "Scadenza": ("Data scadenza", "Scad.", "Scadenza pagamento", "Data pagamento previsto"),
+                "Importo": ("Totale documento", "Totale fattura", "Importo scadenza", "Totale", "Valore", "Importo scaduto", "Da incassare", "Da pagare"),
+                "Saldato": ("Pagato", "Incassato", "Importo pagato", "Già saldato", "Acconto")}
+
+
 def _tipo(v):
     s = str(v or "").strip().lower()
     if s.startswith(("att", "inc", "cli", "ent", "vend")):

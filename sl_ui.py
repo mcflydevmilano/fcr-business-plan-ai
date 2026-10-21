@@ -3,6 +3,7 @@ import datetime as dt
 
 import pandas as pd
 import streamlit as st
+import guida
 
 import cf
 import charts
@@ -11,7 +12,7 @@ import sl
 import sl_report
 import theme
 from core import fmt_num
-from ui_util import modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile
+from ui_util import modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile, sola_lettura
 
 ss = st.session_state
 PARAM_CHIAVI = ("gg_pagamento", "gg_svincolo")
@@ -88,6 +89,9 @@ def _dati():
 
 def _importa(idx, up_key, imp_key, audit):
     chiave, _u, _i, cols, etich = TABELLE[idx]
+    if sola_lettura():
+        st.caption("Importazione non disponibile per il ruolo «lettore».")
+        return
     up = st.file_uploader("Importa da Excel/CSV", type=["xlsx", "csv"], key=up_key)
     if up is not None and st.button("Importa il file", key=imp_key):
         try:
@@ -112,6 +116,7 @@ def render(fcr_uri, audit=None, utente=""):
     st.markdown(theme.hero(fcr_uri, "SAL e contabilità lavori",
                            "Commesse, stati di avanzamento, costi e margine a finire: quanto ho fatturato, quanto mi devono, e quanto guadagnerò davvero."),
                 unsafe_allow_html=True)
+    guida.mostra("sl")
     if "sl_com" not in ss:
         c, s, k = _esempio()
         ss["sl_com"], ss["sl_sal"], ss["sl_cos"] = c, s, k
@@ -206,7 +211,7 @@ def render(fcr_uri, audit=None, utente=""):
         with a:
             st.markdown("**Scadenzario incassi e pagamenti**")
             st.write("SAL emessi → fatture attive; costi non pagati → fatture passive.")
-            if st.button("📅 Invia allo Scadenzario", key="to_sc_sl", disabled=not det):
+            if st.button("📅 Invia allo Scadenzario", key="to_sc_sl", disabled=not det or sola_lettura()):
                 if "sc_df" not in ss:
                     ss["sc_df"] = pd.DataFrame(columns=sc.COLONNE_DOC)
                 att = ss["sc_df"]
@@ -222,7 +227,7 @@ def render(fcr_uri, audit=None, utente=""):
         with b:
             st.markdown("**Cash Flow di cantiere**")
             st.write("Le commesse diventano cantieri, con i costi a finire attesi al posto del preventivo.")
-            if st.button("💶 Invia al Cash Flow", key="to_cf_sl", disabled=not det):
+            if st.button("💶 Invia al Cash Flow", key="to_cf_sl", disabled=not det or sola_lettura()):
                 righe = sl.per_cash_flow(out, com)
                 sostituisci_tabella("cf_df", pd.DataFrame(righe, columns=cf.COLONNE_CANTIERI))
                 ss["cf_demo"] = False

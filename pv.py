@@ -14,7 +14,6 @@ Modello (importi in EUR):
   Imponibile        = PS + oneri sicurezza            IVA = Imponibile x iva%
   Utile effettivo   = PS - CI                         Margine % = utile effettivo / Imponibile
 """
-import math
 
 from core import fmt_num, to_float
 

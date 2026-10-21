@@ -83,7 +83,7 @@ def test_pannello_admin_solo_per_admin(monkeypatch):
     app2.session_state["utente"] = {"username": "admin", "ruolo": "admin", "origine": "app_password"}
     app2.session_state["active_module"] = "admin"
     app2.run()
-    assert not app2.exception and len(app2.tabs) == 2
+    assert not app2.exception and len(app2.tabs) == 3
 
 
 def test_senza_utenti_configurati_si_ferma(monkeypatch):

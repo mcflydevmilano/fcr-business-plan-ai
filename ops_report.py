@@ -205,3 +205,28 @@ def report_rp(out, rapp, segn, nome=""):
                               {"nome": "Segnalazioni", "intest": ["Data", "Cantiere", "Tipo", "Gravità", "Descrizione", "Responsabile", "Scadenza", "Stato"],
                                "righe": [[s["Data"], s["Cantiere"], s["Tipo"], s["Gravita"], s["Descrizione"], s["Responsabile"], s["Scadenza"], s["Stato"]] for s in segn]}])
     return pdf, x, ctx["report_id"]
+
+
+# ----------------------------------------------------------------------------- CRONOPROGRAMMA
+def report_gt(out, nome=""):
+    k, q = out["kpi"], out["params"]
+    ctx = rep_gen.costruisci_ctx("Cronoprogramma dei cantieri", "Gantt e ritardi", nome, {"k": k, "n": nome, "o": str(q["oggi"])})
+    com, fasi = out["commesse"], out["fasi"]
+    stn = {"ok": "Nei tempi", "warn": "In ritardo", "bad": "CRITICA", "done": "Completata", "wait": "Da iniziare"}
+    sez = [{"titolo": "Diagramma di Gantt", "grafico": png(charts.fig_gt(out, "light"))},
+           {"titolo": "Cantieri", "tabella": (["Cantiere", "Inizio", "Fine prev.", "Avanz.", "Previsto", "Fine stimata", "Ritardo gg", "Stato"],
+                                              [(c["Commessa"][:22], fd(c["Inizio"]), fd(c["Fine"]), N(c["Avanzamento"], 0) + "%", N(c["Prevista"], 0) + "%", fd(c["Fine stimata"]), str(c["Ritardo gg"]), stn[c["Stato"]]) for c in com])},
+           {"titolo": "Fasi", "pagina": True, "tabella": (["Cantiere", "Fase", "Inizio", "Fine", "Avanz.", "Previsto", "Scost.", "Stato"],
+                                                          [(f["Commessa"][:16], f["Fase"][:22], fd(f["Inizio"]), fd(f["Fine"]), N(f["Avanzamento"], 0) + "%", N(f["Prevista"], 0) + "%", N(f["Scostamento"], 0), stn[f["Stato"]]) for f in fasi])},
+           {"titolo": "Punti di attenzione", "testo": ["- " + a for a in _finale(out, "")]},
+           {"titolo": "Metodo e limiti", "testo": ["Avanzamento previsto = quota di durata trascorsa (lineare tra inizio e fine). Una fase è «in ritardo» se l'avanzamento reale è sotto il previsto di oltre %d punti, «critica» oltre il doppio o se ha superato la fine "
+                                                "senza essere completata. Fine stimata = inizio + durata / ritmo reale (ritmo limitato tra 0,34 e 1). Non sono modellate le dipendenze tra le fasi né i calendari di lavoro." % q["soglia_pct"]]}]
+    pdf = rep_gen.genera_pdf(ctx, "Cronoprogramma dei cantieri", "Gantt e ritardi", f"Situazione al {q['oggi'].strftime('%d/%m/%Y')}", [("CANTIERI", str(k["commesse"])), ("FASI", str(k["fasi"]))],
+                             [("Cantieri in ritardo", str(k["commesse_in_ritardo"]), f"su {k['commesse']}", "bad" if k["commesse_in_ritardo"] else "ok"), ("Fasi in ritardo", str(k["fasi_in_ritardo"]), f"{k['fasi_critiche']} critiche", "bad" if k["fasi_critiche"] else ("warn" if k["fasi_in_ritardo"] else "ok")),
+                              ("Ritardo massimo", f"{k['ritardo_max_gg']} gg", "stima sulla fine prevista", "warn" if k["ritardo_max_gg"] else "ok"), ("Fasi in scadenza", str(k["fasi_in_scadenza"]), f"entro {q['preavviso_gg']} giorni", "warn" if k["fasi_in_scadenza"] else "ok")],
+                             _esito(k["fasi_critiche"], k["fasi_in_ritardo"] - k["fasi_critiche"], max(1, k["fasi"]), "Fasi"), sez)
+    x = rep_gen.genera_excel([{"nome": "Fasi", "intest": ["Cantiere", "Fase", "Inizio", "Fine", "Avanzamento %", "Previsto %", "Scostamento", "Fine stimata", "Responsabile"],
+                               "righe": [[f["Commessa"], f["Fase"], f["Inizio"], f["Fine"], f["Avanzamento"], f["Prevista"], "=E{r}-F{r}", f["Fine stimata"], f["Responsabile"]] for f in fasi]},
+                              {"nome": "Cantieri", "intest": ["Cantiere", "Inizio", "Fine prevista", "Avanzamento %", "Previsto %", "Fine stimata", "Ritardo gg", "Fasi"],
+                               "righe": [[c["Commessa"], c["Inizio"], c["Fine"], c["Avanzamento"], c["Prevista"], c["Fine stimata"], c["Ritardo gg"], c["Fasi"]] for c in com]}])
+    return pdf, x, ctx["report_id"]

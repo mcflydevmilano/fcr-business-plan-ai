@@ -80,6 +80,15 @@ h3 { margin-top: .6rem; }
 [class*="st-key-hubc_"] > div:first-child { flex: 1 1 auto; display: flex; flex-direction: column; }
 [class*="st-key-hubc_"] > div:first-child div:has(.hub-card) { flex: 1 1 auto; height: 100%; }
 [class*="st-key-hubc_"] .hub-card { height: calc(100% - 20px); box-sizing: border-box; }
+.gd { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 4px 0; }
+.gd-step { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.gd-step.ok { background: #f0fdf4; border-color: #bbf7d0; }
+.gd-step.next { border-color: var(--acc); box-shadow: 0 0 0 2px rgba(37,99,235,.12); }
+.gd-n { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #e2e8f0; color: var(--navy); font-weight: 800; font-size: .85rem; display: flex; align-items: center; justify-content: center; }
+.gd-step.ok .gd-n { background: #22c55e; color: #fff; }
+.gd-step.next .gd-n { background: var(--acc); color: #fff; }
+.gd-t { font-weight: 700; color: var(--navy); font-size: .97rem; }
+.gd-x { color: var(--ink); font-size: .9rem; line-height: 1.45; margin-top: 2px; }
 .hub-sez { margin: 30px 0 14px 0; padding-left: 14px; border-left: 4px solid var(--acc); }
 .hub-sez-t { font-size: 1.25rem; font-weight: 800; color: var(--navy); letter-spacing: -.01em; }
 .hub-sez-sub { color: var(--mut); font-size: .95rem; margin-top: 2px; }
@@ -152,6 +161,11 @@ h3 { margin-top: .6rem; }
 .hub-card.rp .hub-badge { background: #eef2ff; }
 .hub-card.rp .hub-num { color: #4338ca; }
 .hub-card.rp li::before { background: #e0e7ff; color: #4338ca; }
+.hub-card.gt::before { background: linear-gradient(90deg, #b45309, #fcd34d); }
+.hub-card.gt:hover { border-color: #fde68a; box-shadow: 0 2px 4px rgba(15,23,42,.06), 0 14px 34px rgba(180,83,9,.16); }
+.hub-card.gt .hub-badge { background: #fffbeb; }
+.hub-card.gt .hub-num { color: #b45309; }
+.hub-card.gt li::before { background: #fef3c7; color: #b45309; }
 .hub-card.ca::before { background: linear-gradient(90deg, #0369a1, #38bdf8); }
 .hub-card.ca:hover { border-color: #bae6fd; box-shadow: 0 2px 4px rgba(15,23,42,.06), 0 14px 34px rgba(3,105,161,.16); }
 .hub-card.ca .hub-badge { background: #f0f9ff; }

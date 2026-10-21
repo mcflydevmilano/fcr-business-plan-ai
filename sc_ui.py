@@ -3,6 +3,7 @@ import datetime as dt
 
 import pandas as pd
 import streamlit as st
+import guida
 
 import charts
 import sc
@@ -123,6 +124,7 @@ def render(fcr_uri, audit=None, utente=""):
     st.markdown(theme.hero(fcr_uri, "Scadenzario incassi e pagamenti",
                            "Fatture attive e passive, scaduto, solleciti e fabbisogno di cassa settimana per settimana: questa settimana ho cassa?"),
                 unsafe_allow_html=True)
+    guida.mostra("sc")
     if "sc_df" not in ss:
         ss["sc_df"] = _esempio()
         ss["sc_demo"] = True

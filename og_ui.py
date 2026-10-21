@@ -3,6 +3,7 @@ import datetime as dt
 
 import pandas as pd
 import streamlit as st
+import guida
 
 import charts
 import og
@@ -54,6 +55,7 @@ def _dati():
 def render(fcr_uri, audit=None, utente=""):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Organico e carico di lavoro", "Quanta gente serve nei prossimi mesi, quando si è in troppi o in pochi e quanto costano le ore ferme."), unsafe_allow_html=True)
+    guida.mostra("og")
     if "og_ris" not in ss:
         ss["og_ris"], ss["og_ass"] = _esempio()
         ss["og_demo"] = True

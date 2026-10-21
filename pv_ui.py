@@ -3,6 +3,7 @@ import json
 
 import pandas as pd
 import streamlit as st
+import guida
 
 import charts
 import cf
@@ -67,6 +68,7 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None, utente=""):
     st.markdown(theme.hero(fcr_uri, "Computo e Preventivo",
                            "Dal computo metrico al preventivo: costi, spese generali, utile, sconto, sicurezza e IVA, con margine sempre sotto controllo."),
                 unsafe_allow_html=True)
+    guida.mostra("pv")
     if "pv_df" not in ss:
         ss["pv_df"] = pd.DataFrame(ESEMPIO, columns=pv.COLONNE_VOCI)
     for k, v in (("pv_cliente", ""), ("pv_oggetto", "Ristrutturazione edificio"), ("pv_validita", 30), ("pv_note", "")):

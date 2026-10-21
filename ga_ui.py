@@ -3,6 +3,7 @@ import datetime as dt
 
 import pandas as pd
 import streamlit as st
+import guida
 
 import charts
 import ga
@@ -63,6 +64,7 @@ def _dati():
 def render(fcr_uri, audit=None, utente=""):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Gare e offerte", "Quali gare conviene fare, con quale ribasso, e cosa manca prima della scadenza."), unsafe_allow_html=True)
+    guida.mostra("ga")
     if "ga_gare" not in ss:
         ss["ga_gare"], ss["ga_doc"] = _esempio()
         ss["ga_demo"] = True

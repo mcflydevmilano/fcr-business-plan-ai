@@ -2,6 +2,7 @@
 
 import pandas as pd
 import streamlit as st
+import guida
 
 import cf
 import cf_report
@@ -58,6 +59,7 @@ def render(fcr_uri, audit=None, utente=""):
     st.markdown(theme.hero(fcr_uri, "Cash Flow di cantiere",
                            "Liquidità del portafoglio cantieri: incassi, pagamenti, cassa mese per mese, fabbisogno di fido e stress test."),
                 unsafe_allow_html=True)
+    guida.mostra("cf")
     if "cf_df" not in ss:
         ss["cf_df"] = pd.DataFrame(cf.genera_portafoglio(100, 5_000_000, 1, 12, 3, 50, 50, 30, 75.0), columns=cf.COLONNE_CANTIERI)
         ss["cf_demo"] = True

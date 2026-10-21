@@ -11,6 +11,7 @@ import sc
 import sl
 import ga
 import fo
+import gt
 import sx
 import mz
 import og
@@ -138,6 +139,17 @@ def metriche_rp(payload, oggi=None):
     if oggi is not None:
         p["oggi"] = oggi
     out = rp.calcola_rp(rapp, segn, p)
+    return {"kpi": out["kpi"], "avvisi": out["avvisi"]}
+
+
+def metriche_gt(payload, oggi=None):
+    fasi, _ = gt.normalizza_fasi(payload.get("fasi"))
+    if not fasi:
+        return None
+    p = dict(payload.get("params") or {})
+    if oggi is not None:
+        p["oggi"] = oggi
+    out = gt.calcola_gt(fasi, p)
     return {"kpi": out["kpi"], "avvisi": out["avvisi"]}
 
 
@@ -307,6 +319,13 @@ def semafori(m, soglie=None):
         if sto != "ok":
             azioni.append((sto, "Organico: nei mesi di sovraccarico servono più risorse; nei mesi scarichi ci sono ore ferme da riempire."))
 
+    if m.get("gt"):
+        k = m["gt"]["kpi"]
+        stg = "bad" if k["fasi_critiche"] else ("warn" if k["fasi_in_ritardo"] or k["fasi_in_scadenza"] else "ok")
+        righe.append(_riga("Cantieri", "Cantieri in ritardo sul cronoprogramma", str(k["commesse_in_ritardo"]), stg,
+                           f"{k['fasi_critiche']} fasi critiche · ritardo massimo {k['ritardo_max_gg']} giorni"))
+        if stg != "ok":
+            azioni.append((stg, "Cronoprogramma: recupera le fasi in ritardo o ripianifica le date dei cantieri in ritardo."))
     if m.get("rp"):
         k = m["rp"]["kpi"]
         str_ = "bad" if (k["segn_alte"] or k["segn_scadute"]) else ("warn" if k["cantieri_senza_rapporto"] or k["segn_aperte"] else "ok")
@@ -331,7 +350,7 @@ def conteggio(righe):
     return c
 
 
-MODULI_METRICHE = ("sc", "cf", "pv", "sl", "ga", "fo", "sx", "mz", "og", "rp", "credit", "bp")
+MODULI_METRICHE = ("sc", "cf", "pv", "sl", "ga", "fo", "sx", "mz", "og", "rp", "gt", "credit", "bp")
 
 
 def metriche_da_payload(m, payload, oggi=None):

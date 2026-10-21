@@ -3,7 +3,7 @@ import time
 
 import core
 from core import DISCLAIMER
-from pdf_report import BLU, GIALLO_B, GRIGIO, NAVY, ROSSO_B, TESTO, VERDE_B, _PDF, _strumenti
+from pdf_report import BLU, GIALLO_B, GRIGIO, NAVY, ROSSO_B, VERDE_B, _PDF, _strumenti
 from report_util import copertina
 import dd
 

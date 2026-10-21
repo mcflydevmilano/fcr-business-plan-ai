@@ -11,7 +11,7 @@ from fpdf.enums import XPos, YPos
 
 import core
 from core import (
-    CLASSI, DISCLAIMER, LOGO_FCR_PATH, LOGO_PATH, PRIVACY_PUNTI, fmt_eur, fmt_num, fmt_pct, fmt_x, ratio,
+    DISCLAIMER, LOGO_FCR_PATH, LOGO_PATH, PRIVACY_PUNTI, fmt_eur, fmt_num, fmt_pct, fmt_x, ratio,
 )
 
 NAVY = (10, 45, 90)

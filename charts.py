@@ -623,3 +623,53 @@ def fig_rp_ore(cantieri, tema="light"):
     ax.set_xlabel("ore lavorate (colore: verde rapportini regolari, giallo/rosso in ritardo)", fontsize=8)
     ax.set_title("Ore lavorate per cantiere", fontsize=10, loc="left")
     return fig
+
+
+GT_COL = {"ok": "#2563eb", "warn": "#f59e0b", "bad": "#ef4444", "done": "#22c55e", "wait": "#94a3b8"}
+
+
+def fig_gt(out, tema="light", solo_commesse=False, commessa=None):
+    """Diagramma di Gantt: barra chiara = durata prevista, barra piena = avanzamento reale, tratteggio rosso = ritardo stimato, linea = oggi."""
+    import datetime as _dt
+
+    import matplotlib.dates as mdates
+    from matplotlib.patches import Patch
+    righe = []
+    for c in out["commesse"]:
+        if commessa and c["Commessa"] != commessa:
+            continue
+        righe.append(("c", c["Commessa"], _dt.date.fromisoformat(c["Inizio"]), _dt.date.fromisoformat(c["Fine"]), c["Avanzamento"], c["Stato"], _dt.date.fromisoformat(c["Fine stimata"])))
+        if not solo_commesse:
+            for f in out["fasi"]:
+                if f["Commessa"] == c["Commessa"]:
+                    righe.append(("f", "   " + f["Fase"], f["d0"], f["d1"], f["Avanzamento"], f["Stato"], _dt.date.fromisoformat(f["Fine stimata"])))
+    n = max(1, len(righe))
+    fig, (ax,) = _nuova(tema, w=9.0, h=max(2.4, 0.34 * n + 1.3))
+    t = _t(tema)
+    oggi = out["params"]["oggi"]
+    for i, (tipo, nome, d0, d1, av, st, fs) in enumerate(righe):
+        h = 0.62 if tipo == "c" else 0.42
+        x0, w = mdates.date2num(d0), max(1, (d1 - d0).days)
+        ax.barh(i, w, left=x0, height=h, color=t["fg"] if tipo == "c" else GT_COL["wait"], alpha=0.16 if tipo == "c" else 0.35, zorder=2)
+        ax.barh(i, w * av / 100.0, left=x0, height=h, color=GT_COL[st], zorder=3)
+        if fs > d1 and st in ("ok", "warn", "bad"):
+            ax.barh(i, (fs - d1).days, left=mdates.date2num(d1), height=h * 0.7, color=ROSSO, alpha=0.35, hatch="////", edgecolor=ROSSO, linewidth=0, zorder=2)
+    ax.axvline(mdates.date2num(oggi), color=ROSSO, linestyle="--", linewidth=1.2, zorder=4)
+    ax.text(mdates.date2num(oggi), -0.9, "oggi", color=ROSSO, fontsize=7, ha="center")
+    ax.set_yticks(range(n))
+    ax.set_yticklabels([r[1][:30] for r in righe], fontsize=8, color=t["fg"])
+    for lab, r in zip(ax.get_yticklabels(), righe):
+        if r[0] == "c":
+            lab.set_fontweight("bold")
+    ax.invert_yaxis()
+    ax.xaxis_date()
+    span = (max(r[6] for r in righe) - min(r[2] for r in righe)).days if righe else 30
+    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1 if span <= 240 else 2 if span <= 540 else 3))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %y"))
+    ax.tick_params(axis="x", labelsize=8)
+    ax.grid(axis="x", alpha=0.25)
+    ax.set_title("Cronoprogramma dei cantieri", fontsize=10, loc="left")
+    ax.legend(handles=[Patch(color=GT_COL["ok"], label="Nei tempi"), Patch(color=GT_COL["warn"], label="In ritardo"), Patch(color=GT_COL["bad"], label="Critica"),
+                       Patch(color=GT_COL["done"], label="Completata"), Patch(color=GT_COL["wait"], alpha=0.5, label="Da iniziare"),
+                       Patch(facecolor=ROSSO, alpha=0.35, hatch="////", label="Ritardo stimato")], fontsize=7, ncol=6, loc="upper center", bbox_to_anchor=(0.5, -0.08), frameon=False)
+    return fig

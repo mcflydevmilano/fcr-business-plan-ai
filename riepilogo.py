@@ -1,15 +1,17 @@
 """
-riepilogo.py - Riepilogo mattutino via email: semafori e azioni del Cruscotto + scadenze scadute e dei prossimi giorni.
+riepilogo.py - Riepilogo mattutino via email e/o Slack: semafori e azioni del Cruscotto + scadenze scadute e dei prossimi giorni.
 
 Si esegue da riga di comando (o da GitHub Actions, vedi .github/workflows/riepilogo.yml). Legge l'ULTIMO salvataggio di ogni modulo dal database
 (DATABASE_URL) e invia la mail con SMTP. Variabili d'ambiente: DATABASE_URL, SMTP_HOST, SMTP_PORT (587), SMTP_USER, SMTP_PASSWORD, MAIL_TO
-(uno o piu' indirizzi separati da virgola), MAIL_FROM (opzionale). Con --dry-run stampa il testo senza inviare.
+(uno o piu' indirizzi separati da virgola), MAIL_FROM (opzionale); per Slack: SLACK_WEBHOOK_URL (Incoming Webhook). Basta uno dei due canali. Con --dry-run stampa il testo senza inviare.
 """
 import datetime as dt
 import html
+import json
 import os
 import smtplib
 import sys
+import urllib.request
 from email.message import EmailMessage
 
 import calendario
@@ -87,6 +89,34 @@ def invia(oggetto, testo, corpo_html, env=None):
     return dest
 
 
+def per_slack(oggetto, testo):
+    """Testo del riepilogo nel formato di Slack (grassetto con *, limite di 3000 caratteri per blocco)."""
+    righe = []
+    for r in testo.split("\n")[1:]:
+        if r.isupper() or (r and r.split(" (")[0].isupper() and r.endswith(")")):
+            r = f"*{r}*"
+        for k, v in (("[critico]", ":red_circle:"), ("[attenzione]", ":large_yellow_circle:"), ("[ok]", ":large_green_circle:")):
+            r = r.replace(k, v)
+        righe.append(r.replace(" [CRITICO]", " :red_circle:").replace(" [ATTENZIONE]", " :large_yellow_circle:").replace(" [OK]", " :large_green_circle:"))
+    corpo = "\n".join(righe).strip()
+    blocchi = [corpo[i:i + 2900] for i in range(0, len(corpo), 2900)][:10]
+    return {"text": oggetto, "blocks": [{"type": "header", "text": {"type": "plain_text", "text": oggetto[:150]}}] +
+            [{"type": "section", "text": {"type": "mrkdwn", "text": b}} for b in blocchi]}
+
+
+def invia_slack(oggetto, testo, env=None):
+    """Pubblica il riepilogo in un canale Slack tramite Incoming Webhook (segreto SLACK_WEBHOOK_URL)."""
+    env = env or os.environ
+    url = (env.get("SLACK_WEBHOOK_URL") or "").strip()
+    if not url.startswith("https://hooks.slack.com/"):
+        raise RuntimeError("SLACK_WEBHOOK_URL mancante o non valido (deve iniziare con https://hooks.slack.com/).")
+    req = urllib.request.Request(url, data=json.dumps(per_slack(oggetto, testo)).encode("utf-8"), headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        if r.status != 200:
+            raise RuntimeError(f"Slack ha risposto {r.status}")
+    return True
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     payloads, fonti = raccogli()
@@ -97,8 +127,26 @@ def main(argv=None):
     if "--dry-run" in argv:
         print(oggetto + "\n\n" + testo)
         return 0
-    dest = invia(oggetto, testo, corpo)
-    print(f"Riepilogo inviato a {len(dest)} destinatari ({crit} punti critici). Moduli letti: {', '.join(sorted(fonti))}.")
+    email = all(os.environ.get(k) for k in ("SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "MAIL_TO"))
+    slack = bool((os.environ.get("SLACK_WEBHOOK_URL") or "").strip())
+    if not (email or slack):
+        raise RuntimeError("Nessun canale configurato: servono i segreti dell'email (SMTP_*, MAIL_TO) e/o SLACK_WEBHOOK_URL.")
+    errori = []
+    if email:
+        try:
+            dest = invia(oggetto, testo, corpo)
+            print(f"Email inviata a {len(dest)} destinatari.")
+        except Exception as e:
+            errori.append(f"email: {e}")
+    if slack:
+        try:
+            invia_slack(oggetto, testo)
+            print("Messaggio pubblicato su Slack.")
+        except Exception as e:
+            errori.append(f"slack: {e}")
+    print(f"{crit} punti critici. Moduli letti: {', '.join(sorted(fonti))}.")
+    if errori:
+        raise RuntimeError("Invio non riuscito: " + "; ".join(errori))
     return 0
 
 

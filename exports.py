@@ -9,9 +9,9 @@ Tutti i generatori ricevono un dizionario `ctx` con:
 import io
 import os
 
-from core import (
-    DISCLAIMER, LOGO_FCR_PATH, LOGO_PATH, PRIVACY_BREVE, PRIVACY_PUNTI, SOGLIE_DEFAULT,
-    fmt_eur, fmt_num, fmt_pct, fmt_x, ratio,
+from core import (  # noqa: F401  (LOGO_PATH e altri nomi sono riesportati)
+    DISCLAIMER, LOGO_FCR_PATH, LOGO_PATH, PRIVACY_BREVE, PRIVACY_PUNTI, SOGLIE_DEFAULT, fmt_eur,
+    fmt_num, fmt_pct, fmt_x, ratio,
 )
 from core import soglie_testo as _soglie_testo, valore_dettaglio as _valore_dettaglio
 import charts

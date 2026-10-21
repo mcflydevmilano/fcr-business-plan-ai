@@ -7,15 +7,16 @@ import hashlib
 
 import fo
 import ga
+import gt
 import mz
 import rp
 import sc
 import sx
 from sc import data_da
 
-MODULI_CALENDARIO = ("sc", "ga", "fo", "sx", "mz", "rp")
-NOMI_MODULO = {"sc": "Scadenzario", "ga": "Gare e offerte", "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "rp": "Rapportini di cantiere"}
-CATEGORIE = ["Incasso", "Pagamento", "Gara", "Documento gara", "Documento fornitore", "Formazione / idoneità", "Documento di cantiere", "Mezzo", "Segnalazione"]
+MODULI_CALENDARIO = ("sc", "ga", "fo", "sx", "mz", "rp", "gt")
+NOMI_MODULO = {"sc": "Scadenzario", "ga": "Gare e offerte", "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "rp": "Rapportini di cantiere", "gt": "Cronoprogramma"}
+CATEGORIE = ["Incasso", "Pagamento", "Gara", "Documento gara", "Documento fornitore", "Formazione / idoneità", "Documento di cantiere", "Mezzo", "Segnalazione", "Fine fase"]
 
 
 def _stato(giorni, preavviso):
@@ -79,6 +80,12 @@ def eventi(payloads, oggi=None, orizzonte_gg=60, categorie=None):
         for x in segn:
             if x["Stato"] != "Chiusa" and x["Scadenza"]:
                 ev.append(_ev(data_da(x["Scadenza"]), oggi, "rp", "Segnalazione", f"{x['Descrizione'][:70]} ({x['Cantiere']})", f"gravità {x['Gravita'].lower()} - {x['Responsabile']}".strip(" -"), None, prev))
+    if p.get("gt"):
+        fasi, _ = gt.normalizza_fasi(p["gt"].get("fasi"))
+        prev = int((p["gt"].get("params") or {}).get("preavviso_gg", gt.GT_DEFAULT["preavviso_gg"]))
+        for x in fasi:
+            if x["Avanzamento"] < 100:
+                ev.append(_ev(data_da(x["Fine"]), oggi, "gt", "Fine fase", f"{x['Fase']} - {x['Commessa']}", f"avanzamento {x['Avanzamento']:.0f}%" + (f" - {x['Responsabile']}" if x["Responsabile"] else ""), None, prev))
     if categorie:
         ev = [e for e in ev if e["Categoria"] in categorie]
     ev = [e for e in ev if e["Giorni"] <= orizzonte_gg]

@@ -3,6 +3,7 @@ import datetime as dt
 
 import pandas as pd
 import streamlit as st
+import guida
 
 import charts
 import ops_report
@@ -236,6 +237,7 @@ def _cfg():
 def render(fcr_uri, audit=None, utente=""):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Rapportini di cantiere", "Il giornale del cantiere dal telefono: presenze, ore, lavorazioni e segnalazioni, condivise con l'ufficio in tempo reale."), unsafe_allow_html=True)
+    guida.mostra("rp")
     if "rp_rapp" not in ss:
         _carica_condiviso()
     else:

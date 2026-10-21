@@ -3,6 +3,7 @@ import datetime as dt
 
 import pandas as pd
 import streamlit as st
+import guida
 
 import charts
 import mz
@@ -58,6 +59,7 @@ def _dati():
 def render(fcr_uri, audit=None, utente=""):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Parco mezzi e attrezzature", "Quanto costa un'ora di ogni mezzo, quanto viene usato e quali scadenze arrivano."), unsafe_allow_html=True)
+    guida.mostra("mz")
     if "mz_mezzi" not in ss:
         ss["mz_mezzi"], ss["mz_uso"], ss["mz_scad"] = _esempio()
         ss["mz_demo"] = True
