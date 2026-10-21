@@ -43,6 +43,7 @@ import og_ui
 import rp_ui
 import gt_ui
 import ru_ui
+import pe_ui
 import lg_ui
 import bk_ui
 import oa_ui
@@ -51,6 +52,7 @@ import hub
 import guida
 import assistenza
 import ora_meteo
+import freschezza
 import permessi
 import pwa
 import pv_ui
@@ -397,7 +399,7 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "ca": ("ca_",), "dd": ("dd_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",)}
 
 
 pwa.inietta()
@@ -531,7 +533,11 @@ assistenza.render((ss.get("utente") or {}).get("username", ""), MODULO or "Hub")
 
 if MODULO is None:
     st.markdown(theme.hub_header(FCR_URI, len([c for c in hub.CARDS if c in CONSENTITI])), unsafe_allow_html=True)
-    hub.render(vai_a, CONSENTITI)
+    try:
+        _fresc = freschezza.valuta(storage.ultimi_aggiornamenti(), moduli=CONSENTITI)
+    except Exception:
+        _fresc = []
+    hub.render(vai_a, CONSENTITI, _fresc)
     st.stop()
 
 if MODULO == "bp":
@@ -554,6 +560,10 @@ for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og
     if MODULO == _m:
         _ui.render(FCR_URI, audit, ss["utente"]["username"])
         st.stop()
+
+if MODULO == "pe":
+    pe_ui.render(FCR_URI, audit, ss["utente"]["username"], UTENTI_SECRETS)
+    st.stop()
 
 if MODULO == "ca":
     ca_ui.render(FCR_URI, audit, CONSENTITI)

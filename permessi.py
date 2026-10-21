@@ -6,17 +6,17 @@ Il ruolo (admin / utente / lettore) decide invece se si puo' MODIFICARE: sono du
 """
 import storage
 
-TUTTI = ["credit", "bp", "cf", "sc", "bk", "oa", "ga", "pv", "sl", "gt", "rp", "sx", "mz", "og", "fo", "ru", "lg", "ca", "dd"]
+TUTTI = ["credit", "bp", "cf", "sc", "bk", "oa", "ga", "pv", "sl", "gt", "rp", "sx", "mz", "og", "fo", "ru", "pe", "lg", "ca", "dd"]
 NOMI = {"credit": "Credit Risk & Rating", "bp": "Business Plan", "cf": "Cash Flow di cantiere", "sc": "Scadenzario", "bk": "Riconciliazione bancaria",
         "oa": "Ordini e approvazioni", "ga": "Gare e offerte", "pv": "Computo e Preventivo", "sl": "SAL e contabilità lavori", "gt": "Cronoprogramma",
-        "rp": "Rapportini", "sx": "Sicurezza", "mz": "Parco mezzi", "og": "Organico", "fo": "Fornitori", "ru": "Rubrica e cantieri",
+        "rp": "Rapportini", "sx": "Sicurezza", "mz": "Parco mezzi", "og": "Organico", "fo": "Fornitori", "ru": "Rubrica e cantieri", "pe": "Persone e ruoli",
         "lg": "Studio legale", "ca": "Calendario", "dd": "Cruscotto di direzione"}
 RISERVATI = {"dd"}            # strumenti che nessun profilo (tranne presidente e admin) riceve per impostazione predefinita
 
 PROFILI_BASE = {
     "presidente": list(TUTTI),
     "direzione": [s for s in TUTTI if s not in RISERVATI],
-    "amministrazione": ["credit", "bp", "cf", "sc", "bk", "oa", "pv", "fo", "ru", "ca"],
+    "amministrazione": ["credit", "bp", "cf", "sc", "bk", "oa", "pv", "fo", "ru", "pe", "ca"],
     "commerciale": ["ga", "pv", "sl", "gt", "ru", "ca"],
     "cantiere": ["rp", "sx", "mz", "og", "gt", "fo", "ru", "oa", "ca"],
     "legale": ["lg", "ru", "sc", "fo", "ca"],

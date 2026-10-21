@@ -124,9 +124,18 @@ PASSI = {
         ("Inserisci i contatti", "Nella scheda «1. Contatti e cantieri» scrivi o importa da Excel fornitori, clienti ed enti, con telefono ed email.", "dati:ru_cont"),
         ("Inserisci i cantieri", "Più sotto scrivi i cantieri. Lascia vuoto il «Codice»: premi «🔢 Assegna i codici mancanti» e ognuno riceve il suo (CAN-anno-numero).", "dati:ru_can"),
         ("Chiama o scrivi", "Nella scheda «2. Scheda contatto» scegli un nome: trovi i pulsanti Chiama, Scrivi e WhatsApp e tutto ciò che lo riguarda (documenti, fatture, cantieri).", None),
+        ("Controlla i nomi", "Nella scheda «4. Controllo nomi» vedi i nomi scritti diversamente negli altri strumenti (refusi, «Srl» in più) e li correggi tutti con un clic.", None),
         ("Usa lo stesso codice ovunque", "Scrivi il codice cantiere nelle altre tabelle e in monday: così ritrovi tutto di un lavoro. Nella colonna «Codice in altro sistema» metti quello di monday.", None),
         ("Salva", "Apri «💾 Salva e riapri la rubrica» in alto e premi Salva.", "salvato"),
     ], "I collegamenti con fatture e documenti funzionano per nome: scrivi il fornitore sempre allo stesso modo in tutti gli strumenti."),
+    "pe": ("Avere l'elenco di chi lavora in azienda e dare a ciascuno solo gli accessi che gli servono.", [
+        ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:pe_demo"),
+        ("Inserisci il personale", "Nella scheda «1. Elenco del personale» scrivi o importa da Excel nome, ruolo, reparto, telefono e cantiere di ognuno.", "dati:pe_pers"),
+        ("Guarda i ruoli", "Nella scheda «2. Ruoli e profili» vedi quali strumenti apre ogni ruolo.", None),
+        ("Crea gli accessi", "Nella scheda «3. Accessi all'app» (solo amministratore) scegli la persona, controlla il profilo proposto e premi «Crea account e abilita». Comunica la password temporanea in privato.", None),
+        ("Revoca chi esce", "Quando qualcuno non è più in servizio, mettilo «No» in elenco e usa «⛔ Revoca accesso».", None),
+        ("Salva", "Apri «💾 Salva e riapri l'elenco» in alto e premi Salva.", "salvato"),
+    ], "Sono dati personali: tienili essenziali e dai accesso a questo strumento solo a chi serve. Chi non è nell'elenco ma ha un account compare come «account senza persona»."),
     "lg": ("Passare un cliente allo studio legale con tutto il fascicolo, e non perdere i termini di riserve, contratti e penali.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:lg_demo"),
         ("Registra i solleciti fatti", "Nella scheda «1. Dati» scrivi ogni sollecito mandato a un cliente (data, come, risposta): finisce nel fascicolo.", None),

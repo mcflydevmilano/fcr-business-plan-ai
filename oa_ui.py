@@ -70,13 +70,22 @@ def render(fcr_uri, audit=None, utente=""):
     with t1:
         banner_esempio("oa_demo", [("oa_ord", oa.COLONNE_ORDINI), ("oa_sog", oa.COLONNE_SOGLIE)], "svuota_oa")
         blocco_tabella("oa_ord", "Ordini di acquisto", "Una riga per ordine. Se cambi l'importo di un ordine già approvato, torna da riapprovare.", oa.COLONNE_ORDINI, oa.ETICHETTE_ORDINI, co, ss["oa_ord"], "oa", 1, audit, 260)
-        if st.button("🔢 Assegna i numeri mancanti", key="oa_numeri", disabled=sola_lettura()):
+        if st.button("🔢 Assegna i numeri mancanti", key="numeri_oa", disabled=sola_lettura()):
             nuovi, _ = oa.normalizza_ordini(ss["oa_ord"].to_dict("records"))
             sostituisci_tabella("oa_ord", pd.DataFrame(nuovi, columns=oa.COLONNE_ORDINI))
             audit("oa_numeri_assegnati", f"{len(nuovi)} ordini")
             st.rerun()
         blocco_tabella("oa_sog", "Chi approva cosa", "Per ogni fascia d'importo: il ruolo e, se vuoi, i nomi utente autorizzati. L'ultima riga (senza limite) vale per gli importi più alti.",
                        oa.COLONNE_SOGLIE, oa.ETICHETTE_SOGLIE, cs, ss["oa_sog"], "oa", 2, audit, 160)
+    with t1:
+        try:
+            import pe
+            _p = [p for p in (pe.normalizza_persone(ss["pe_pers"].to_dict("records"))[0] if ("pe_pers" in ss and not ss.get("pe_demo")) else pe.persone_salvate()) if p["Utente"]]
+        except Exception:
+            _p = []
+        if _p:
+            with st.expander("👥 Persone con account (nomi utente da usare qui)"):
+                st.dataframe(pd.DataFrame([{"Nome utente": p["Utente"], "Persona": p["Persona"], "Ruolo": p["Ruolo"]} for p in _p]), hide_index=True, width="stretch")
     grezzi = ss["oa_ord"].to_dict("records")
     ordini, av = oa.normalizza_ordini(grezzi)
     soglie = oa.normalizza_soglie(ss["oa_sog"].to_dict("records"))
@@ -109,11 +118,11 @@ def render(fcr_uri, audit=None, utente=""):
             mot = st.text_input("Motivo (obbligatorio per respingere)", key="oa_motivo")
             c1, c2 = st.columns(2)
             adesso = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
-            if c1.button("✅ Approva", key="oa_ok", type="primary", disabled=not ok or sola_lettura(), width="stretch"):
+            if c1.button("✅ Approva", key="ok_oa", type="primary", disabled=not ok or sola_lettura(), width="stretch"):
                 ss["oa_appr"] = oa.registra(ss["oa_appr"], o, "Approvato", nome_u, adesso, mot)
                 audit("oa_approvato", f"{o['Numero']} · {o['Fornitore']} · {fmt_num(o['Importo'])} € · da {nome_u}")
                 st.rerun()
-            if c2.button("⛔ Respingi", key="oa_no", disabled=not ok or sola_lettura() or not mot.strip(), width="stretch"):
+            if c2.button("⛔ Respingi", key="no_oa", disabled=not ok or sola_lettura() or not mot.strip(), width="stretch"):
                 ss["oa_appr"] = oa.registra(ss["oa_appr"], o, "Respinto", nome_u, adesso, mot)
                 audit("oa_respinto", f"{o['Numero']} · {o['Fornitore']} · {fmt_num(o['Importo'])} € · da {nome_u}: {mot}")
                 st.rerun()

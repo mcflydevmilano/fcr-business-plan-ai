@@ -4,6 +4,7 @@ import datetime as dt
 import pandas as pd
 import streamlit as st
 
+import anagrafica
 import fo
 import guida
 import ops_report
@@ -73,6 +74,75 @@ def _bottoni(c, oggetto=""):
     return "  ·  ".join(out) or "_nessun recapito_"
 
 
+def _tab_nomi(contatti, cantieri, audit):
+    """Confronta i nomi scritti negli altri strumenti con la Rubrica e propone le correzioni."""
+    st.caption("I collegamenti tra strumenti avvengono per nome: «Calcestruzzi Alfa» e «Calcestruzzi Alfa Srl» sono per l'app due fornitori diversi. "
+               "Qui vedi i nomi che non sono in Rubrica e puoi correggerli tutti insieme.")
+    if ss.get("ru_demo"):
+        st.info("Stai usando la Rubrica di esempio: svuotala e inserisci i tuoi contatti e cantieri, poi il controllo avrà senso.")
+    tab = {}
+    for chiave, _c, _t, _e in anagrafica.TABELLE:
+        modulo = chiave.split("_")[0]
+        if chiave in ss and chiave not in tab and not ss.get(f"{modulo}_demo"):
+            tab[chiave] = ss[chiave].to_dict("records")
+    if not tab:
+        st.info("Apri gli altri strumenti (Scadenzario, Fornitori, Cronoprogramma…) con i tuoi dati veri: il controllo guarda quelli aperti in questa sessione.")
+        return
+    try:
+        import pe
+        persone = pe.normalizza_persone(ss["pe_pers"].to_dict("records"))[0] if ("pe_pers" in ss and not ss.get("pe_demo")) else pe.persone_salvate()
+    except Exception:
+        persone = []
+    uff = anagrafica.elenchi(contatti, cantieri, persone)
+    ris = anagrafica.controlla(tab, uff)
+    st.caption("Strumenti controllati: " + ", ".join(sorted({k.split('_')[0] for k in tab})) + ". Per quelli salvati: aprili, correggi qui, poi salva di nuovo.")
+    if not ris:
+        st.success("Tutti i nomi corrispondono alla Rubrica.")
+        return
+    prop = [r for r in ris if r["suggerimento"]]
+    st.warning(f"{len(ris)} nomi non corrispondono alla Rubrica ({len(prop)} con una correzione proposta).")
+
+    def _applica(r, nuovo):
+        n = 0
+        for (chiave, col, _e), _q in r["dove"].items():
+            righe, q = anagrafica.sostituisci(ss[chiave].to_dict("records"), col, r["valore"], nuovo)
+            sostituisci_tabella(chiave, pd.DataFrame(righe, columns=list(ss[chiave].columns)))
+            n += q
+        audit("ru_nomi_corretti", f"«{r['valore']}» → «{nuovo}» ({n} righe)")
+        return n
+
+    if prop and st.button(f"✅ Applica le {len(prop)} correzioni proposte", key="correggi_tutti", type="primary", disabled=sola_lettura()):
+        tot = sum(_applica(r, r["suggerimento"]) for r in prop)
+        st.toast(f"Corrette {tot} righe")
+        st.rerun()
+    AGG = "➕ Aggiungi alla Rubrica come nuovo"
+    for i, r in enumerate(ris):
+        dove = "; ".join(f"{e} ({q})" for (_k, _c, e), q in r["dove"].items())
+        with st.container(border=True):
+            c1, c2, c3 = st.columns([3, 3, 1.4])
+            c1.markdown(f"**{r['valore']}**  \n<span style='color:#64748b;font-size:.85rem'>{ {'cantiere': 'cantiere', 'persona': 'persona'}.get(r['tipo'], 'cliente / fornitore') } · {dove}</span>", unsafe_allow_html=True)
+            puo_agg = r["tipo"] != "persona" or "pe_pers" in ss
+            opz = ([r["suggerimento"]] if r["suggerimento"] else []) + [x for x in uff[r["tipo"]] if x != r["suggerimento"]] + ([AGG] if puo_agg else [])
+            scelta = c2.selectbox("Diventa", opz, key=f"nomi_sel_{i}", label_visibility="collapsed")
+            c3.markdown("<div style='height:.2rem'></div>", unsafe_allow_html=True)
+            if c3.button("Applica", key=f"nomi_ok_{i}", width="stretch", disabled=sola_lettura()):
+                if scelta == AGG:
+                    if r["tipo"] == "cantiere":
+                        nuovo = pd.DataFrame([{"Codice": "", "Cantiere": r["valore"], "Cliente": "", "Indirizzo": "", "Responsabile": "", "Stato": "In corso", "Esterno": ""}], columns=ru.COLONNE_CANTIERI)
+                        sostituisci_tabella("ru_can", pd.concat([ss["ru_can"], nuovo], ignore_index=True))
+                    elif r["tipo"] == "persona":
+                        import pe
+                        nuovo = pd.DataFrame([{**{c: "" for c in pe.COLONNE_PERSONE}, "Persona": r["valore"], "Ruolo": "Altro", "Tipo": "Dipendente", "Attivo": "Sì"}], columns=pe.COLONNE_PERSONE)
+                        sostituisci_tabella("pe_pers", pd.concat([ss["pe_pers"], nuovo], ignore_index=True))
+                    else:
+                        nuovo = pd.DataFrame([{"Nome": r["valore"], "Ruolo": "Altro", "Referente": "", "Telefono": "", "Email": "", "Note": ""}], columns=ru.COLONNE_CONTATTI)
+                        sostituisci_tabella("ru_cont", pd.concat([ss["ru_cont"], nuovo], ignore_index=True))
+                    audit("ru_nome_aggiunto", f"«{r['valore']}» ({r['tipo']})")
+                else:
+                    _applica(r, scelta)
+                st.rerun()
+
+
 def render(fcr_uri, audit=None, utente=""):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Rubrica e cantieri", "Tutti i contatti in un posto solo e ogni cantiere con il suo codice unico."), unsafe_allow_html=True)
@@ -81,14 +151,14 @@ def render(fcr_uri, audit=None, utente=""):
         ss["ru_cont"], ss["ru_can"] = _esempio()
         ss["ru_demo"] = True
     pannello_archivio("ru", "la rubrica", _raccogli, _applica, audit, utente)
-    t1, t2, t3, t4 = st.tabs(["🧾 1. Contatti e cantieri", "📇 2. Scheda contatto", "🔗 3. Codici cantiere", "📄 4. Dossier"])
+    t1, t2, t3, t5, t4 = st.tabs(["🧾 1. Contatti e cantieri", "📇 2. Scheda contatto", "🔗 3. Codici cantiere", "🔍 4. Controllo nomi", "📄 5. Dossier"])
     cc, ccan = _cfg()
     with t1:
         banner_esempio("ru_demo", [("ru_cont", ru.COLONNE_CONTATTI), ("ru_can", ru.COLONNE_CANTIERI)], "svuota_ru")
         blocco_tabella("ru_cont", "Contatti", "Fornitori, clienti, professionisti, enti. Una riga per azienda, con la persona di riferimento.", ru.COLONNE_CONTATTI, ru.ETICHETTE_CONTATTI, cc,
                        ss["ru_cont"], "ru", 1, audit, 260, ru.SINONIMI_CONTATTI)
         blocco_tabella("ru_can", "Cantieri", "Lascia vuoto il codice: lo assegna l'app. Poi usa lo stesso codice nelle altre tabelle.", ru.COLONNE_CANTIERI, ru.ETICHETTE_CANTIERI, ccan, ss["ru_can"], "ru", 2, audit, 200)
-        if st.button("🔢 Assegna i codici mancanti", key="ru_codici", disabled=sola_lettura()):
+        if st.button("🔢 Assegna i codici mancanti", key="codici_ru", disabled=sola_lettura()):
             nuovi, _ = ru.normalizza_cantieri(ss["ru_can"].to_dict("records"))
             sostituisci_tabella("ru_can", pd.DataFrame(nuovi, columns=ru.COLONNE_CANTIERI))
             audit("ru_codici_assegnati", f"{len(nuovi)} cantieri")
@@ -145,6 +215,9 @@ def render(fcr_uri, audit=None, utente=""):
             st.dataframe(pd.DataFrame(cantieri).rename(columns=ru.ETICHETTE_CANTIERI), hide_index=True, width="stretch")
             if k["senza_codice_esterno"]:
                 st.caption(f"{k['senza_codice_esterno']} cantieri senza codice nell'altro sistema (colonna «Codice in altro sistema»).")
+
+    with t5:
+        _tab_nomi(contatti, cantieri, audit)
 
     with t4:
         if not contatti:

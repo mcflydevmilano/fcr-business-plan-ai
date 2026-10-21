@@ -281,3 +281,156 @@ def test_i_nuovi_strumenti_si_aprono(modulo):
     at = _app(_u("root", "admin"), modulo)
     assert not at.exception, [e.value for e in at.exception]
     assert len(at.tabs) >= 3
+
+
+@pytest.mark.parametrize("modulo", ["ru", "lg", "bk", "oa", "rp"])
+def test_uscire_e_rientrare_nello_strumento_non_da_errore(modulo):
+    """I pulsanti e i widget con chiave che inizia col prefisso dello strumento non vanno ripristinati: regressione di ru_codici."""
+    at = _app(_u("root", "admin"), modulo)
+    for b in at.button:                                         # premi ogni pulsante dello strumento almeno una volta
+        if b.label.startswith(("🔢", "📄", "Svuota")):
+            b.click()
+            at.run()
+            assert not at.exception, (b.label, [e.value for e in at.exception])
+    nomi = [b for b in at.button if "Torna all'Hub" in b.label]
+    nomi[0].click().run()
+    assert not at.exception
+    hub_btn = next(b for b in at.button if b.key == f"hub_{modulo}")
+    hub_btn.click().run()
+    assert not at.exception, [e.value for e in at.exception]
+
+
+# ------------------------------------------------------------------ DATI AGGIORNATI E NOMI COERENTI
+def test_freschezza_segnala_i_dati_fermi():
+    import freschezza
+    adesso = dt.datetime(2026, 10, 21, 12, 0, tzinfo=dt.timezone.utc)
+    ultimi = {"rp": ("2026-10-20 10:00:00.000", "mario", "x"), "sc": ("2026-10-10 10:00:00.000", "anna", "x"), "gt": ("2026-09-01 10:00:00.000", "luca", "x")}
+    r = {x["modulo"]: x for x in freschezza.valuta(ultimi, adesso, {"rp", "sc", "gt", "fo"})}
+    assert r["rp"]["stato"] == "ok" and r["sc"]["stato"] == "warn" and r["gt"]["stato"] == "bad" and r["fo"]["stato"] == "nd"
+    assert [x["modulo"] for x in freschezza.fermi(freschezza.valuta(ultimi, adesso))] == ["gt", "sc"]
+    assert "luca" in freschezza.frase(r["gt"])
+
+
+def test_ultimi_aggiornamenti_dal_database():
+    storage.salva_pratica("Rapportini", {"rapp": []}, autore="mario", modulo="rp")
+    permessi.salva_config(permessi.configurazione_base(), "admin")           # le configurazioni non contano come strumenti
+    u = storage.ultimi_aggiornamenti()
+    assert "rp" in u and u["rp"][1] == "mario" and "cfg" not in u
+
+
+def test_anagrafica_propone_il_nome_ufficiale():
+    import anagrafica as an
+    uff = an.elenchi([{"Nome": "Calcestruzzi Alfa S.r.l."}, {"Nome": "Elettroimpianti Beta"}], [{"Cantiere": "Villa Lago"}])
+    assert an.suggerisci("calcestruzzi alfa", uff["soggetto"]) == "Calcestruzzi Alfa S.r.l."
+    assert an.suggerisci("Elettroimpiant Beta", uff["soggetto"]) == "Elettroimpianti Beta"
+    assert an.suggerisci("Vila Lago", uff["cantiere"]) == "Villa Lago" and an.suggerisci("Rossi Mario", uff["soggetto"]) is None
+    ris = an.controlla({"sc_df": [{"Controparte": "Calcestruzzi Alfa", "Cantiere": "Villa Lago"}, {"Controparte": "Pippo", "Cantiere": "Vila Lago"}]}, uff)
+    assert {r["valore"] for r in ris} == {"Calcestruzzi Alfa", "Vila Lago", "Pippo"}      # il nome va scritto per intero come in Rubrica (qui manca «S.r.l.»)
+    assert {r["valore"] for r in an.controlla({"sc_df": [{"Controparte": "CALCESTRUZZI ALFA S.R.L."}]}, uff)} == set()     # le maiuscole non contano
+    righe, n = an.sostituisci([{"Cantiere": "Vila Lago"}, {"Cantiere": "Altro"}], "Cantiere", "Vila Lago", "Villa Lago")
+    assert n == 1 and righe[0]["Cantiere"] == "Villa Lago"
+
+
+def test_controllo_nomi_corregge_le_tabelle_aperte():
+    import pandas as pd
+    at = AppTest.from_file(APP, default_timeout=120)
+    at.session_state["utente"] = _u("root", "admin")
+    at.session_state["active_module"] = "ru"
+    at.session_state["ru_cont"] = pd.DataFrame([{"Nome": "Calcestruzzi Alfa S.r.l.", "Ruolo": "Fornitore", "Referente": "", "Telefono": "", "Email": "", "Note": ""}], columns=ru.COLONNE_CONTATTI)
+    at.session_state["ru_can"] = pd.DataFrame([{"Codice": "CAN-2026-001", "Cantiere": "Villa Lago", "Cliente": "", "Indirizzo": "", "Responsabile": "", "Stato": "In corso", "Esterno": ""}], columns=ru.COLONNE_CANTIERI)
+    at.session_state["ru_demo"] = False
+    at.session_state["sc_demo"] = False
+    at.session_state["sc_df"] = pd.DataFrame([{"Tipo": "Passiva", "Controparte": "calcestruzzi alfa", "Cantiere": "Vila Lago", "Documento": "1", "Data_doc": "", "Scadenza": "2026-12-01", "Importo": 100.0, "Saldato": 0.0}], columns=sc.COLONNE_DOC)
+    at.run()
+    assert not at.exception
+    bottone = next(b for b in at.button if b.key == "correggi_tutti")
+    bottone.click().run()
+    assert not at.exception
+    riga = at.session_state["sc_df"].iloc[0]
+    assert riga["Controparte"] == "Calcestruzzi Alfa S.r.l." and riga["Cantiere"] == "Villa Lago"
+
+
+def test_il_cruscotto_avvisa_se_i_dati_sono_vecchi():
+    import sqlite3
+    storage.salva_pratica("Cantieri", {"fasi": []}, autore="luca", modulo="gt")
+    with sqlite3.connect(storage.DB_PATH) as con:
+        con.execute("UPDATE pratiche SET aggiornato='2026-01-01 10:00:00.000' WHERE nome LIKE 'gt|%'")
+    at = _app(_u("root", "admin"), "dd")
+    assert not at.exception
+    assert any("dati sono vecchi" in w.value for w in at.warning)
+
+
+# ------------------------------------------------------------------ PERSONE E RUOLI
+def test_pe_username_e_profili_per_ruolo():
+    import pe
+    assert pe.username_suggerito("Mario De Rossi", ["mario.rossi"]) == "mario.rossi2"
+    assert pe.username_suggerito("Àngela Núñez") == "angela.nunez"
+    assert pe.profilo_per_ruolo("Capocantiere") == "cantiere" and pe.profilo_per_ruolo("Presidente") == "presidente" and pe.profilo_per_ruolo("Ruolo sconosciuto") == "cantiere"
+    assert all(pe.profilo_per_ruolo(r) in permessi.PROFILI_BASE for r in pe.RUOLI)
+
+
+def test_pe_avvisi_su_account_orfani_e_da_revocare():
+    import pe
+    p = pe.normalizza_persone([{"Persona": "Anna Bianchi", "Ruolo": "Capocantiere", "Utente": "anna.bianchi", "Attivo": "No"}, {"Persona": "Luca Verdi", "Utente": "luca.verdi"}])[0]
+    out = pe.calcola_pe(p, {"anna.bianchi": {"attivo": True}, "zeta": {"attivo": True}})
+    testo = " ".join(out["avvisi"])
+    assert "non è più in servizio" in testo and "zeta" in testo and "luca.verdi" in testo and out["kpi"]["da_revocare"] == 1
+
+
+def _pagina_pe(ruolo="admin"):
+    import pandas as pd
+    import pe
+    at = AppTest.from_file(APP, default_timeout=120)
+    at.session_state["utente"] = _u("root", ruolo)
+    at.session_state["active_module"] = "pe"
+    at.session_state["pe_demo"] = False
+    at.session_state["pe_pers"] = pd.DataFrame([{"Persona": "Marco Colombo", "Ruolo": "Capocantiere", "Reparto": "", "Telefono": "", "Email": "", "Cantiere": "", "Tipo": "Dipendente", "Utente": "", "Attivo": "Sì"}],
+                                               columns=pe.COLONNE_PERSONE)
+    return at.run()
+
+
+def test_pe_crea_account_dall_elenco_e_assegna_il_profilo():
+    import auth
+    at = _pagina_pe()
+    assert not at.exception, [e.value for e in at.exception]
+    next(b for b in at.button if b.key == "crea_pe").click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    u = storage.utente_db("marco.colombo")
+    assert u and u["ruolo"] == "utente"
+    assert permessi.carica_config()["utenti"]["marco.colombo"] == "cantiere"                 # proposto dal ruolo «Capocantiere»
+    assert at.session_state["pe_pers"].iloc[0]["Utente"] == "marco.colombo"
+    user, pw = at.session_state["tmp_pe"]
+    assert user == "marco.colombo" and auth.verifica_password(pw, u["hash"])
+    assert storage.elenca_eventi(20, azione="pe_account_creato")
+
+
+def test_pe_solo_l_admin_gestisce_gli_accessi():
+    at = _pagina_pe("utente")
+    assert not at.exception
+    assert not [b for b in at.button if b.key == "crea_pe"]
+    assert any("amministratore" in i.value for i in at.info)
+
+
+def test_pe_revoca_l_accesso():
+    import auth
+    auth.crea_utente("marco.colombo", "Password-Lunga-1", "utente", "root")
+    at = _pagina_pe()
+    at.session_state["pe_pers"].loc[0, "Utente"] = "marco.colombo"
+    at.run()
+    next(b for b in at.button if b.key == "revoca_pe").click().run()
+    assert not at.exception and storage.utente_db("marco.colombo")["attivo"] == 0
+
+
+def test_controllo_nomi_include_le_persone():
+    import anagrafica as an
+    uff = an.elenchi([{"Nome": "Alfa"}], [{"Cantiere": "Villa Lago"}], [{"Persona": "Marco Colombo", "Utente": "marco.colombo"}])
+    assert uff["persona"] == ["Marco Colombo", "marco.colombo"]
+    ris = an.controlla({"gt_fasi": [{"Responsabile": "marco colombo"}, {"Responsabile": "Marco Colomb"}]}, uff)
+    assert [r["valore"] for r in ris] == ["Marco Colomb"] and ris[0]["suggerimento"] == "Marco Colombo"
+    assert an.controlla({"gt_fasi": [{"Responsabile": "Chiunque"}]}, an.elenchi([], [], [])) == []      # elenco vuoto: niente da confrontare
+
+
+def test_pe_si_apre_e_il_profilo_direzione_lo_vede():
+    at = _app(_u("root", "admin"), "pe")
+    assert not at.exception and len(at.tabs) == 4
+    assert "pe" in permessi.PROFILI_BASE["direzione"] and "pe" not in permessi.PROFILI_BASE["cantiere"]

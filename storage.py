@@ -117,7 +117,7 @@ def _db(path=None):
         con.close()
 
 
-MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl", "ga", "fo", "sx", "mz", "og", "rp", "gt", "cfg", "ru", "lg", "bk", "oa", "al")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
+MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl", "ga", "fo", "sx", "mz", "og", "rp", "gt", "cfg", "ru", "lg", "bk", "oa", "al", "pe")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
 
 
 MAX_VERSIONI = 20          # versioni precedenti conservate per ogni salvataggio
@@ -199,6 +199,19 @@ def elenca_pratiche(path=None, modulo="credit"):
         pref = next((m for m in MODULI_ARCHIVIO if nome.startswith(m + "|")), "credit")
         if pref == modulo:
             out.append({"nome": nome.split("|", 1)[1] if pref != "credit" else nome, "aggiornato": agg, "autore": aut or ""})
+    return out
+
+
+def ultimi_aggiornamenti(path=None):
+    """{modulo: (aggiornato, autore, nome)} dell'ultimo salvataggio di ogni strumento. Serve a capire quali dati sono fermi da troppo."""
+    with _db(path) as con:
+        righe = con.execute("SELECT nome, aggiornato, autore FROM pratiche ORDER BY aggiornato DESC").fetchall()
+    out = {}
+    for nome, agg, aut in righe:
+        pref = next((m for m in MODULI_ARCHIVIO if nome.startswith(m + "|")), "credit")
+        if pref in ("cfg", "al"):
+            continue
+        out.setdefault(pref, (agg, aut or "", nome.split("|", 1)[1] if pref != "credit" else nome))
     return out
 
 

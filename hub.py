@@ -114,6 +114,15 @@ CARDS = {'credit': {'icona': '📊',
                  'Codice cantiere unico, pronto per monday e altri sistemi'],
         'tag': ['Rubrica', 'Codici cantiere', 'PDF + Excel'],
         'bottone': 'Rubrica e cantieri'},
+ 'pe': {'icona': '👥',
+        'titolo': 'Persone e ruoli',
+        'desc': 'L\'elenco di chi lavora in azienda, con il suo ruolo, e a cosa può accedere nell\'app.',
+        'voci': ['Elenco del personale con ruolo, reparto, recapiti e cantiere',
+                 'Un ruolo aziendale propone il profilo di accesso giusto',
+                 'Crea l\'account di una persona dall\'elenco, con il suo profilo',
+                 'Revoca l\'accesso di chi non è più in servizio'],
+        'tag': ['Personale', 'Ruoli', 'Accessi'],
+        'bottone': 'Persone e ruoli'},
  'lg': {'icona': '⚖️',
         'titolo': 'Studio legale',
         'desc': 'Passa un cliente allo studio con il fascicolo completo e tieni sotto controllo riserve, contratti e penali.',
@@ -190,8 +199,8 @@ GRUPPI = [
      ["ru", "fo", "oa", "ca"]),
     ("Studio legale", "Riserve, contratti e passaggio dei crediti allo studio",
      ["lg"]),
-    ("Direzione", "La sintesi di tutta l'azienda",
-     ["dd"]),
+    ("Direzione e persone", "La sintesi di tutta l'azienda e chi ci lavora",
+     ["pe", "dd"]),
 ]
 
 
@@ -240,13 +249,31 @@ def _da_dove_comincio(vai_a, consentiti=None):
                         vai_a(s)
 
 
-def render(vai_a, consentiti=None):
+def _freschezza(righe):
+    """Strumenti i cui dati non si salvano da troppo tempo: un semaforo su dati vecchi sembra credibile ma mente."""
+    fermi = [r for r in righe if r["stato"] in ("warn", "bad")]
+    if not righe:
+        return
+    ico = {"ok": "🟢", "warn": "🟡", "bad": "🔴", "nd": "⚪"}
+    salvati = [r for r in righe if r["stato"] != "nd"]
+    titolo = "🕒 Dati aggiornati? " + (f"{len(fermi)} strumenti fermi da troppo tempo" if fermi else ("nessun dato salvato ancora" if not salvati else "gli strumenti in uso sono aggiornati"))
+    with st.expander(titolo, expanded=bool([r for r in fermi if r["stato"] == "bad"])):
+        st.caption("Quando è stato l'ultimo salvataggio di ogni strumento. Se i dati sono fermi, i semafori e il Cruscotto non raccontano la situazione di oggi.")
+        for r in righe:
+            quando = "mai salvato" if r["giorni"] is None else ("oggi" if r["giorni"] == 0 else f"{r['giorni']} giorni fa")
+            chi = f" · da {r['autore']}" if r["autore"] else ""
+            st.markdown(f"{ico[r['stato']]} **{r['nome']}** — {quando}{chi}  <span style='color:#94a3b8'>(si aggiorna ogni {r['soglia']} gg)</span>", unsafe_allow_html=True)
+
+
+def render(vai_a, consentiti=None, freschezza_righe=None):
     """consentiti: insieme di sigle visibili a chi guarda (None = tutte). I gruppi rimasti vuoti spariscono."""
     _da_dove_comincio(vai_a, consentiti)
+    _freschezza(freschezza_righe or [])
     for n, (titolo, sotto, sigle) in enumerate(GRUPPI):
         sigle = [s for s in sigle if consentiti is None or s in consentiti]
         if not sigle:
             continue
+        finanziaria = n == 0
         st.markdown(theme.hub_sezione(titolo, sotto), unsafe_allow_html=True)
         for i in range(0, len(sigle), 2):
             riga = sigle[i:i + 2]
@@ -257,5 +284,5 @@ def render(vai_a, consentiti=None):
             for col, s in zip(cols, riga):
                 with col:
                     _scheda(s, vai_a)
-        if n == 0:                                   # l'avvertenza riguarda la parte finanziaria: sta subito sotto
+        if finanziaria:                              # l'avvertenza riguarda la parte finanziaria: sta subito sotto
             st.caption(NOTA)

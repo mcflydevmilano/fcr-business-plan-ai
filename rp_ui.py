@@ -184,8 +184,21 @@ def _mostra_allegati(id_, al):
             st.image(firma.da_b64(fi["png"]), width=240, caption=f"Firma di {fi.get('nome', '')} · {fi.get('quando', '')}")
 
 
+def _cantieri_rubrica():
+    """Cantieri della Rubrica (sessione o ultimo salvataggio): cosi' il rapportino li propone gia' scritti giusti."""
+    try:
+        if "ru_can" in ss and not ss.get("ru_demo"):
+            return [c.get("Cantiere") for c in ss["ru_can"].to_dict("records") if c.get("Cantiere")]
+        elenco = storage.elenca_pratiche(modulo="ru")
+        if elenco:
+            return [c.get("Cantiere") for c in (storage.carica_pratica(elenco[0]["nome"], modulo="ru") or {}).get("cantieri", []) if c.get("Cantiere")]
+    except Exception:
+        pass
+    return []
+
+
 def _cantieri():
-    return sorted({r["Cantiere"] for r in _records("rp_rapp") + _records("rp_segn") if r.get("Cantiere")})
+    return sorted({r["Cantiere"] for r in _records("rp_rapp") + _records("rp_segn") if r.get("Cantiere")} | set(_cantieri_rubrica()))
 
 
 def _scelta_cantiere(sel, nuovo):
@@ -198,7 +211,7 @@ def _tab_rapportino(utente, audit):
     n_pad = ss.setdefault("rp_firma_n", 0)
     with st.expander("✍️ Firma (facoltativa): disegna con il dito"):
         st.caption("Firma qui sotto e premi «Conferma la firma». Poi compila e salva il rapportino: la firma resta legata a questo rapportino.")
-        png_firma = firma.pad(f"rp_pad_{n_pad}")
+        png_firma = firma.pad(f"pad_rp_{n_pad}")
         if png_firma:
             st.success("Firma acquisita: verrà allegata al rapportino.")
     with st.form("form_rapp", clear_on_submit=True):

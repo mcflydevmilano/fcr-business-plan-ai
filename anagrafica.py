@@ -16,7 +16,9 @@ TABELLE = [("sc_df", "Controparte", "soggetto", "Scadenzario · cliente/fornitor
            ("lg_solleciti", "Cliente", "soggetto", "Studio legale · solleciti"), ("oa_ord", "Fornitore", "soggetto", "Ordini · fornitore"), ("oa_ord", "Cantiere", "cantiere", "Ordini · cantiere"),
            ("rp_rapp", "Cantiere", "cantiere", "Rapportini"), ("rp_segn", "Cantiere", "cantiere", "Segnalazioni"),
            ("sl_com", "Commessa", "cantiere", "SAL · commesse"), ("sl_com", "Cliente", "soggetto", "SAL · cliente"), ("sl_sal", "Commessa", "cantiere", "SAL · avanzamenti"),
-           ("sl_cos", "Commessa", "cantiere", "SAL · costi"), ("sl_cos", "Fornitore", "soggetto", "SAL · costi (fornitore)")]
+           ("sl_cos", "Commessa", "cantiere", "SAL · costi"), ("sl_cos", "Fornitore", "soggetto", "SAL · costi (fornitore)"),
+           ("gt_fasi", "Responsabile", "persona", "Cronoprogramma · responsabile"), ("rp_segn", "Responsabile", "persona", "Segnalazioni · responsabile"), ("rp_rapp", "Compilato_da", "persona", "Rapportini · compilato da"),
+           ("ru_can", "Responsabile", "persona", "Cantieri · responsabile"), ("oa_ord", "Richiedente", "persona", "Ordini · richiedente"), ("sx_pers", "Persona", "persona", "Sicurezza · persone")]
 
 
 def _t(v):
@@ -29,10 +31,15 @@ def chiave(nome):
     return " ".join(parole)
 
 
-def elenchi(contatti, cantieri):
-    """Nomi ufficiali dalla Rubrica: {'soggetto': [...], 'cantiere': [...]}."""
+def elenchi(contatti, cantieri, persone=None):
+    """Nomi ufficiali: {'soggetto': contatti della Rubrica, 'cantiere': cantieri della Rubrica, 'persona': personale (nome e cognome o nome utente)}."""
+    pers = set()
+    for p in persone or []:
+        for k in ("Persona", "Utente"):
+            if _t(p.get(k)):
+                pers.add(_t(p.get(k)))
     return {"soggetto": sorted({_t(c.get("Nome")) for c in contatti or [] if _t(c.get("Nome"))}),
-            "cantiere": sorted({_t(c.get("Cantiere")) for c in cantieri or [] if _t(c.get("Cantiere"))})}
+            "cantiere": sorted({_t(c.get("Cantiere")) for c in cantieri or [] if _t(c.get("Cantiere"))}), "persona": sorted(pers)}
 
 
 def suggerisci(nome, ufficiali, soglia=0.72):
@@ -58,6 +65,8 @@ def controlla(tabelle, ufficiali):
     noti = {t: {_t(n).lower() for n in v} for t, v in ufficiali.items()}      # i collegamenti confrontano il nome scritto per intero (senza badare alle maiuscole)
     trovati = {}
     for chiave_ss, col, tipo, etichetta in TABELLE:
+        if not ufficiali.get(tipo):                       # elenco ufficiale vuoto: non c'e' nulla con cui confrontare
+            continue
         for riga in tabelle.get(chiave_ss) or []:
             v = _t(riga.get(col))
             if not v or v.lower() in noti.get(tipo, set()):

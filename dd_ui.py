@@ -145,6 +145,13 @@ def render(fcr_uri, audit=None, vai_a=None):
     st.markdown(theme.hero(fcr_uri, "Cruscotto di direzione",
                            "Margine, cassa, crediti e rating dell'azienda in un colpo d'occhio: semafori e azioni da fare."), unsafe_allow_html=True)
     guida.mostra("dd")
+    try:
+        import freschezza
+        _fermi = freschezza.fermi(freschezza.valuta(storage.ultimi_aggiornamenti()))
+    except Exception:
+        _fermi = []
+    if _fermi:
+        st.warning("**Attenzione: alcuni dati sono vecchi.** I semafori sotto si basano su dati che non vengono salvati da tempo:  \n" + "  \n".join("• " + freschezza.frase(r) for r in _fermi[:8]))
     metriche, fonti = {}, {}
     with st.expander("🔌 Fonti dei dati", expanded=False):
         st.caption("Per ogni modulo scegli i dati da usare: quelli su cui stai lavorando ora, un salvataggio, oppure nessuno.")

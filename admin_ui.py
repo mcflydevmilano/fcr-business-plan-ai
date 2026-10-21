@@ -145,11 +145,16 @@ def _permessi(utente, utenti_secrets, audit):
     st.markdown("**1. Assegna un profilo a ciascun utente**")
     nomi_utenti = sorted({*(utenti_secrets or {}), *(u["username"] for u in storage.elenca_utenti()), *cfg["utenti"]})
     nuovi = dict(cfg["utenti"])
+    try:
+        import pe
+        _pers = {p["Utente"]: f"{p['Persona']} ({p['Ruolo']})" for p in pe.persone_salvate() if p["Utente"]}
+    except Exception:
+        _pers = {}
     if not nomi_utenti:
         st.info("Non ci sono ancora utenti da abilitare: creali dalla scheda «Utenti».")
     for n in nomi_utenti:
         corrente = cfg["utenti"].get(n, cfg["predefinito"])
-        nuovi[n] = st.selectbox(n, nomi_profili, index=nomi_profili.index(corrente), key=f"perm_u_{n}",
+        nuovi[n] = st.selectbox(f"{n} — {_pers[n]}" if n in _pers else n, nomi_profili, index=nomi_profili.index(corrente), key=f"perm_u_{n}",
                                 help="Se non scegli nulla, vale il profilo predefinito." if n not in cfg["utenti"] else None)
     predef = st.selectbox("Profilo per chi non ha ancora un profilo assegnato", nomi_profili, index=nomi_profili.index(cfg["predefinito"]), key="perm_pred")
 
