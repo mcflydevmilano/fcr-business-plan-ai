@@ -41,7 +41,7 @@ _CSS_RAW = """
 html, body, .stApp, [data-testid="stSidebar"], button, input, textarea, select { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; }
 .stApp { background: radial-gradient(900px 420px at 100% -10%, rgba(37,99,235,.07), transparent 60%), var(--bg); color: var(--ink); }
 [data-testid="stHeader"] { background: transparent; }
-.block-container { padding-top: 1.6rem; max-width: 1400px; animation: fadeUp .5s cubic-bezier(.2,.7,.2,1) both; }
+.block-container { padding-top: 1.6rem; max-width: 1400px; animation: fadeUp .5s cubic-bezier(.2,.7,.2,1) backwards; /* mai «both»: una trasformazione residua farebbe scorrere con la pagina gli elementi fissi (foto di assistenza) */ }
 h1, h2, h3, h4, h5 { color: var(--navy) !important; font-weight: 700; letter-spacing: -.01em; }
 p, li, label, [data-testid="stMarkdownContainer"], [data-testid="stCaptionContainer"] { color: var(--ink); }
 [data-testid="stCaptionContainer"], .stCaption, small { color: var(--mut) !important; }
