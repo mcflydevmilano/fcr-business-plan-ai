@@ -4,6 +4,7 @@ dd.py - Cruscotto di direzione: riunisce margine, cassa, scoperto, crediti e rat
 Funziona sui payload salvati (o sui dati di sessione) dei moduli: non rifa' calcoli propri, richiama i motori cf, sc, pv, bp e core.
 Le soglie dei semafori sono ipotesi di lavoro modificabili (DD_DEFAULT), non standard di settore.
 """
+import datetime as dt
 import cf
 import core
 import pv
@@ -51,7 +52,8 @@ def metriche_sc(payload, oggi=None):
     if oggi is not None:
         p["oggi"] = oggi
     out = sc.calcola_sc(docs, p)
-    return {"kpi": out["kpi"], "avvisi": out["avvisi"], "solleciti": sc.solleciti(docs, out["params"]["oggi"])}
+    return {"kpi": out["kpi"], "avvisi": out["avvisi"], "solleciti": sc.solleciti(docs, out["params"]["oggi"]),
+            "fornitori_scaduti": sc.pagamenti_scaduti(docs, out["params"]["oggi"])}
 
 
 def metriche_sl(payload, oggi=None):
@@ -89,7 +91,7 @@ def metriche_fo(payload, oggi=None):
     if oggi is not None:
         p["oggi"] = oggi
     out = fo.calcola_fo(docs, contr, [], p)
-    return {"kpi": out["kpi"], "avvisi": out["avvisi"]}
+    return {"kpi": out["kpi"], "avvisi": out["avvisi"], "documenti": out["documenti"]}
 
 
 def metriche_sx(payload, oggi=None):
@@ -139,7 +141,7 @@ def metriche_rp(payload, oggi=None):
     if oggi is not None:
         p["oggi"] = oggi
     out = rp.calcola_rp(rapp, segn, p)
-    return {"kpi": out["kpi"], "avvisi": out["avvisi"]}
+    return {"kpi": out["kpi"], "avvisi": out["avvisi"], "cantieri": out["cantieri"], "segnalazioni": out["segnalazioni"]}
 
 
 def metriche_gt(payload, oggi=None):
@@ -366,3 +368,66 @@ def metriche_da_payload(m, payload, oggi=None):
     if m == "bp":
         return metriche_bp(payload)
     return globals()["metriche_" + m](payload, oggi)
+
+
+SQUADRE = {"Amministrazione": "Amministrazione e contabilità", "Acquisti": "Ufficio acquisti e fornitori", "Cantieri": "Direzione lavori e capicantiere",
+           "Direzione": "Direzione"}
+
+
+def dettagli(m):
+    """Elenco di cosa fare con i nomi: [{id, gravita, titolo, squadra, modulo, colonne, righe}] ordinato per gravita'.
+    Ogni blocco dice CHI contattare / COSA controllare e a quale squadra spetta. `m` come per `semafori`."""
+    out = []
+
+    def blocco(id_, grav, titolo, squadra, modulo, colonne, righe):
+        if righe:
+            out.append({"id": id_, "gravita": grav, "titolo": titolo, "squadra": squadra, "modulo": modulo, "colonne": colonne, "righe": righe})
+
+    sc_ = m.get("sc")
+    if sc_:
+        righe = [{"Cliente": c["Cliente"], "Scaduto (€)": round(c["Totale scaduto"], 2), "Ritardo (gg)": c["Ritardo max (gg)"], "Cosa fare": c["Livello"][4:]} for c in sc_.get("solleciti") or []]
+        grav = "bad" if any(r["Ritardo (gg)"] > 45 for r in righe) else "warn"
+        blocco("sc_clienti", grav, "Clienti da sollecitare", "Amministrazione", "sc", ["Cliente", "Scaduto (€)", "Ritardo (gg)", "Cosa fare"], righe)
+        righe = [{"Fornitore": f["Fornitore"], "Scaduto (€)": round(f["Totale scaduto"], 2), "Fatture": f["Fatture"], "Ritardo (gg)": f["Ritardo max (gg)"]} for f in sc_.get("fornitori_scaduti") or []]
+        grav = "bad" if any(r["Ritardo (gg)"] > 30 for r in righe) else "warn"
+        blocco("sc_fornitori", grav, "Fornitori con pagamenti scaduti", "Amministrazione", "sc", ["Fornitore", "Scaduto (€)", "Fatture", "Ritardo (gg)"], righe)
+    fo_ = m.get("fo")
+    if fo_:
+        righe = [{"Fornitore": x["Fornitore"], "Documento": x["Documento"], "Scadenza": x["Scadenza"] or "—", "Stato": "scaduto" if x["Stato"] == "bad" else "in scadenza"}
+                 for x in fo_.get("documenti") or [] if x["Stato"] in ("bad", "warn")]
+        righe.sort(key=lambda r: (r["Stato"] != "scaduto", r["Scadenza"]))
+        grav = "bad" if any(r["Stato"] == "scaduto" for r in righe) else "warn"
+        blocco("fo_doc", grav, "Documenti dei fornitori da rinnovare", "Acquisti", "fo", ["Fornitore", "Documento", "Scadenza", "Stato"], righe)
+    sl_ = m.get("sl")
+    if sl_:
+        righe = [{"Commessa": c["Commessa"], "Cliente": c.get("Cliente", ""), "Situazione": "critica" if c["Stato"] == "bad" else "da tenere d'occhio"}
+                 for c in sl_.get("commesse") or [] if c["Stato"] in ("bad", "warn")]
+        righe.sort(key=lambda r: r["Situazione"] != "critica")
+        blocco("sl_commesse", "bad" if any(r["Situazione"] == "critica" for r in righe) else "warn", "Commesse con margine a rischio", "Direzione", "sl", ["Commessa", "Cliente", "Situazione"], righe)
+    rp_ = m.get("rp")
+    if rp_:
+        righe = [{"Cantiere": s["Cantiere"], "Gravità": s["Gravita"], "Problema": s["Descrizione"][:90], "Responsabile": s["Responsabile"] or "da assegnare", "Scadenza": s["Scadenza"] or "—"}
+                 for s in rp_.get("segnalazioni") or [] if s["Livello"] in ("bad", "warn")]
+        blocco("rp_segn", "bad" if any(r["Gravità"] == "Alta" for r in righe) else "warn", "Segnalazioni di cantiere aperte", "Cantieri", "rp", ["Cantiere", "Gravità", "Problema", "Responsabile", "Scadenza"], righe)
+        righe = [{"Cantiere": c["Cantiere"], "Ultimo rapportino": c["Ultimo rapportino"], "Giorni senza rapportino": c["Giorni lavorativi senza rapportino"]} for c in rp_.get("cantieri") or [] if c["Stato"] != "ok"]
+        blocco("rp_mancanti", "warn", "Cantieri che non mandano il rapportino", "Cantieri", "rp", ["Cantiere", "Ultimo rapportino", "Giorni senza rapportino"], righe)
+    out.sort(key=lambda b: -GRAVITA[b["gravita"]])
+    return out
+
+
+def messaggio_team(blocchi, squadra=None, da="", oggi=None):
+    """Avviso interno per Slack/email: (oggetto, testo). Una sola squadra, oppure tutte se `squadra` e' None."""
+    oggi = oggi or dt.date.today()
+    sel = [b for b in blocchi if squadra is None or b["squadra"] == squadra]
+    dest = squadra or "tutto il team"
+    ogg = f"FCR - Da fare per {dest} ({oggi.strftime('%d/%m/%Y')})"
+    righe = [ogg]
+    for b in sel:
+        righe.append(f"{b['titolo'].upper()} ({len(b['righe'])})")
+        for r in b["righe"][:15]:
+            righe.append("- " + " · ".join(str(r[c]) for c in b["colonne"]) + (" [CRITICO]" if b["gravita"] == "bad" else " [ATTENZIONE]"))
+        if len(b["righe"]) > 15:
+            righe.append(f"… e altre {len(b['righe']) - 15}")
+        righe.append("")
+    righe.append(f"Richiesto da {da or 'la direzione'} dal Cruscotto FCR. Apri lo strumento indicato per intervenire.")
+    return ogg, "\n".join(righe)

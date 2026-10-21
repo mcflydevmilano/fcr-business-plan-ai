@@ -266,6 +266,21 @@ def solleciti(docs, oggi=None):
     return out
 
 
+def pagamenti_scaduti(docs, oggi=None):
+    """Per fornitore: fatture passive scadute non pagate. Ordinato per importo decrescente."""
+    oggi = data_da(oggi, dt.date.today())
+    per = {}
+    for d in docs:
+        res = d["Importo"] - d["Saldato"]
+        if d["Tipo"] != "Passiva" or res <= 0 or _giorni_ritardo(d, oggi) <= 0:
+            continue
+        c = per.setdefault(d["Controparte"], {"Fornitore": d["Controparte"], "Fatture": 0, "Totale scaduto": 0.0, "Ritardo max (gg)": 0})
+        c["Fatture"] += 1
+        c["Totale scaduto"] += res
+        c["Ritardo max (gg)"] = max(c["Ritardo max (gg)"], _giorni_ritardo(d, oggi))
+    return sorted(per.values(), key=lambda c: -c["Totale scaduto"])
+
+
 def testo_sollecito(c, mittente="FCR General Contractor"):
     """Bozza di sollecito per un cliente (voce di `solleciti`). Va riletta e personalizzata prima dell'invio."""
     elenco = "\n".join(f"- fattura {f['Documento'] or 'n.d.'} del {_fmt_data(f['Data_doc'])}, scaduta il {_fmt_data(f['Scadenza'])}: "

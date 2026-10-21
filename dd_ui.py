@@ -16,8 +16,13 @@ import mz_ui
 import sx_ui
 import fo_ui
 import ga_ui
+import html as _html
+import os
+import pandas as pd
+import riepilogo
 import storage
 import theme
+from ui_util import sola_lettura
 
 ss = st.session_state
 
@@ -79,7 +84,63 @@ def _calcola(m, payload):
         return None
 
 
-def render(fcr_uri, audit=None):
+def _canali():
+    email = all(os.environ.get(k) for k in ("SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "MAIL_TO"))
+    slack = (os.environ.get("SLACK_WEBHOOK_URL") or "").startswith("https://hooks.slack.com/")
+    return email, slack
+
+
+def _avvisa(blocchi, squadra, audit):
+    """Manda l'avviso interno su Slack e/o email (gli stessi canali del riepilogo del mattino)."""
+    chi = (ss.get("utente") or {}).get("username", "")
+    ogg, testo = dd.messaggio_team(blocchi, squadra, da=chi)
+    email, slack = _canali()
+    if not (email or slack):
+        st.warning("Nessun canale configurato: per mandare gli avvisi servono i segreti di Slack (SLACK_WEBHOOK_URL) e/o dell'email. Le istruzioni sono in Calendario scadenze, scheda «3. Riepilogo email».")
+        return
+    inviati = []
+    try:
+        if slack:
+            riepilogo.invia_slack(ogg, testo)
+            inviati.append("Slack")
+        if email:
+            riepilogo.invia(ogg, testo, "<pre style='font-family:Segoe UI,Arial,sans-serif;font-size:14px'>" + _html.escape(testo) + "</pre>")
+            inviati.append("email")
+    except Exception as e:
+        st.error(f"Invio non riuscito: {e}")
+    if inviati:
+        st.success("Avviso inviato a " + (squadra or "tutto il team") + " su " + " e ".join(inviati) + ".")
+        audit("dd_avviso", f"{squadra or 'tutti'}")
+
+
+def _da_fare(blocchi, vai_a, audit):
+    st.subheader("Chi contattare e cosa controllare")
+    if not blocchi:
+        st.caption("Nessun nominativo da mostrare: le liste compaiono quando ci sono fatture, documenti o segnalazioni da gestire.")
+        return
+    lettore = sola_lettura()
+    squadre = sorted({b["squadra"] for b in blocchi})
+    with st.container(key="dd_avvisi_team"):
+        st.caption("Gli avvisi vanno sul canale Slack e/o sull'email del team (gli stessi del riepilogo del mattino). Nel messaggio c'è l'elenco con i nomi.")
+        cols = st.columns(len(squadre) + 1)
+        for col, s in zip(cols, squadre):
+            if col.button(f"📨 Avvisa {s}", key=f"avv_{s}", disabled=lettore, use_container_width=True):
+                _avvisa(blocchi, s, audit)
+        if cols[-1].button("📨 Avvisa tutti", key="avv_tutti", disabled=lettore, use_container_width=True):
+            _avvisa(blocchi, None, audit)
+    nomi_mod = {m: n for m, n, _ in MODULI}
+    for b in blocchi:
+        ico = "🔴" if b["gravita"] == "bad" else "🟡"
+        with st.expander(f"{ico} {b['titolo']} · {len(b['righe'])}  —  a cura di: {b['squadra']}", expanded=b["gravita"] == "bad"):
+            st.dataframe(pd.DataFrame(b["righe"], columns=b["colonne"]), hide_index=True, use_container_width=True)
+            a, c = st.columns(2)
+            if vai_a and a.button(f"Apri {nomi_mod.get(b['modulo'], b['modulo'])}  →", key=f"vai_{b['id']}", use_container_width=True):
+                vai_a(b["modulo"])
+            if c.button(f"📨 Avvisa solo per questa lista", key=f"avvb_{b['id']}", disabled=lettore, use_container_width=True):
+                _avvisa([b], b["squadra"], audit)
+
+
+def render(fcr_uri, audit=None, vai_a=None):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Cruscotto di direzione",
                            "Margine, cassa, crediti e rating dell'azienda in un colpo d'occhio: semafori e azioni da fare."), unsafe_allow_html=True)
@@ -123,6 +184,7 @@ def render(fcr_uri, audit=None):
         st.info("Inserisci i dati nei moduli (o salvali) per popolare il cruscotto.")
     else:
         st.success("Nessuna azione urgente.")
+    _da_fare(dd.dettagli(metriche), vai_a, audit)
     if st.button("📄 Genera il rapporto PDF", type="primary", key="gen_dd"):
         ctx = dd_report.costruisci_ctx_dd(righe, gen, azioni, fonti)
         ss["dd_rep"] = {"pdf": dd_report.genera_pdf_dd(ctx), "id": ctx["report_id"]}

@@ -532,7 +532,7 @@ if MODULO == "ca":
     st.stop()
 
 if MODULO == "dd":
-    dd_ui.render(FCR_URI, audit)
+    dd_ui.render(FCR_URI, audit, vai_a)
     st.stop()
 
 if MODULO == "pv":
