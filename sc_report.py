@@ -1,4 +1,5 @@
 """sc_report.py - Dossier PDF ed Excel (con formule) dello Scadenzario."""
+import versione
 import io
 import time
 
@@ -148,6 +149,7 @@ def genera_excel_sc(ctx):
     for col in "ABCDEFGHI":
         wsx.column_dimensions[col].width = 15
     wsx.freeze_panes = "B2"
+    versione.aggiungi_foglio_info(wb, "Scadenzario", __import__("time").strftime("%d/%m/%Y %H:%M"))
     bio = io.BytesIO()
     wb.save(bio)
     return bio.getvalue()

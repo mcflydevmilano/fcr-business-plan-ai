@@ -1,4 +1,5 @@
 """sl_report.py - Dossier PDF ed Excel (con formule) di SAL e contabilita' lavori."""
+import versione
 import io
 import time
 
@@ -174,6 +175,7 @@ def genera_excel_sl(ctx):
         wk.cell(row=i, column=8, value=f"=F{i}-G{i}").number_format = EUR
     for col, w in zip("ABCDEFGH", [26, 13, 26, 34, 16, 14, 14, 14]):
         wk.column_dimensions[col].width = w
+    versione.aggiungi_foglio_info(wb, "SAL e contabilità lavori", __import__("time").strftime("%d/%m/%Y %H:%M"))
     bio = io.BytesIO()
     wb.save(bio)
     return bio.getvalue()

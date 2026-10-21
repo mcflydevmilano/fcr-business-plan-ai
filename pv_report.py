@@ -1,4 +1,5 @@
 """pv_report.py - Preventivo per il cliente (PDF senza costi/margini) e Excel interno con formule."""
+import versione
 import io
 import time
 
@@ -116,6 +117,7 @@ def genera_excel_pv(ctx):
     wr.column_dimensions["B"].width = 18
     for col, w in zip("ABCDEFGHIJK", [10, 16, 50, 6, 10, 12, 12, 12, 14, 14, 14]):
         wv.column_dimensions[col].width = w
+    versione.aggiungi_foglio_info(wb, "Computo e preventivo", __import__("time").strftime("%d/%m/%Y %H:%M"))
     bio = io.BytesIO()
     wb.save(bio)
     return bio.getvalue()

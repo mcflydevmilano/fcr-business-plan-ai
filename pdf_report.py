@@ -4,6 +4,8 @@ segnalibri, numeri di pagina, metodologia e informativa privacy.
 """
 import io
 import os
+
+import versione
 import re
 
 from fpdf import FPDF
@@ -105,9 +107,12 @@ class _PDF(FPDF):
         self.set_font("Helvetica", "", 7)
         self.set_text_color(*GRIGIO)
         self.set_y(-12)
-        self.cell(58, 5, self.ctx.get("footer_sx", "Documento riservato - uso interno"), align="L")
-        self.cell(58, 5, f"Pagina {self.page_no()} di {{nb}}", align="C")
-        self.cell(62, 5, pdf_safe(self.ctx.get("footer_dx") or f"Powered by Aetheris Labs | Modello AI: {self.ctx['modello']}"), align="R")
+        sx = self.ctx.get("footer_sx", "Documento riservato - uso interno")
+        if not self.ctx.get("footer_dx") and self.ctx.get("modello") not in (None, "", "nessuno"):
+            sx += f" | Modello AI: {str(self.ctx['modello'])[:18]}"
+        self.cell(66, 5, pdf_safe(sx), align="L")
+        self.cell(36, 5, f"Pagina {self.page_no()} di {{nb}}", align="C")
+        self.cell(76, 5, pdf_safe(versione.riga_pdf()), align="R")
         if os.path.exists(LOGO_PATH):
             try:
                 self.image(LOGO_PATH, 190.5, self.h - 12.8, 7.5)
@@ -370,6 +375,13 @@ def genera_pdf(ctx, relazione, grafici=None):
             pdf.image(LOGO_PATH, 170, 258, 26)
         except Exception:
             pass
+    _ab, _bm = pdf.auto_page_break, pdf.b_margin
+    pdf.set_auto_page_break(False)                                   # la riga sta sotto il margine: non deve aprire una pagina nuova
+    pdf.set_xy(14, 286)
+    pdf.set_font("Helvetica", "", 6.5)
+    pdf.set_text_color(*GRIGIO)
+    pdf.cell(182, 4, pdf_safe(versione.nota_copertina()), align="C")
+    pdf.set_auto_page_break(_ab, _bm)
 
     # ================================ CONTENUTO ===================================
     pdf.add_page()

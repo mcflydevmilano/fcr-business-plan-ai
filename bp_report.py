@@ -2,6 +2,8 @@
 bp_report.py - Dossier PDF del Business Plan Studio (stesso stile del report di credito).
 """
 import os
+
+import versione
 import re
 import time
 
@@ -187,6 +189,13 @@ def genera_pdf_bp(ctx, relazione="", grafici=None):
             pdf.image(LOGO_PATH, 170, 258, 26)
         except Exception:
             pass
+    _ab, _bm = pdf.auto_page_break, pdf.b_margin
+    pdf.set_auto_page_break(False)                                   # la riga sta sotto il margine: non deve aprire una pagina nuova
+    pdf.set_xy(14, 286)
+    pdf.set_font("Helvetica", "", 6.5)
+    pdf.set_text_color(*GRIGIO)
+    pdf.cell(182, 4, pdf_safe(versione.nota_copertina()), align="C")
+    pdf.set_auto_page_break(_ab, _bm)
 
     # ================================ CONTENUTO ===================================
     pdf.add_page()

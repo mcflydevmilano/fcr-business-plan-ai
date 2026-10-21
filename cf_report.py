@@ -1,4 +1,5 @@
 """cf_report.py - Dossier PDF ed Excel (con formule) del modulo Cash Flow di cantiere."""
+import versione
 import io
 import time
 
@@ -203,6 +204,7 @@ def genera_excel_cf(ctx):
     for col in "ABCDEFGHIJ":
         wm.column_dimensions[col].width = 17
     wm.freeze_panes = "B2"
+    versione.aggiungi_foglio_info(wb, "Cash Flow di cantiere", __import__("time").strftime("%d/%m/%Y %H:%M"))
     bio = io.BytesIO()
     wb.save(bio)
     return bio.getvalue()

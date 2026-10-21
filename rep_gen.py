@@ -1,4 +1,5 @@
 """rep_gen.py - Generatore comune di dossier PDF ed Excel per i moduli operativi (gare, fornitori, sicurezza, mezzi, organico)."""
+import versione
 import io
 import re
 import time
@@ -106,6 +107,7 @@ def genera_excel(fogli):
                 L = get_column_letter(j + 1)
                 c = ws.cell(row=u + 1, column=j + 1, value=f"=SUM({L}2:{L}{u})")
                 c.font, c.number_format = Font(bold=True), '#,##0;[Red]-#,##0'
+    versione.aggiungi_foglio_info(wb, "Dossier operativo", __import__("time").strftime("%d/%m/%Y %H:%M"))
     bio = io.BytesIO()
     wb.save(bio)
     return bio.getvalue()

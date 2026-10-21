@@ -6,6 +6,7 @@ Tutti i generatori ricevono un dizionario `ctx` con:
   commesse_kpi, commesse_df, per_cliente, storico, scenari, dati_demo,
   report_id, modello, generato_il, pratica
 """
+import versione
 import io
 import os
 
@@ -60,7 +61,7 @@ def genera_docx(ctx, relazione, grafici=None):
     doc.styles["Normal"].font.name = "Calibri"
     doc.styles["Normal"].font.size = Pt(10)
     sec.footer.paragraphs[0].text = (
-        f"ID report {ctx['report_id']} | {ctx['generato_il']} | Modello AI: {ctx['modello']} | FCR General Contractor / Aetheris Labs"
+        f"ID report {ctx['report_id']} | {ctx['generato_il']} | Modello AI: {ctx['modello']} | FCR General Contractor | {versione.NOME} v{versione.VERSIONE} - Software di proprietà di {versione.PROPRIETARIO}"
     )
 
     def tabella(intest, righe, destra_da=1):
@@ -474,6 +475,7 @@ def genera_excel(ctx):
         wn.cell(row=i, column=1).alignment = Alignment(wrap_text=True, vertical="top")
     wn.column_dimensions["A"].width = 120
 
+    versione.aggiungi_foglio_info(wb, ctx.get("titolo_documento") or "Report", ctx.get("generato_il", ""))
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
