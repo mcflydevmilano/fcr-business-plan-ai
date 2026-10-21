@@ -160,6 +160,7 @@ def salva_pratica(nome, payload, path=None, autore="", modulo="credit", atteso=N
         if esiste and atteso is not None and esiste[1] != atteso:
             raise ConflittoSalvataggio(esiste[2] or "", esiste[1])
         adesso = _now_ms()
+        vecchio_testo = esiste[0] if esiste else None
         if esiste:
             if esiste[0] != testo:                                   # conserva la versione che sta per essere sostituita
                 con.execute("INSERT INTO pratiche_storico (nome, salvato, autore, payload) VALUES (?,?,?,?)", (nome, esiste[1], esiste[2] or "", esiste[0]))
@@ -171,7 +172,20 @@ def salva_pratica(nome, payload, path=None, autore="", modulo="credit", atteso=N
                 "INSERT INTO pratiche (nome, creato, aggiornato, payload, autore) VALUES (?,?,?,?,?)",
                 (nome, adesso, adesso, testo, autore),
             )
+    _registra_modifiche(nome, modulo, vecchio_testo, payload, autore, path)
     return adesso
+
+
+def _registra_modifiche(chiave, modulo, vecchio_testo, nuovo, autore, path):
+    """Registro attivita': ogni salvataggio scrive chi, quando, quale strumento e COSA e' cambiato. Non blocca mai il salvataggio."""
+    try:
+        import registro
+        vecchio = json.loads(vecchio_testo) if vecchio_testo else None
+        nome = chiave.split("|", 1)[1] if modulo in MODULI_ARCHIVIO and "|" in chiave else chiave
+        cosa = registro.descrivi_modifiche(vecchio, json.loads(json.dumps(nuovo, ensure_ascii=False, default=str)))
+        log_evento(autore, "modifiche_dati", f"[{registro.NOMI_MODULO.get(modulo, modulo)}] «{nome}»: {cosa}", path)
+    except Exception:
+        pass
 
 
 def elenca_pratiche(path=None, modulo="credit"):
@@ -248,12 +262,13 @@ def log_evento(utente, azione, dettaglio="", path=None):
     try:
         with _db(path) as con:
             con.execute("INSERT INTO audit_log (ts, utente, azione, dettaglio) VALUES (?,?,?,?)",
-                        (_now(), utente or "", azione, str(dettaglio)[:500]))
+                        (_now(), utente or "", azione, str(dettaglio)[:1500]))
     except Exception:
         pass
 
 
-def elenca_eventi(limite=200, utente=None, azione=None, path=None):
+def elenca_eventi(limite=200, utente=None, azione=None, path=None, da=None, a=None, cerca=None):
+    """Registro attivita' dal piu' recente. `da`/`a`: date 'AAAA-MM-GG' (estremi inclusi, ora UTC); `cerca`: testo libero in utente, azione e dettaglio."""
     q, par = "SELECT ts, utente, azione, dettaglio FROM audit_log", []
     cond = []
     if utente:
@@ -262,6 +277,15 @@ def elenca_eventi(limite=200, utente=None, azione=None, path=None):
     if azione:
         cond.append("azione=?")
         par.append(azione)
+    if da:
+        cond.append("ts>=?")
+        par.append(str(da) + " 00:00:00")
+    if a:
+        cond.append("ts<=?")
+        par.append(str(a) + " 23:59:59")
+    if cerca:
+        cond.append("(LOWER(dettaglio) LIKE ? OR LOWER(azione) LIKE ? OR LOWER(utente) LIKE ?)")
+        par += ["%" + str(cerca).lower() + "%"] * 3
     if cond:
         q += " WHERE " + " AND ".join(cond)
     q += " ORDER BY id DESC LIMIT ?"

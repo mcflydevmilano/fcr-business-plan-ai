@@ -68,8 +68,7 @@ def salva_protetto(modulo, nome, payload, utente, audit):
         return False
     ss.pop(f"_conf_{modulo}", None)
     ss[f"_base_{modulo}"] = {"nome": nome, "agg": agg}
-    audit(f"{modulo}_salvato", nome)
-    return True
+    return True                                   # il registro attivita' scrive da solo cosa e' cambiato (storage.salva_pratica)
 
 
 def conflitto_salvataggio(modulo, utente, audit):

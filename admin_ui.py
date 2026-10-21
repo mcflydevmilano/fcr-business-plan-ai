@@ -78,18 +78,41 @@ def render(utente, utenti_secrets, audit):
                     st.error(str(e))
 
     with t2:
-        f1, f2, f3 = st.columns([2, 2, 1])
-        utenti_log = [""] + sorted({e["Utente"] for e in storage.elenca_eventi(1000) if e["Utente"]})
+        import datetime as _dt
+        from zoneinfo import ZoneInfo
+        st.caption("Qui trovi chi ha fatto cosa e quando: accessi, salvataggi (con l'elenco di cosa è cambiato), importazioni, report generati, avvisi inviati. Ogni salvataggio dice quali righe sono state aggiunte, tolte o modificate.")
+        f1, f2, f3 = st.columns([2, 2, 2])
+        utenti_log = [""] + sorted({e["Utente"] for e in storage.elenca_eventi(2000) if e["Utente"]})
         fu = f1.selectbox("Utente", utenti_log, format_func=lambda x: x or "Tutti", key="adm_f_utente")
-        azioni_log = [""] + sorted({e["Azione"] for e in storage.elenca_eventi(1000)})
-        fa = f2.selectbox("Azione", azioni_log, format_func=lambda x: x or "Tutte", key="adm_f_azione")
-        n = f3.number_input("Righe", 20, 1000, 200, 20, key="adm_f_n")
-        ev = storage.elenca_eventi(int(n), fu or None, fa or None)
-        df = pd.DataFrame(ev, columns=["Data (UTC)", "Utente", "Azione", "Dettaglio"])
-        st.dataframe(df, width="stretch", hide_index=True)
-        st.download_button("📥 Scarica il registro (CSV)", df.to_csv(index=False).encode("utf-8-sig"), file_name="registro_attivita.csv", mime="text/csv")
-        st.caption("Il registro e' nel database dell'applicazione: su hosting con disco temporaneo si azzera al riavvio. "
-                   "Per una conservazione stabile imposta FCR_DB_PATH su un volume persistente.")
+        azioni_log = [""] + sorted({e["Azione"] for e in storage.elenca_eventi(2000)})
+        fa = f2.selectbox("Azione", azioni_log, format_func=lambda x: {"": "Tutte", "modifiche_dati": "modifiche_dati (salvataggi)"}.get(x, x), key="adm_f_azione")
+        cerca = f3.text_input("Cerca nel testo", key="adm_f_cerca", placeholder="es. Villa Lago, fattura, Rossi…")
+        g1, g2, g3 = st.columns([2, 2, 2])
+        da = g1.date_input("Dal giorno", value=None, key="adm_f_da")
+        a_ = g2.date_input("Al giorno", value=None, key="adm_f_a")
+        n = g3.number_input("Righe massime", 20, 5000, 300, 50, key="adm_f_n")
+        ev = storage.elenca_eventi(int(n), fu or None, fa or None, da=da.isoformat() if da else None, a=a_.isoformat() if a_ else None, cerca=cerca or None)
+        roma = ZoneInfo("Europe/Rome")
+
+        def _ora(ts):
+            try:
+                return _dt.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").replace(tzinfo=_dt.timezone.utc).astimezone(roma).strftime("%d/%m/%Y %H:%M:%S")
+            except ValueError:
+                return ts
+        df = pd.DataFrame([{"Data e ora (Italia)": _ora(e["Data (UTC)"]), "Utente": e["Utente"], "Azione": e["Azione"], "Cosa": e["Dettaglio"]} for e in ev],
+                          columns=["Data e ora (Italia)", "Utente", "Azione", "Cosa"])
+        st.dataframe(df, width="stretch", hide_index=True, column_config={"Cosa": st.column_config.TextColumn("Cosa", width="large")})
+        if len(df):
+            k = st.selectbox("Leggi per intero una riga", range(len(df)), format_func=lambda i: f"{df.iloc[i]['Data e ora (Italia)']} · {df.iloc[i]['Utente']} · {df.iloc[i]['Azione']}", key="adm_f_riga")
+            st.info(str(df.iloc[k]["Cosa"]) or "—")
+        d1, d2 = st.columns(2)
+        d1.download_button("📥 Scarica il registro (CSV)", df.to_csv(index=False).encode("utf-8-sig"), file_name="registro_attivita.csv", mime="text/csv", use_container_width=True)
+        import io
+        buf = io.BytesIO()
+        df.to_excel(buf, index=False, sheet_name="Registro")
+        d2.download_button("📥 Scarica il registro (Excel)", buf.getvalue(), file_name="registro_attivita.xlsx",
+                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+        st.caption("Il registro non si può modificare dall'app. È nel database (Neon): resta anche dopo i riavvii. Le modifiche fatte nelle tabelle ma non salvate non compaiono finché qualcuno non preme Salva.")
 
     with t3:
         import json
