@@ -33,11 +33,22 @@ def _segreto(nome):
 
 
 def _foto_uri():
+    """Cerca la foto accanto ad app.py: ing_lore.jpg, .jpeg o .png (anche con maiuscole)."""
+    cartella = os.path.dirname(FOTO)
     try:
-        with open(FOTO, "rb") as f:
-            return "data:image/jpeg;base64," + base64.b64encode(f.read()).decode()
+        nomi = sorted(os.listdir(cartella))
     except OSError:
         return ""
+    for n in nomi:
+        base, ext = os.path.splitext(n.lower())
+        if base == "ing_lore" and ext in (".jpg", ".jpeg", ".png"):
+            try:
+                with open(os.path.join(cartella, n), "rb") as f:
+                    mime = "image/png" if ext == ".png" else "image/jpeg"
+                    return f"data:{mime};base64," + base64.b64encode(f.read()).decode()
+            except OSError:
+                return ""
+    return ""
 
 
 def costruisci_messaggio(tipo, testo, utente="", strumento="", quando=None):
