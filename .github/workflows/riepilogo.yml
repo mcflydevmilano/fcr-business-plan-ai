@@ -1,7 +1,7 @@
 name: Riepilogo mattutino
 
 # Invia ogni giorno feriale una mail con semafori, scadute e scadenze dei prossimi giorni.
-# Richiede questi "Repository secrets" (Settings > Secrets and variables > Actions): DATABASE_URL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, MAIL_TO.
+# Richiede questi "Repository secrets" (Settings > Secrets and variables > Actions): DATABASE_URL e, per ogni canale, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, MAIL_TO (email) e/o SLACK_WEBHOOK_URL (Slack).
 # Gli orari di GitHub sono in UTC: 06:00 UTC = 08:00 in estate, 07:00 in inverno. Puo' ritardare di qualche minuto.
 on:
   schedule:
@@ -25,4 +25,5 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           MAIL_TO: ${{ secrets.MAIL_TO }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: python riepilogo.py
