@@ -69,9 +69,9 @@ def meteo(lat, lon):
 
 
 OROLOGIO = """<style>
-body{margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;text-align:center;color:#0f172a}
-#h{font-size:1.9rem;font-weight:800;letter-spacing:.02em;font-variant-numeric:tabular-nums;line-height:1.1}
-#d{font-size:.82rem;color:#64748b;margin-top:3px;text-transform:capitalize}
+body{margin:0;font-family:'Inter','Segoe UI',system-ui,sans-serif;text-align:center;color:#0f172a;background:transparent}
+#h{font-size:1.9rem;font-weight:800;letter-spacing:.03em;font-variant-numeric:tabular-nums;line-height:1.1;background:linear-gradient(135deg,#0a1640,#2563eb);-webkit-background-clip:text;background-clip:text;color:transparent}
+#d{font-size:.78rem;color:#64748b;margin-top:3px;text-transform:capitalize}
 </style><div id="h">--:--:--</div><div id="d"></div>
 <script>
 const tz='Europe/Rome';
@@ -92,9 +92,8 @@ def render_sidebar():
     if not m:
         return
     st.markdown(
-        f"<div style='text-align:center;font-size:.85rem;color:#334155;line-height:1.5;margin:2px 0 6px 0'>"
-        f"<span style='font-size:1.5rem;vertical-align:middle'>{m['icona']}</span> "
-        f"<b style='font-size:1.15rem'>{m['temp']}°C</b> · {m['testo']}<br>"
-        f"<span style='color:#64748b'>{citta} · min {m['min']}° / max {m['max']}° · vento {m['vento']} km/h"
-        f"{' · pioggia ' + str(m['pioggia']) + '%' if m['pioggia'] else ''}</span></div>",
+        f"<div class='sb-meteo'><span style='font-size:1.4rem;vertical-align:middle'>{m['icona']}</span> "
+        f"<b>{m['temp']}°C</b> · {m['testo']}<br>"
+        f"<small>{citta} · min {m['min']}° / max {m['max']}° · vento {m['vento']} km/h"
+        f"{' · pioggia ' + str(m['pioggia']) + '%' if m['pioggia'] else ''}</small></div>",
         unsafe_allow_html=True)

@@ -356,6 +356,67 @@ EXTRA = '''
 .login-prop { margin: 18px 0 22px 0; font-size: .74rem; color: var(--mut); line-height: 1.45; }
 '''
 
+SIDEBAR_CSS = """
+[data-testid="stSidebar"] { background: linear-gradient(180deg, #f1f5f9 0%, #ffffff 34%); }
+[data-testid="stSidebar"] > div:first-child { padding-top: .8rem; }
+.sb-brand { position: relative; overflow: hidden; text-align: center; color: #fff; border-radius: 20px; padding: 16px 14px 14px; margin-bottom: 12px;
+  background: linear-gradient(140deg, #0a1640 0%, #1e3fae 62%, #2563eb 100%); box-shadow: 0 12px 28px rgba(30,64,175,.34); animation: fadeUp .5s ease backwards; }
+.sb-brand::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.07) 1px, transparent 1px); background-size: 22px 22px; }
+.sb-brand::after { content: ""; position: absolute; right: -40px; top: -40px; width: 140px; height: 140px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(249,115,22,.55), transparent 68%); }
+.sb-brand > * { position: relative; z-index: 1; }
+.sb-logo { background: #fff; border-radius: 14px; padding: 8px 12px; width: 66%; margin: 0 auto 10px; box-shadow: 0 4px 14px rgba(2,6,23,.25); }
+.sb-logo img { display: block; width: 100%; height: auto; mix-blend-mode: multiply; }
+.sb-name { font-size: .98rem; font-weight: 800; letter-spacing: .22em; text-indent: .22em; }
+.sb-sub { font-size: .68rem; color: rgba(255,255,255,.72); margin-top: 3px; line-height: 1.35; }
+.sb-dev { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.2); display: flex; flex-direction: column; gap: 1px; }
+.sb-dev span { font-size: .62rem; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); }
+.sb-dev b { font-size: .95rem; color: #fff; }
+.sb-dev em { font-style: normal; font-size: .74rem; color: rgba(255,255,255,.75); }
+.sb-ver { display: inline-block; margin-top: 11px; font-size: .68rem; color: rgba(255,255,255,.8); background: rgba(255,255,255,.13);
+  border: 1px solid rgba(255,255,255,.26); border-radius: 99px; padding: 3px 11px; }
+.sb-ver b { color: #fdba74; }
+
+.st-key-sb_ora, .st-key-sb_utente { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 8px 10px 6px; margin-bottom: 10px; box-shadow: var(--shadow); }
+.st-key-sb_ora iframe { border-radius: 10px; }
+.sb-meteo { text-align: center; font-size: .8rem; color: #334155; line-height: 1.45; border-top: 1px dashed var(--line2); padding-top: 7px; margin-top: 2px; }
+.sb-meteo b { font-size: 1.05rem; color: var(--navy); }
+.sb-meteo small { color: var(--mut); }
+.sb-urow { display: flex; align-items: center; gap: 11px; padding: 4px 2px 8px; }
+.sb-avatar { flex: 0 0 auto; width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 1rem;
+  background: linear-gradient(135deg, #1e3fae, #2563eb); box-shadow: 0 0 0 3px #dbeafe, 0 4px 10px rgba(30,64,175,.3); }
+.sb-uname { font-weight: 700; color: var(--navy); font-size: .95rem; line-height: 1.2; word-break: break-word; }
+.sb-chips { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font-size: .64rem; font-weight: 700; letter-spacing: .03em; padding: 2px 8px; border-radius: 99px; text-transform: capitalize; }
+.chip.admin { background: #fee2e2; color: #b91c1c; } .chip.utente { background: #dbeafe; color: #1e40af; } .chip.lettore { background: #e2e8f0; color: #475569; }
+.chip.prof { background: #dcfce7; color: #15803d; text-transform: none; }
+.sb-label { font-size: .66rem; font-weight: 800; letter-spacing: .16em; color: #94a3b8; text-transform: uppercase; margin: 14px 4px 6px; }
+
+.st-key-sb_nav [data-testid="stExpander"] { border: 0 !important; box-shadow: none !important; background: transparent !important; }
+.st-key-sb_nav [data-testid="stExpander"] details { border: 1px solid var(--line); border-radius: 12px; background: #fff; box-shadow: none; margin-bottom: 6px; }
+.st-key-sb_nav [data-testid="stExpander"] summary { padding: .45rem .7rem; font-size: .84rem; font-weight: 700; color: var(--navy); }
+.st-key-sb_nav [data-testid="stExpander"] summary:hover { background: var(--accsoft); border-radius: 12px; }
+.st-key-sb_nav [data-testid="stExpanderDetails"] { padding: 0 .35rem .4rem; }
+.st-key-sb_nav .stButton > button { justify-content: flex-start !important; text-align: left; width: 100%; border: 0 !important; background: transparent !important;
+  box-shadow: none !important; padding: .32rem .6rem; min-height: 0; font-size: .84rem; border-radius: 9px; }
+.st-key-sb_nav .stButton > button > div { justify-content: flex-start !important; width: 100%; }
+.st-key-sb_nav [data-testid="stMarkdownContainer"] { width: 100%; }
+.st-key-sb_nav .stButton > button p { text-align: left; width: 100%; font-weight: 600; color: #334155 !important; }
+.st-key-sb_nav .stButton > button:hover { background: var(--accsoft) !important; transform: translateX(2px); }
+.st-key-sb_nav .stButton > button:hover p { color: var(--acc) !important; }
+.st-key-sb_nav button[data-testid="stBaseButton-primary"] { background: linear-gradient(135deg, #1e3fae, #2563eb) !important; box-shadow: 0 6px 14px rgba(30,64,175,.3) !important; }
+.st-key-sb_nav button[data-testid="stBaseButton-primary"] p { color: #fff !important; }
+.st-key-sb_nav button[data-testid="stBaseButton-primary"]:hover { transform: none; }
+.st-key-sb_hubbtn .stButton > button > div { justify-content: center !important; }
+.st-key-sb_hubbtn .stButton > button p { text-align: center !important; }
+.st-key-sb_hubbtn .stButton > button { justify-content: center !important; border: 1px solid #bfdbfe !important; background: #fff !important; font-weight: 700; }
+.st-key-sb_hubbtn button[data-testid="stBaseButton-primary"] { background: linear-gradient(135deg, #1e3fae, #2563eb) !important; border: 0 !important; box-shadow: 0 6px 14px rgba(30,64,175,.3) !important; }
+.st-key-sb_hubbtn button[data-testid="stBaseButton-primary"] p { color: #fff !important; }
+.st-key-sb_utente .stButton > button { border-radius: 10px; font-size: .82rem; padding: .3rem .5rem; min-height: 0; }
+@media (prefers-reduced-motion: reduce) { .sb-brand { animation: none; } }
+"""
+
 
 def _css_versione():
     """Piede di pagina su ogni schermata: versione e proprieta' del software, senza codice nelle singole pagine."""
@@ -364,7 +425,7 @@ def _css_versione():
             'padding: 34px 16px 96px 16px; letter-spacing: .01em; }')
 
 
-CSS = "<style>" + _CSS_RAW + EXTRA + _css_versione() + "</style>"
+CSS = "<style>" + _CSS_RAW + EXTRA + SIDEBAR_CSS + _css_versione() + "</style>"
 
 
 @functools.lru_cache(maxsize=8)
@@ -433,12 +494,20 @@ def login_header(uri_fcr, uri_aeth):
 
 
 def sidebar_brand(uri_aeth):
-    logo = f'<img src="{uri_aeth}" alt="Aetheris Labs"/>' if uri_aeth else ""
-    return (f'<div class="brand">{logo}<div class="b-name">AETHERIS LABS</div>'
-            f'<div class="b-sub">Software, AI &amp; Game Development Division</div>'
-            f'<div class="b-dev">Sviluppato da</div><div class="b-who">Ing. Lorenzo Di Ferdinando</div>'
-            f'<div class="b-co">FCR General Contractor</div>'
-            f'<div class="b-ver">{_e(versione.NOME)} <b>v{_e(versione.VERSIONE)}</b><br>Software di proprietà di {_e(versione.PROPRIETARIO)}</div></div>')
+    logo = f'<div class="sb-logo"><img src="{uri_aeth}" alt="Aetheris Labs"/></div>' if uri_aeth else ""
+    return (f'<div class="sb-brand">{logo}<div class="sb-name">AETHERIS LABS</div>'
+            f'<div class="sb-sub">Software, AI &amp; Game Development Division</div>'
+            f'<div class="sb-dev"><span>Sviluppato da</span><b>Ing. Lorenzo Di Ferdinando</b><em>FCR General Contractor</em></div>'
+            f'<div class="sb-ver">{_e(versione.NOME)} <b>v{_e(versione.VERSIONE)}</b></div></div>')
+
+
+def sidebar_utente(username, ruolo, profilo):
+    """Scheda dell'utente: iniziali in un cerchio, nome, ruolo e profilo come etichette colorate."""
+    nome = _e(username)
+    sigla = _e("".join(p[0] for p in str(username).replace(".", " ").replace("_", " ").split()[:2]).upper() or str(username)[:1].upper())
+    cl = ruolo if ruolo in ("admin", "utente", "lettore") else "utente"
+    return (f'<div class="sb-urow"><div class="sb-avatar">{sigla}</div><div><div class="sb-uname">{nome}</div>'
+            f'<div class="sb-chips"><span class="chip {cl}">{_e(ruolo)}</span><span class="chip prof">{_e(profilo)}</span></div></div></div>')
 
 
 def hub_header(uri_fcr, n_strumenti=15):

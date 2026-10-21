@@ -428,24 +428,51 @@ def vai_a(modulo):
     st.rerun()
 
 
+def _nav_strumenti():
+    """Elenco degli strumenti consentiti, raggruppati come nell'Hub: si apre dalla barra laterale in un clic."""
+    with st.container(key="sb_nav"):
+        st.markdown("<div class='sb-label'>Navigazione</div>", unsafe_allow_html=True)
+        with st.container(key="sb_hubbtn"):
+            if MODULO is None:
+                if st.button("🏠 Hub principale", key="nav_hub", width="stretch", type="primary"):
+                    st.rerun()
+            elif st.button("🏠 Torna all'Hub Principale", key="nav_hub", width="stretch"):
+                vai_a(None)
+        st.markdown("<div class='sb-label'>Strumenti</div>", unsafe_allow_html=True)
+        for titolo, _sotto, sigle in hub.GRUPPI:
+            sigle = [x for x in sigle if x in CONSENTITI]
+            if not sigle:
+                continue
+            with st.expander(f"{hub.ICONE_GRUPPO.get(titolo, '📁')}  {titolo}", expanded=MODULO in sigle):
+                for x in sigle:
+                    c = hub.CARDS[x]
+                    if st.button(f"{c['icona']}  {c['bottone']}", key=f"nav_{x}", width="stretch",
+                                 type="primary" if x == MODULO else "secondary"):
+                        vai_a(x)
+
+
 with st.sidebar:
     st.markdown(theme.sidebar_brand(AETH_URI), unsafe_allow_html=True)
     if not AETH_URI:
         st.caption("Logo Aetheris non trovato: carica aetheris_labs_logo.jpg accanto ad app.py.")
-    ora_meteo.render_sidebar()
+    with st.container(key="sb_ora"):
+        ora_meteo.render_sidebar()
+    _u = ss["utente"]
+    with st.container(key="sb_utente"):
+        st.markdown(theme.sidebar_utente(_u["username"], _u["ruolo"], PROFILO), unsafe_allow_html=True)
+        _ca, _cb = st.columns(2)
+        if _u["ruolo"] == "admin" and _ca.button("👥 Utenti", key="btn_admin", width="stretch"):
+            vai_a("admin")
+        if _cb.button("Esci", key="btn_logout", width="stretch"):
+            audit("logout")
+            _nome_addio = _u["username"]
+            ss.clear()
+            ss["_addio"] = _nome_addio                      # fumetto di arrivederci nella pagina di login
+            st.rerun()
+    _nav_strumenti()
+    st.markdown("<div class='sb-label'>Utilità</div>", unsafe_allow_html=True)
     pwa.pannello()
     pausa.pannello()
-    _u = ss["utente"]
-    st.markdown(f"<div style='font-size:.82rem;color:#475569;text-align:center'>👤 <b>{_u['username']}</b> · {_u['ruolo']} · {PROFILO if _u['ruolo'] == 'admin' else 'profilo ' + PROFILO}</div>", unsafe_allow_html=True)
-    _ca, _cb = st.columns(2)
-    if _u["ruolo"] == "admin" and _ca.button("👥 Utenti", key="btn_admin", width="stretch"):
-        vai_a("admin")
-    if _cb.button("Esci", key="btn_logout", width="stretch"):
-        audit("logout")
-        _nome_addio = _u["username"]
-        ss.clear()
-        ss["_addio"] = _nome_addio                      # fumetto di arrivederci nella pagina di login
-        st.rerun()
     if _u["origine"] == "db":
         with st.expander("🔑 Account · cambia password"):
             with st.form("form_pw", clear_on_submit=True):
@@ -458,10 +485,6 @@ with st.sidebar:
                     except ValueError as _e:
                         st.error(str(_e))
     st.markdown("---")
-    if MODULO is not None:
-        if st.button("🏠 Torna all'Hub Principale", width="stretch"):
-            vai_a(None)
-        st.markdown("---")
 
 if MODULO is not None:
     if st.button("🏠 Hub", key="hub_top"):                    # visibile solo su telefono (la barra laterale e' chiusa)
