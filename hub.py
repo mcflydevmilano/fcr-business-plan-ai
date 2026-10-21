@@ -204,6 +204,10 @@ GRUPPI = [
 ]
 
 
+ICONE_GRUPPO = {"Parte finanziaria": "💰", "Offerte e commesse": "🏗️", "Cantiere e risorse": "👷",
+                "Fornitori, acquisti e scadenze": "📦", "Studio legale": "⚖️", "Direzione e persone": "📊"}
+
+
 def numero(sigla):
     ordine = [s for _, _, ss in GRUPPI for s in ss]
     return f"Strumento {ordine.index(sigla) + 1}"
@@ -274,15 +278,18 @@ def render(vai_a, consentiti=None, freschezza_righe=None):
         if not sigle:
             continue
         finanziaria = n == 0
-        st.markdown(theme.hub_sezione(titolo, sotto), unsafe_allow_html=True)
-        for i in range(0, len(sigle), 2):
-            riga = sigle[i:i + 2]
-            if len(riga) == 1:
-                _scheda(riga[0], vai_a)
-                continue
-            cols = st.columns(2, gap="large")
-            for col, s in zip(cols, riga):
-                with col:
-                    _scheda(s, vai_a)
-        if finanziaria:                              # l'avvertenza riguarda la parte finanziaria: sta subito sotto
-            st.caption(NOTA)
+        icona = ICONE_GRUPPO.get(titolo, "📁")
+        with st.expander(f"{icona}  {titolo}  ·  {len(sigle)} " + ("strumento" if len(sigle) == 1 else "strumenti"),
+                         expanded=(n == 0)):
+            st.caption(sotto)
+            for i in range(0, len(sigle), 2):
+                riga = sigle[i:i + 2]
+                if len(riga) == 1:
+                    _scheda(riga[0], vai_a)
+                    continue
+                cols = st.columns(2, gap="large")
+                for col, s in zip(cols, riga):
+                    with col:
+                        _scheda(s, vai_a)
+            if finanziaria:                          # l'avvertenza riguarda la parte finanziaria: sta dentro la sezione
+                st.caption(NOTA)
