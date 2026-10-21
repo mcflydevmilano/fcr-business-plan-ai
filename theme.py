@@ -251,6 +251,10 @@ h3 { margin-top: .6rem; }
 .stButton > button:hover::after, .stDownloadButton > button:hover::after { animation: sweep .8s ease; }
 .stButton > button:active, .stDownloadButton > button:active { transform: translateY(0) scale(.98); }
 .stButton > button:disabled { background: #cbd5e1; box-shadow: none; color: #fff !important; }
+/* pulsanti con tooltip (help=): Streamlit li annida piu' in profondita', quindi il testo va forzato bianco con selettori discendenti */
+[data-testid="stBaseButton-primary"] p, [data-testid="stBaseButton-secondary"] p, [data-testid="stBaseButton-primary"] span, [data-testid="stBaseButton-secondary"] span,
+.stButton button p, .stDownloadButton button p { color: #fff !important; }
+[data-testid="stBaseButton-primary"]:disabled p, [data-testid="stBaseButton-secondary"]:disabled p { color: #fff !important; }
 /* pulsanti di invio dei form (login, nuovo utente, cambio password) */
 [data-testid="stFormSubmitButton"] > button, [data-testid="stBaseButton-primaryFormSubmit"], [data-testid="stBaseButton-secondaryFormSubmit"] {
   background: var(--acc) !important; color: #fff !important; border: none !important; border-radius: 10px; font-weight: 600; box-shadow: 0 2px 8px rgba(30,64,175,.28); }
