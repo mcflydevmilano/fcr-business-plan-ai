@@ -54,6 +54,7 @@ import assistenza
 import ora_meteo
 import freschezza
 import permessi
+import pausa
 import pwa
 import pv_ui
 import theme
@@ -403,6 +404,7 @@ PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nom
 
 
 pwa.inietta()
+pausa.inietta()
 PERM = permessi.carica_config()
 CONSENTITI = permessi.moduli_consentiti(ss["utente"], PERM)
 PROFILO = "accesso completo" if ss["utente"].get("ruolo") == "admin" else permessi.profilo_di(ss["utente"], PERM)
@@ -428,6 +430,7 @@ with st.sidebar:
         st.caption("Logo Aetheris non trovato: carica aetheris_labs_logo.jpg accanto ad app.py.")
     ora_meteo.render_sidebar()
     pwa.pannello()
+    pausa.pannello()
     _u = ss["utente"]
     st.markdown(f"<div style='font-size:.82rem;color:#475569;text-align:center'>👤 <b>{_u['username']}</b> · {_u['ruolo']} · {PROFILO if _u['ruolo'] == 'admin' else 'profilo ' + PROFILO}</div>", unsafe_allow_html=True)
     _ca, _cb = st.columns(2)
