@@ -179,6 +179,9 @@ def check_login():
             return True
         ss.clear()                                # accesso revocato mentre la sessione era aperta
         st.warning("Il tuo accesso non e' piu' valido. Accedi di nuovo.")
+    _addio = ss.pop("_addio", None)
+    if _addio:
+        assistenza.bolla_saluto(assistenza.frase_addio(_addio), 9, con_foto=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
     _, col2, _ = st.columns([1, 1.2, 1])
     with col2:
@@ -191,6 +194,7 @@ def check_login():
             utente, errore = auth.autentica(nome, pw, UTENTI_SECRETS, APP_PASSWORD)
             if utente:
                 ss["utente"] = utente
+                ss["_benvenuto"] = True                # fumetto di benvenuto, una volta per accesso
                 st.rerun()
             st.error(errore)
         if APP_PASSWORD and not UTENTI_SECRETS:
@@ -438,7 +442,9 @@ with st.sidebar:
         vai_a("admin")
     if _cb.button("Esci", key="btn_logout", width="stretch"):
         audit("logout")
+        _nome_addio = _u["username"]
         ss.clear()
+        ss["_addio"] = _nome_addio                      # fumetto di arrivederci nella pagina di login
         st.rerun()
     if _u["origine"] == "db":
         with st.expander("🔑 Account · cambia password"):

@@ -434,3 +434,29 @@ def test_pe_si_apre_e_il_profilo_direzione_lo_vede():
     at = _app(_u("root", "admin"), "pe")
     assert not at.exception and len(at.tabs) == 4
     assert "pe" in permessi.PROFILI_BASE["direzione"] and "pe" not in permessi.PROFILI_BASE["cantiere"]
+
+
+def test_saluti_per_fascia_oraria():
+    import datetime as dt
+    import assistenza
+    assert assistenza.saluto(dt.datetime(2026, 10, 22, 9)) == "Buongiorno"
+    assert assistenza.saluto(dt.datetime(2026, 10, 22, 15)) == "Buon pomeriggio"
+    assert assistenza.saluto(dt.datetime(2026, 10, 22, 21)) == "Buonasera"
+    assert assistenza.saluto(dt.datetime(2026, 10, 22, 2)) == "Buonasera"
+    assert "Buongiorno" in assistenza.frase_benvenuto("mario", dt.datetime(2026, 10, 22, 9), 0)
+    assert "fine settimana" in assistenza.frase_addio("mario", dt.datetime(2026, 10, 23, 17), 0).lower()      # venerdi' pomeriggio
+    assert "<script" not in assistenza.frase_benvenuto("<script>", dt.datetime(2026, 10, 22, 9), 0)    # il nome e' protetto
+
+
+def test_benvenuto_e_addio_una_volta_sola():
+    at = _app(_u("mario"))
+    at.session_state["_benvenuto"] = True
+    at.run()
+    assert not at.exception
+    assert any("as-ben'" in m.value for m in at.markdown)           # fumetto di benvenuto mostrato
+    assert "_benvenuto" not in at.session_state                      # ...una volta sola
+    at.run()
+    assert not any("as-ben'" in m.value for m in at.markdown)
+    [b for b in at.button if b.key == "btn_logout"][0].click().run()
+    assert not at.exception
+    assert any("as-ben'" in m.value and "as-ben-av" in m.value for m in at.markdown)   # arrivederci con foto nella pagina di login

@@ -67,6 +67,83 @@ def invia_slack(testo, url):
             raise RuntimeError(f"Slack ha risposto {r.status}")
 
 
+# ----------------------------------------------------------------------------
+# Saluti: benvenuto al login e arrivederci al logout (fumetto con la foto)
+# ----------------------------------------------------------------------------
+def ora_italia(adesso=None):
+    if adesso is not None:
+        return adesso
+    try:
+        from zoneinfo import ZoneInfo
+        return dt.datetime.now(ZoneInfo("Europe/Rome")).replace(tzinfo=None)
+    except Exception:
+        return dt.datetime.now()
+
+
+def saluto(adesso=None):
+    """Buongiorno fino alle 13, Buon pomeriggio fino alle 18, poi Buonasera (e di notte)."""
+    h = ora_italia(adesso).hour
+    if 5 <= h < 13:
+        return "Buongiorno"
+    if 13 <= h < 18:
+        return "Buon pomeriggio"
+    return "Buonasera"
+
+
+_BENVENUTO = {
+    "Buongiorno": ["{s} {n}! Caffè pronto? I cantieri e i numeri ti aspettano, ma prima un bel respiro. ☕",
+                   "{s} {n}! Oggi si costruisce qualcosa di buono. Io sono qui se ti serve una mano. 🏗️",
+                   "{s} {n}, bentornato nella suite! Il casco è facoltativo, il buonumore no. 😄"],
+    "Buon pomeriggio": ["{s} {n}! A metà strada: se non hai ancora bevuto, adesso è il momento. 💧",
+                        "{s} {n}, bentornato! Il pomeriggio è lungo ma i conti tornano più in fretta con la suite. 📊",
+                        "{s} {n}! Se qualcosa non torna, scrivimi: ci pensiamo insieme. 🛠️"],
+    "Buonasera": ["{s} {n}! Ultimo sprint della giornata: facciamo le cose con calma, che i numeri non scappano. 🌙",
+                  "{s} {n}, ancora al lavoro? Quando hai finito, stacca: il cantiere sopravvive fino a domani. 😉",
+                  "{s} {n}! Una serata di numeri: se serve aiuto, sono qui. ✨"],
+}
+
+
+def frase_benvenuto(nome, adesso=None, scelta=None):
+    s = saluto(adesso)
+    pool = _BENVENUTO[s]
+    t = pool[(scelta if scelta is not None else dt.datetime.now().microsecond) % len(pool)]
+    return t.format(s=s, n=html.escape(str(nome or "").strip().title()))
+
+
+def frase_addio(nome, adesso=None, scelta=None):
+    d = ora_italia(adesso)
+    n = html.escape(str(nome or "").strip().title())
+    if d.weekday() == 4 and d.hour >= 12:
+        pool = [f"A presto {n}! Buon fine settimana: lascia i cantieri ai cantieri. 🏖️", f"Ciao {n}, è venerdì: stacca e goditi il weekend! 🎉"]
+    elif d.hour < 13:
+        pool = [f"A presto {n}! Buona giornata e buon lavoro! ☀️", f"Ciao {n}, ci vediamo dopo. Fai una pausa e bevi un po' d'acqua. 💧"]
+    elif d.hour < 18:
+        pool = [f"A presto {n}! Buon proseguimento di pomeriggio. 👋", f"Ciao {n}, grazie del lavoro! Alla prossima. 🙌"]
+    else:
+        pool = [f"Buona serata {n}! Riposati, domani si riparte. 🌙", f"Ciao {n}, grazie e buona serata! Stasera niente numeri. 🍕"]
+    return pool[(scelta if scelta is not None else dt.datetime.now().microsecond) % len(pool)]
+
+
+def _css_saluto(uri, durata):
+    img = f"background-image:url('{uri}');" if uri else "background:#1e3a8a;"
+    return f"""<style>
+.as-ben-av {{ position: fixed; right: 22px; bottom: 22px; width: 64px; height: 64px; border-radius: 50%; {img} background-size: cover; background-position: center;
+  border: 3px solid #fff; box-shadow: 0 4px 14px rgba(15,23,42,.35), 0 0 0 2px #22c55e; z-index: 999988; pointer-events: none; }}
+.as-ben {{ position: fixed; right: 100px; bottom: 30px; max-width: 300px; background: #fff; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 16px 16px 4px 16px;
+  padding: 13px 16px; font-size: .95rem; line-height: 1.45; box-shadow: 0 10px 28px rgba(15,23,42,.25); pointer-events: none; opacity: 0; z-index: 999991;
+  animation: as-ben {durata}s ease .6s 1 both; }}
+@keyframes as-ben {{ 0% {{ opacity: 0; transform: translateY(10px) scale(.96); }} 5% {{ opacity: 1; transform: none; }} 90% {{ opacity: 1; }} 100% {{ opacity: 0; visibility: hidden; }} }}
+@media (max-width: 640px) {{ .as-ben-av {{ right: 12px; bottom: 12px; width: 54px; height: 54px; }} .as-ben {{ right: 76px; bottom: 18px; max-width: 220px; font-size: .85rem; }} }}
+@media print {{ .as-ben, .as-ben-av {{ display: none; }} }}
+</style>"""
+
+
+def bolla_saluto(testo, durata=11, con_foto=False):
+    """Fumetto temporaneo accanto alla foto in basso a destra. con_foto=True lo usa anche dove la foto non c'e' (pagina di login)."""
+    avatar = "<div class='as-ben-av'></div>" if con_foto else ""
+    st.markdown(_css_saluto(_foto_uri(), durata) + avatar + f"<div class='as-ben'>{testo}</div>", unsafe_allow_html=True)
+
+
 def _css(uri):
     img = f"background-image:url('{uri}');" if uri else "background:#1e3a8a;"
     return f"""<style>
@@ -90,7 +167,11 @@ def _css(uri):
 def render(utente="", strumento=""):
     """Da chiamare una volta per esecuzione, dopo il login."""
     st.markdown(_css(_foto_uri()), unsafe_allow_html=True)
-    st.markdown(f"<div class='as-bolla'>👋 Cari colleghi, se avete bisogno di assistenza o volete segnalare qualcosa, <b>scrivetemi qui</b>.</div>", unsafe_allow_html=True)
+    benvenuto = bool(st.session_state.pop("_benvenuto", False))
+    if benvenuto:
+        bolla_saluto(frase_benvenuto(utente or "collega"), 11)
+    else:
+        st.markdown(f"<div class='as-bolla'>👋 Cari colleghi, se avete bisogno di assistenza o volete segnalare qualcosa, <b>scrivetemi qui</b>.</div>", unsafe_allow_html=True)
     url, dm = _segreto("SLACK_ASSISTENZA_WEBHOOK_URL"), _segreto("SLACK_DM_URL")
     with st.container(key="assist_box"):
         with st.popover("💬", help=f"Scrivi a {NOME}"):
