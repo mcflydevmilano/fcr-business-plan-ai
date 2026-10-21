@@ -10,8 +10,10 @@ import html
 import io
 import os
 
+import versione
+
 _CSS_RAW = """
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700&display=swap');
 
 @property --n { syntax: '<integer>'; initial-value: 0; inherits: false; }
 
@@ -309,7 +311,58 @@ hr { border-color: var(--line); }
 }
 """
 
-CSS = "<style>" + _CSS_RAW + "</style>"
+EXTRA = '''
+/* ---------- tavola di progetto: banner dell'Hub con cartiglio ---------- */
+.tav { position: relative; margin: 4px 0 20px 0; padding: 30px 34px 22px 34px; border-radius: 6px; color: #fff; overflow: hidden;
+  background: linear-gradient(rgba(127,176,255,.16) 1px, transparent 1px) 0 0 / 120px 120px, linear-gradient(90deg, rgba(127,176,255,.16) 1px, transparent 1px) 0 0 / 120px 120px,
+              linear-gradient(rgba(127,176,255,.07) 1px, transparent 1px) 0 0 / 24px 24px, linear-gradient(90deg, rgba(127,176,255,.07) 1px, transparent 1px) 0 0 / 24px 24px,
+              radial-gradient(1100px 420px at 12% -20%, #14418a 0%, #0b2a5b 55%, #08204a 100%);
+  box-shadow: 0 18px 40px rgba(8,32,74,.28); animation: tavIn .9s ease both; }
+.tav::before { content: ""; position: absolute; inset: 9px; border: 1px solid rgba(159,194,255,.35); border-radius: 3px; pointer-events: none; }
+.tav-top { display: flex; align-items: stretch; justify-content: space-between; gap: 28px; flex-wrap: wrap; position: relative; }
+.tav-id { display: flex; align-items: center; gap: 22px; min-width: 260px; flex: 1 1 520px; }
+.tav-logo { width: 104px; height: auto; flex: none; filter: drop-shadow(0 8px 18px rgba(0,0,0,.45)); }
+.tav .tav-h, .tav h1 { color: #fff !important; -webkit-text-fill-color: #fff; font-family: 'Barlow Condensed', 'Arial Narrow', 'Inter', sans-serif; font-weight: 700; font-size: clamp(2rem, 3.6vw, 3.1rem); line-height: 1.02; overflow-wrap: normal; word-break: normal; hyphens: none; letter-spacing: .005em; color: #fff; margin: 0; }
+.tav-s { color: #bcd3ff; font-size: 1rem; margin-top: 8px; max-width: 460px; line-height: 1.45; }
+.tav-tri { height: 3px; width: 150px; margin-top: 14px; transform-origin: left; animation: tavRule 1.1s .35s cubic-bezier(.2,.7,.2,1) both;
+  background: linear-gradient(90deg, #009246 0 33.3%, #f1f5f9 33.3% 66.6%, #ce2b37 66.6% 100%); }
+.cart { display: grid; grid-template-columns: 1.7fr 1fr; align-self: flex-end; margin-left: auto; min-width: 300px; flex: 0 1 400px; border: 1px solid rgba(159,194,255,.55); background: rgba(8,32,74,.55); backdrop-filter: blur(2px); }
+.cart > div { padding: 8px 12px 9px 12px; border-right: 1px solid rgba(159,194,255,.35); border-bottom: 1px solid rgba(159,194,255,.35); }
+.cart > div:nth-child(2n) { border-right: none; } .cart > div:nth-last-child(-n+2) { border-bottom: none; }
+.cart .k { font-size: .7rem; color: #9fc2ff; letter-spacing: .03em; }
+.cart .v { font-size: .98rem; font-weight: 600; color: #fff; margin-top: 2px; line-height: 1.25; }
+.cart .v.ver { color: #ff8a3d; font-family: 'Barlow Condensed', 'Inter', sans-serif; font-size: 1.45rem; font-weight: 700; line-height: 1.1; }
+.quota { position: relative; margin-top: 22px; height: 26px; }
+.quota svg { width: 100%; height: 26px; display: block; overflow: visible; }
+.quota .ln { stroke: #ff8a3d; stroke-width: 1.2; stroke-dasharray: 1600; stroke-dashoffset: 1600; animation: tavDraw 1.6s .5s cubic-bezier(.3,.7,.2,1) forwards; }
+.quota .lbl { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 0 16px; background: #0a2552; color: #ffb98a; font-size: .8rem; font-weight: 600; letter-spacing: .03em; white-space: nowrap; opacity: 0; animation: tavFade .6s 1.5s ease forwards; }
+@keyframes tavIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes tavRule { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes tavDraw { to { stroke-dashoffset: 0; } }
+@keyframes tavFade { to { opacity: 1; } }
+@media (max-width: 640px) { .tav { padding: 22px 18px 16px 18px; } .tav-h { font-size: 1.9rem; } .tav-logo { width: 76px; } .cart { min-width: 0; width: 100%; flex-basis: 100%; grid-template-columns: 1fr 1fr; } }
+@media (prefers-reduced-motion: reduce) { .tav, .tav-tri, .quota .ln, .quota .lbl { animation: none !important; stroke-dashoffset: 0; opacity: 1; transform: none; } }
+
+/* titoli: lettering tecnico da tavola di cantiere */
+.hub-sez-t { font-family: 'Barlow Condensed', 'Inter', sans-serif; font-size: 1.75rem; font-weight: 700; letter-spacing: .005em; }
+.hero-title { font-family: 'Barlow Condensed', 'Inter', sans-serif; font-size: 2.7rem; font-weight: 700; letter-spacing: .005em; line-height: 1.02;
+  background: none; -webkit-text-fill-color: var(--navy); color: var(--navy); animation: none; }
+.hero-logo { animation: none; }
+.hero { padding-bottom: 6px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.b-ver { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line2); font-size: .68rem; color: var(--mut); line-height: 1.4; }
+.b-ver b { color: #c2410c; font-weight: 700; }
+.login-prop { margin: 18px 0 22px 0; font-size: .74rem; color: var(--mut); line-height: 1.45; }
+'''
+
+
+def _css_versione():
+    """Piede di pagina su ogni schermata: versione e proprieta' del software, senza codice nelle singole pagine."""
+    riga = versione.riga_versione().replace("\\", "").replace('"', "") + " · " + versione.COPYRIGHT.replace('"', "")
+    return ('[data-testid="stMain"]::after, section.main::after { content: "' + riga + '"; display: block; text-align: center; font-size: .72rem; color: #64748b; '
+            'padding: 34px 16px 96px 16px; letter-spacing: .01em; }')
+
+
+CSS = "<style>" + _CSS_RAW + EXTRA + _css_versione() + "</style>"
 
 
 @functools.lru_cache(maxsize=8)
@@ -373,7 +426,8 @@ def login_header(uri_fcr, uri_aeth):
     fcr = f'<img class="login-fcr" src="{uri_fcr}" alt="FCR"/>' if uri_fcr else ""
     aeth = f'<img class="login-logo" src="{uri_aeth}" alt="Aetheris Labs"/>' if uri_aeth else ""
     return (f'<div class="login-wrap">{fcr}{aeth}<div class="login-title">FCR GENERAL CONTRACTOR</div>'
-            f'<div class="login-sub">Aetheris Labs - Area Riservata Protetta</div></div>')
+            f'<div class="login-sub">Aetheris Labs - Area Riservata Protetta</div>'
+            f'<div class="login-prop">{_e(versione.NOME)} v{_e(versione.VERSIONE)} · Software di proprietà di {_e(versione.PROPRIETARIO)}<br>{_e(versione.COPYRIGHT)}</div></div>')
 
 
 def sidebar_brand(uri_aeth):
@@ -381,13 +435,23 @@ def sidebar_brand(uri_aeth):
     return (f'<div class="brand">{logo}<div class="b-name">AETHERIS LABS</div>'
             f'<div class="b-sub">Software, AI &amp; Game Development Division</div>'
             f'<div class="b-dev">Sviluppato da</div><div class="b-who">Ing. Lorenzo Di Ferdinando</div>'
-            f'<div class="b-co">FCR General Contractor</div></div>')
+            f'<div class="b-co">FCR General Contractor</div>'
+            f'<div class="b-ver">{_e(versione.NOME)} <b>v{_e(versione.VERSIONE)}</b><br>Software di proprietà di {_e(versione.PROPRIETARIO)}</div></div>')
 
 
-def hub_header(uri_fcr):
-    logo = f'<img class="hub-logo" src="{uri_fcr}" alt="FCR"/>' if uri_fcr else ""
-    return (f'{logo}<div class="hub-title">FCR General Contractor &amp; Aetheris Labs</div>'
-            f'<div class="hub-sub">Seleziona lo strumento operativo che desideri utilizzare</div>')
+def hub_header(uri_fcr, n_strumenti=15):
+    """Banner dell'Hub come una tavola di progetto: titolo, cartiglio (proprieta' e versione) e linea di quota."""
+    logo = f'<img class="tav-logo" src="{uri_fcr}" alt="FCR"/>' if uri_fcr else ""
+    cart = (f'<div class="cart"><div><div class="k">Progetto</div><div class="v">{_e(versione.NOME)}</div></div>'
+            f'<div><div class="k">Versione</div><div class="v ver">{_e(versione.VERSIONE)}</div></div>'
+            f'<div><div class="k">Proprietà del software</div><div class="v">{_e(versione.PROPRIETARIO)}</div></div>'
+            f'<div><div class="k">Rilascio</div><div class="v">{_e(versione.DATA_RILASCIO)}</div></div></div>')
+    quota = (f'<div class="quota"><svg viewBox="0 0 1000 26" preserveAspectRatio="none" aria-hidden="true"><g class="ln-g">'
+             '<line class="ln" x1="0" y1="13" x2="1000" y2="13"/><line class="ln" x1="0" y1="3" x2="0" y2="23"/><line class="ln" x1="1000" y1="3" x2="1000" y2="23"/>'
+             '<path class="ln" d="M0 13 L14 8 M0 13 L14 18 M1000 13 L986 8 M1000 13 L986 18"/></g></svg>'
+             f'<span class="lbl">{n_strumenti} strumenti · una sola suite</span></div>')
+    return (f'<div class="tav"><div class="tav-top"><div class="tav-id">{logo}<div><h1 class="tav-h">FCR General Contractor</h1>'
+            f'<div class="tav-s">La suite operativa per offerte, cantieri, fornitori e finanza: {n_strumenti} strumenti, un solo posto.</div><div class="tav-tri"></div></div></div>{cart}</div>{quota}</div>')
 
 
 def hub_sezione(titolo, sotto=""):

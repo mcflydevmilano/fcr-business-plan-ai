@@ -505,7 +505,7 @@ if MODULO == "admin":
 assistenza.render((ss.get("utente") or {}).get("username", ""), MODULO or "Hub")
 
 if MODULO is None:
-    st.markdown(theme.hub_header(FCR_URI), unsafe_allow_html=True)
+    st.markdown(theme.hub_header(FCR_URI, len(hub.CARDS)), unsafe_allow_html=True)
     hub.render(vai_a)
     st.stop()
 

@@ -52,3 +52,12 @@ def test_registro_descrive_le_modifiche(tmp_path):
     assert "Cronoprogramma" in ev[0]["Dettaglio"] and "Ottobre" in ev[0]["Dettaglio"] and "Fasi" in ev[0]["Dettaglio"]
     assert len(storage.elenca_eventi(path=db, cerca="LUISA")) == 1
     assert storage.elenca_eventi(path=db, da="2999-01-01") == []
+
+
+def test_versione_e_proprieta_nel_tema():
+    import theme
+    import versione
+    assert versione.PROPRIETARIO == "Aetheris Labs" and versione.VERSIONE.count(".") == 2
+    h = theme.hub_header("", 15)
+    assert "Aetheris Labs" in h and versione.VERSIONE in h and "15 strumenti" in h
+    assert versione.VERSIONE in theme.sidebar_brand("") and "Software di proprietà di Aetheris Labs" in theme.CSS
