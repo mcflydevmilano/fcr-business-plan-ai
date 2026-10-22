@@ -415,6 +415,10 @@ SIDEBAR_CSS = """
 .chip { font-size: .64rem; font-weight: 700; letter-spacing: .03em; padding: 2px 8px; border-radius: 99px; text-transform: capitalize; }
 .chip.admin { background: #fee2e2; color: #b91c1c; } .chip.utente { background: #dbeafe; color: #1e40af; } .chip.lettore { background: #e2e8f0; color: #475569; }
 .chip.prof { background: #dcfce7; color: #15803d; text-transform: none; }
+/* le schede dei numeri (.strip) non ereditano lo stile dei piccoli badge della barra laterale */
+.strip .chip { font-size: inherit; font-weight: inherit; letter-spacing: normal; padding: 12px 16px; border-radius: 14px; text-transform: none; }
+.strip .chip .lbl { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .09em; }
+.strip .chip .sub { text-transform: none; font-weight: 400; }
 .sb-label { font-size: .66rem; font-weight: 800; letter-spacing: .16em; color: #94a3b8; text-transform: uppercase; margin: 14px 4px 6px; }
 
 .st-key-sb_nav [data-testid="stExpander"] { border: 0 !important; box-shadow: none !important; background: transparent !important; }
