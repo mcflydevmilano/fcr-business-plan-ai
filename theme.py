@@ -286,7 +286,7 @@ h3 { margin-top: .6rem; }
 ::placeholder { color: #94a3b8 !important; opacity: 1; }
 
 [data-testid="stAlert"] { border-radius: 12px; animation: fadeUp .4s ease both; }
-[data-testid="stDataFrame"], [data-testid="stDataEditor"] { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff; box-shadow: var(--shadow); animation: fadeUp .45s ease both; }
+[data-testid="stDataFrame"], [data-testid="stDataEditor"] { border: 1px solid var(--line); border-radius: 12px; overflow: visible; background: #fff; box-shadow: var(--shadow); animation: fadeUp .45s ease both; }
 [data-testid="stExpander"] { border: 1px solid var(--line) !important; border-radius: 12px; background: var(--panel); }
 [data-testid="stExpander"] summary p { color: var(--navy) !important; font-weight: 600; }
 [data-testid="stImage"] img { border-radius: 12px; }
@@ -301,6 +301,12 @@ hr { border-color: var(--line); }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; } ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Tabelle: barre di scorrimento ben visibili e barra degli strumenti (schermo intero, cerca, scarica) sempre disponibile */
+.dvn-scroller, .dvn-scroller.stDataFrameGlideDataEditor { scrollbar-width: auto !important; scrollbar-color: #64748b #e2e8f0 !important; }
+.dvn-scroller::-webkit-scrollbar { display: block !important; width: 14px !important; height: 14px !important; background: #e2e8f0 !important; }
+.dvn-scroller::-webkit-scrollbar-thumb { background: #64748b; border-radius: 8px; border: 3px solid #e2e8f0; }
+[data-testid="stElementToolbar"] { opacity: 1 !important; visibility: visible !important; }
 
 .st-key-hub_top { display: none; }
 @media (max-width: 700px) {
