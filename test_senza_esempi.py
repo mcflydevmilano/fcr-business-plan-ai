@@ -8,7 +8,7 @@ from streamlit.testing.v1 import AppTest
 import storage
 
 APP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.py")
-SIGLE = ["bk", "fo", "ga", "gt", "lg", "mz", "oa", "og", "pe", "rp", "ru", "sc", "sl", "sx", "cf", "pv", "ca", "pz", "dd"]
+SIGLE = ["bk", "fo", "ga", "gt", "lg", "mz", "oa", "og", "pe", "rp", "ru", "sc", "sl", "sx", "cf", "pv", "ca", "pz", "dd", "rc"]
 
 
 @pytest.fixture(autouse=True)

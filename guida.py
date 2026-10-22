@@ -119,6 +119,13 @@ PASSI = {
         ("Scarica il dossier", "Nella scheda «3. Dossier» premi il pulsante per PDF ed Excel.", "dossier"),
         ("Salva", "Apri «💾 Salva e riapri il cronoprogramma» in alto e premi Salva.", "salvato"),
     ], "I legami valgono dentro lo stesso cantiere e il nome della fase va scritto uguale. I giorni di fermo e le date «Non prima del» le scrivi tu: il programma non sa da solo che piove o che il camion è in ritardo."),
+    "rc": ("Sapere a che punto è ogni pratica commerciale, quanto vale e cosa va fatto adesso.", [
+        ("Importa il registro", "Nella scheda «4. Importa dal tuo Excel» carica il file del registro: l'app legge i fogli Registro ed Eliminati e riconosce da sola le colonne.", None),
+        ("Guarda il cruscotto", "Nella scheda «1. Cruscotto» vedi le pratiche per stato e per commerciale, il valore in corso e la pipeline (valore × % di successo).", None),
+        ("Cerca una pratica", "Nella scheda «2. Pratiche» cerca per città, indirizzo, amministratore o codice, e filtra per stato o commerciale.", None),
+        ("Segui i prossimi interventi", "Nella scheda «3. Da fare» vedi cosa è scaduto o sta per scadere e chi lo deve fare. Quando è fatto, aggiorna stato e scadenza nella scheda «2».", None),
+        ("Salva", "Apri «💾 Salva e riapri il registro» in alto e premi Salva.", "salvato"),
+    ], "Il valore pipeline lo ricalcola l'app: non serve scriverlo. Per togliere una pratica senza perderla, metti «Eliminata» nella colonna Archivio."),
     "pz": ("Avere i prezzi di riferimento a portata di mano per preventivi e acquisti, e sapere quando vanno aggiornati.", [
         ("Carica il prezziario", "Nella scheda «2. Carica un prezziario» scegli il file Excel del listino: l'app riconosce il quadrimestre dal nome, mostra cosa ha letto e cosa ha saltato. Poi premi «Salva».", None),
         ("Cerca una voce", "Nella scheda «1. Cerca» scrivi una parola («intonaco»), un codice o scegli un capitolo. Clicca una riga per vedere il dettaglio e le varianti.", None),

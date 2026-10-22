@@ -150,6 +150,15 @@ CARDS = {'credit': {'icona': '📊',
                  'Storico di ogni decisione con nome e ora'],
         'tag': ['Approvazioni', 'Tracciabilità', 'PDF + Excel'],
         'bottone': 'Ordini e approvazioni'},
+ 'rc': {'icona': '🗂️',
+        'titolo': 'Registro commerciale',
+        'desc': 'Tutte le pratiche dalla prima richiesta al contratto: stato, valore, probabilità di successo e prossimo intervento.',
+        'voci': ['Importa il tuo Excel del registro, con le pratiche eliminate',
+                 'Pratiche per stato e per commerciale, con la pipeline pesata',
+                 'Prossimi interventi scaduti o in arrivo, per persona',
+                 'Ricerca per città, indirizzo, amministratore o codice'],
+        'tag': ['Pipeline', 'Commerciale', 'Excel'],
+        'bottone': 'Registro commerciale'},
  'pz': {'icona': '📚',
         'titolo': 'Prezziario',
         'desc': 'I prezzi di riferimento per preventivi e acquisti, da cercare per codice, parola o capitolo.',
@@ -201,7 +210,7 @@ GRUPPI = [
     ("Parte finanziaria", "Dott. Claudio Arosio",
      ["credit", "bp", "cf", "sc", "bk"]),
     ("Offerte e commesse", "Dalla gara al preventivo, fino all'avanzamento lavori",
-     ["ga", "pv", "pz", "sl", "gt"]),
+     ["rc", "ga", "pv", "pz", "sl", "gt"]),
     ("Cantiere e risorse", "Rapportini, sicurezza, mezzi e persone",
      ["rp", "sx", "mz", "og"]),
     ("Fornitori, acquisti e scadenze", "Contatti, ordini approvati, documenti dei fornitori e calendario unico",
@@ -281,7 +290,7 @@ def _freschezza(righe):
             st.markdown(f"{ico[r['stato']]} **{r['nome']}** — {quando}{chi}  <span style='color:#94a3b8'>(si aggiorna ogni {r['soglia']} gg)</span>", unsafe_allow_html=True)
 
 
-DATI_RICERCA = ["ru", "fo", "sc", "sl", "ga", "sx", "mz", "og", "rp", "gt", "lg", "bk", "oa", "pe", "pv", "cf", "bp"]
+DATI_RICERCA = ["rc", "ru", "fo", "sc", "sl", "ga", "sx", "mz", "og", "rp", "gt", "lg", "bk", "oa", "pe", "pv", "cf", "bp"]
 
 
 @st.cache_data(ttl=30, show_spinner=False)

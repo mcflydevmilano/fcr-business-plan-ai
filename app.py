@@ -59,6 +59,8 @@ import profilo
 import sessione
 import pz
 import pz_ui
+import rc
+import rc_ui
 import pwa
 import pv_ui
 import theme
@@ -427,7 +429,7 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",)}
 
 
 pwa.inietta()
@@ -632,7 +634,7 @@ if MODULO == "sl":
     sl_ui.render(FCR_URI, audit, ss["utente"]["username"])
     st.stop()
 
-for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og", og_ui), ("rp", rp_ui), ("gt", gt_ui), ("ru", ru_ui), ("lg", lg_ui), ("bk", bk_ui), ("oa", oa_ui), ("pz", pz_ui)):
+for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og", og_ui), ("rp", rp_ui), ("gt", gt_ui), ("ru", ru_ui), ("lg", lg_ui), ("bk", bk_ui), ("oa", oa_ui), ("pz", pz_ui), ("rc", rc_ui)):
     if MODULO == _m:
         _ui.render(FCR_URI, audit, ss["utente"]["username"])
         st.stop()

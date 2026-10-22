@@ -180,3 +180,7 @@ Strumento «Prezziario» (gruppo *Offerte e commesse*): carica un listino Excel 
 - **Ricerca nella home**: casella unica per strumenti, dati salvati (cantieri, fornitori, fatture, persone…) e voci del prezziario.
 - **Resta collegato dopo F5**: il login viene ricordato 12 ore (cookie firmato, senza password dentro). Si cancella con «Esci», cambiando la password o disattivando l'utente. Opzionale nei Secrets: `SESSIONE_ORE` (1-168) e `SESSION_SECRET` (testo lungo casuale; senza, la chiave deriva dagli altri segreti).
 - **Favicon** con il logo FCR su fondo bianco; **tasti su telefono** con le scritte a capo invece che tagliate.
+
+## Registro commerciale (3.4.0)
+Strumento nuovo nel gruppo «Offerte e commesse». Importa il tuo Excel (fogli Registro ed Eliminati), mostra le pratiche per stato (S0-S9) e per commerciale, il valore in corso, la pipeline pesata (valore × % di successo, ricalcolata dall'app), i prossimi interventi scaduti o in arrivo e permette ricerca e filtri. Si salva e si riapre come gli altri strumenti; l'Excel si può riscaricare. Lo ricevono i profili presidente, direzione e commerciale. Le pratiche eliminate restano nel registro con «Archivio = Eliminata».
+Nei Secrets si può mettere `ESEMPI_ATTIVI = "1"` solo per riavere i dati di esempio (di norma gli strumenti partono vuoti).
