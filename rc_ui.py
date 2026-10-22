@@ -71,7 +71,7 @@ def render(fcr_uri, audit=None, utente=""):
     righe, avv = rc.normalizza(ss["rc_df"].to_dict("records"))
     out = rc.calcola(righe, dt.date.today(), {"preavviso_gg": ss["rc_preavviso_gg"]})
     k = out["kpi"]
-    t1, t2, t3, t4 = st.tabs(["📊 1. Cruscotto", "📋 2. Pratiche", "⏰ 3. Da fare", "📥 4. Importa dal tuo Excel"])
+    t1, t2, t3, t4, t5 = st.tabs(["📊 1. Cruscotto", "📋 2. Pratiche", "⏰ 3. Da fare", "📥 4. Importa dal tuo Excel", "👤 5. Il mio cruscotto"])
 
     with t1:
         if not righe:
@@ -104,9 +104,9 @@ def render(fcr_uri, audit=None, utente=""):
         att = [r for r in righe]
         f1, f2, f3, f4 = st.columns([3, 2, 2, 1.4])
         q = f1.text_input("Cerca (città, indirizzo, amministratore, commerciale, codice…)", key="rc_cerca")
-        stati = f2.multiselect("Stato", rc.STATI, key="rc_f_stato")
+        stati = f2.multiselect("Stato", rc.STATI, key="rc_f_stato", placeholder="Tutti")
         cms = sorted({r["Commerciale"] or "(senza commerciale)" for r in att})
-        com = f3.multiselect("Commerciale", cms, key="rc_f_comm")
+        com = f3.multiselect("Commerciale", cms, key="rc_f_comm", placeholder="Tutti")
         arch = f4.selectbox("Archivio", ["Attiva", "Eliminata"], key="rc_f_arch")
         ris = rc.filtra(righe, q, stati, com, arch)
         st.caption(f"{len(ris)} pratiche trovate.")
@@ -124,7 +124,7 @@ def render(fcr_uri, audit=None, utente=""):
         if not df_:
             st.success("Nessun prossimo intervento in programma.")
         else:
-            chi = st.multiselect("Chi lo deve fare", sorted({d["Chi"] or "(nessuno)" for d in df_}), key="rc_f_chi")
+            chi = st.multiselect("Chi lo deve fare", sorted({d["Chi"] or "(nessuno)" for d in df_}), key="rc_f_chi", placeholder="Tutti")
             vis = [d for d in df_ if not chi or (d["Chi"] or "(nessuno)") in chi]
             st.dataframe(pd.DataFrame([{"": ICONE[d["Stato_scad"]], "Codice": d["Codice"], "Indirizzo": d["Indirizzo"], "Ora in": d["Stato"], "Prossimo": d["Prossimo"], "Scadenza": d["Scadenza"],
                                         "Giorni": d["Giorni"], "Chi": d["Chi"]} for d in vis]), hide_index=True, width="stretch")
@@ -155,3 +155,43 @@ def render(fcr_uri, audit=None, utente=""):
                         st.rerun()
                 elif up is not None:
                     st.error("Non ho trovato le colonne del registro (Codice, Stato, Commerciale…). Controlla che sia il file giusto.")
+
+    with t5:
+        nomi = rc.nomi_commerciali(righe)
+        if not nomi:
+            st.info("Quando nel registro ci sono pratiche con un commerciale, qui puoi vedere il cruscotto di ciascuno.")
+        else:
+            try:
+                import pe
+                pers = pe.persone_salvate()
+            except Exception:
+                pers = []
+            mio = rc.riconosci_commerciale((ss.get("utente") or {}).get("username", ""), nomi, pers)
+            nome = st.selectbox("Di chi vuoi vedere il cruscotto", nomi, index=nomi.index(mio) if mio else 0, key="rc_mio_nome")
+            if mio and nome == mio:
+                st.caption(f"Ti ho riconosciuto come **{mio}**.")
+            elif not mio:
+                st.caption("Non ho riconosciuto il tuo utente: scegli il nome dall'elenco. Per averlo in automatico, scrivi il tuo nome utente in «Persone e ruoli» (colonna Nome utente).")
+            v = rc.vista_commerciale(righe, nome, dt.date.today(), {"preavviso_gg": ss["rc_preavviso_gg"]})
+            kv = v["kpi"]
+            st.markdown(theme.stat_strip([
+                {"label": "Pratiche aperte", "value": str(kv["n_aperte"]), "sub": f"{kv['n_offerte']} in offerta", "tono": "ok"},
+                {"label": "Valore in corso", "value": _euro(kv["valore_aperte"]), "sub": "pratiche aperte", "tono": "ok"},
+                {"label": "Pipeline pesata", "value": _euro(kv["pipeline"]), "sub": "valore × % di successo", "tono": "ok"},
+                {"label": "Da fare scaduti", "value": str(sum(1 for d in v["da_fare"] if d["Stato_scad"] == "bad")), "sub": f"{sum(1 for d in v['da_fare'] if d['Stato_scad'] == 'warn')} in arrivo",
+                 "tono": "bad" if any(d["Stato_scad"] == "bad" for d in v["da_fare"]) else "ok"}]), unsafe_allow_html=True)
+            c1, c2 = st.columns([2, 3])
+            psv = pd.DataFrame(v["per_stato"])
+            psv = psv[psv["Pratiche"] > 0]
+            if len(psv):
+                c1.markdown("**Le mie pratiche per stato**")
+                c1.bar_chart(psv.set_index("Stato")["Pratiche"], horizontal=True, height=260)
+            c2.markdown("**Cosa devo fare**")
+            if v["da_fare"]:
+                c2.dataframe(pd.DataFrame([{"": ICONE[d["Stato_scad"]], "Codice": d["Codice"], "Indirizzo": d["Indirizzo"], "Prossimo": d["Prossimo"], "Scadenza": d["Scadenza"], "Giorni": d["Giorni"]}
+                                           for d in v["da_fare"]]), hide_index=True, width="stretch", height=260)
+            else:
+                c2.success("Nessun intervento in programma.")
+            st.markdown("**Le mie pratiche**")
+            st.dataframe(pd.DataFrame([{"Codice": r["Codice"], "Stato": r["Stato"], "Indirizzo": r["Indirizzo"], "Amministratore": r["Amministratore"], "Valore": r["Valore"], "Successo %": r["Successo"],
+                                        "Pipeline": rc.pipeline(r), "Scadenza": r["Scadenza"], "Note": r["Note"]} for r in v["mie"]]), hide_index=True, width="stretch", height=320)

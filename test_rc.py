@@ -134,3 +134,15 @@ def test_hub_mostra_la_scheda_e_i_permessi():
     assert "rc" in permessi.PROFILI_BASE["commerciale"] and "rc" in permessi.TUTTI
     at = _admin(None)
     assert not at.exception and any("Registro commerciale" in b.label for b in at.button)
+
+
+def test_cruscotto_del_commerciale():
+    righe, _, _ = rc.importa_excel(_file())
+    nomi = rc.nomi_commerciali(righe)
+    assert "Verdi" in nomi and "Gialli" in nomi
+    assert rc.riconosci_commerciale("verdi", nomi) == "Verdi" and rc.riconosci_commerciale("boh", nomi) == ""
+    assert rc.riconosci_commerciale("mrossi", ["Rossi Mario"], [{"Utente": "mrossi", "Persona": "Mario Rossi"}]) == "Rossi Mario"
+    v = rc.vista_commerciale(righe, "Verdi", OGGI)
+    assert v["kpi"]["n_attive"] == 1 and v["kpi"]["pipeline"] == 50000 and len(v["da_fare"]) == 1 and v["da_fare"][0]["Stato_scad"] == "bad"
+    v2 = rc.vista_commerciale(righe, "Gialli", OGGI)
+    assert v2["kpi"]["pipeline"] == 50000 and v2["da_fare"] == []

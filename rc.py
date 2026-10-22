@@ -267,3 +267,37 @@ def excel_bytes(righe, out):
             for col in ws.columns:
                 ws.column_dimensions[col[0].column_letter].width = min(max(len(str(col[0].value or "")) + 2, 12), 40)
     return buf.getvalue()
+
+
+def _chiave_nome(s):
+    return " ".join(sorted(re.findall(r"[a-z0-9]+", _n(s))))
+
+
+def nomi_commerciali(righe):
+    return sorted({r["Commerciale"] for r in righe if r["Commerciale"]} | {r["Affiancato"] for r in righe if r["Affiancato"]})
+
+
+def riconosci_commerciale(username, nomi, persone=None):
+    """Il nome del registro che corrisponde all'utente collegato, o ''. Prima cerca nell'elenco di «Persone e ruoli» (colonna Utente), poi
+    confronta il nome utente con le parole del nome (es. «siciliano» con «Siciliano Marco»). Nomi scritti «Cognome Nome» o «Nome Cognome» valgono uguale."""
+    u = _n(username)
+    if not u:
+        return ""
+    for p in persone or []:
+        if _n(p.get("Utente")) == u and _chiave_nome(p.get("Persona")):
+            k = _chiave_nome(p["Persona"])
+            for n in nomi:
+                if _chiave_nome(n) == k:
+                    return n
+    trovati = [n for n in nomi if u in re.findall(r"[a-z0-9]+", _n(n))]
+    return trovati[0] if len(trovati) == 1 else ""
+
+
+def vista_commerciale(righe, nome, oggi=None, params=None):
+    """Cruscotto di una persona: le sue pratiche (come commerciale o come affiancato) e gli interventi che deve fare lei."""
+    mie = [r for r in righe if r["Archivio"] == "Attiva" and nome in (r["Commerciale"], r["Affiancato"])]
+    out = calcola(mie, oggi, params)
+    tutto = calcola(righe, oggi, params)
+    out["da_fare"] = [d for d in tutto["da_fare"] if _chiave_nome(d["Chi"]) == _chiave_nome(nome)]
+    out["mie"] = mie
+    return out
