@@ -169,7 +169,9 @@ def test_strumento_prezziario_si_apre_vuoto_e_con_dati():
     at = _admin("pz")
     assert not at.exception, [e.value for e in at.exception]
     assert any("2° quadrimestre 2026" in (w.value or "") for w in [*at.warning, *at.success])     # scaduto o in vigore a seconda della data
-    at.text_input(key="cerca_testo").set_value("piastrelle").run()
+    opz = at.selectbox(key="cerca_testo").options
+    assert opz, "i suggerimenti devono esserci"
+    at.selectbox(key="cerca_testo").set_value([o for o in opz if "piastrelle" in o.lower()][0]).run()
     assert not at.exception and any("1 voci trovate" in m.value for m in at.markdown)
 
 

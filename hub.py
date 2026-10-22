@@ -300,11 +300,44 @@ def _dati_salvati(moduli):
     return out
 
 
+@st.cache_data(ttl=60, show_spinner=False)
+def _suggerimenti_c(moduli, con_pz):
+    import ricerca
+    out = [f"{c['bottone']}" for c in CARDS.values()]
+    out += sorted({w for t in ricerca.SINONIMI.values() for w in t.split() if len(w) > 4})        # parole chiave (fatture, cantiere, bilancio...)
+    try:
+        import storage
+        for m in moduli:
+            out += [p["nome"] for p in storage.elenca_pratiche(modulo=m)[:50] if p["nome"]]
+    except Exception:
+        pass
+    if con_pz:
+        try:
+            import pz
+            import pz_ui
+            meta, righe = pz_ui.attivo()
+            if righe:
+                out += pz_ui.opzioni_ricerca(meta["id"], pz.aggiornato_il(meta["id"]))
+        except Exception:
+            pass
+    visti, ris = set(), []
+    for s in out:
+        if s.lower() not in visti:
+            visti.add(s.lower())
+            ris.append(s)
+    return ris
+
+
+def _suggerimenti(consentiti):
+    cons = set(CARDS) if consentiti is None else set(consentiti)
+    return _suggerimenti_c(tuple(sorted(m for m in DATI_RICERCA if m in cons)), "pz" in cons)
+
+
 def _ricerca(vai_a, consentiti):
     """Casella di ricerca dell'Hub. Restituisce True se sta mostrando i risultati (allora gli strumenti sotto si nascondono)."""
     import ricerca
-    q = st.text_input("Cerca nella suite", key="ricerca_hub", label_visibility="collapsed",
-                      placeholder="🔍  Cerca: uno strumento, un cantiere, un fornitore, una fattura, una persona, una voce di prezziario…")
+    q = st.selectbox("Cerca nella suite", _suggerimenti(consentiti), index=None, key="ricerca_hub", accept_new_options=True, label_visibility="collapsed",
+                     placeholder="🔍  Cerca: uno strumento, un cantiere, un fornitore, una fattura, una persona, una voce di prezziario…") or ""
     if len(q.strip()) < 2:
         return False
     cons = set(CARDS) if consentiti is None else set(consentiti)

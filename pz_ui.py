@@ -28,6 +28,29 @@ def _df(pid, agg):
     return pz.prepara(_righe(pid, agg))
 
 
+@st.cache_data(show_spinner=False, max_entries=4)
+def _opzioni(pid, agg):
+    """Suggerimenti per la casella di ricerca: descrizioni (tagliate a fine parola) senza doppioni, piu' i capitoli."""
+    df = _df(pid, agg)
+    visti, out = set(), []
+    for d in df["descrizione"]:
+        d = " ".join(str(d).split())
+        if len(d) > 80:
+            d = d[:80].rsplit(" ", 1)[0]
+        k = d.lower()
+        if d and k not in visti:
+            visti.add(k)
+            out.append(d)
+    return out
+
+
+def opzioni_ricerca(pid, agg):
+    try:
+        return _opzioni(pid, agg)
+    except Exception:
+        return []
+
+
 def attivo():
     """(meta, righe) del prezziario in vigore, oppure (None, None) se non ce n'e' nessuno."""
     try:
@@ -110,7 +133,8 @@ def _scheda_cerca(indice):
     df = _df(pid, pz.aggiornato_il(pid))
     cap = pz.capitoli(df)
     c1, c2, c3, c4 = st.columns([3, 2, 2, 1])
-    q = c1.text_input("Cerca per parola o per codice", key="cerca_testo", placeholder="es. piastrelle bicottura · intonaco · C.05.01 · serramento alluminio")
+    q = c1.selectbox("Cerca per parola o per codice", opzioni_ricerca(pid, pz.aggiornato_il(pid)), index=None, key="cerca_testo", accept_new_options=True,
+                     placeholder="Scrivi: compaiono i suggerimenti (es. piastrelle · intonaco · C.05.01 · serramento)") or ""
     sg = c2.selectbox("Capitolo", ["(tutti)"] + list(cap.keys()), key="cerca_cap")
     gruppi = cap.get(sg, []) if sg != "(tutti)" else []
     gr = c3.selectbox("Gruppo", ["(tutti)"] + gruppi, key="cerca_gr", disabled=not gruppi)
