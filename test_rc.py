@@ -146,3 +146,17 @@ def test_cruscotto_del_commerciale():
     assert v["kpi"]["n_attive"] == 1 and v["kpi"]["pipeline"] == 50000 and len(v["da_fare"]) == 1 and v["da_fare"][0]["Stato_scad"] == "bad"
     v2 = rc.vista_commerciale(righe, "Gialli", OGGI)
     assert v2["kpi"]["pipeline"] == 50000 and v2["da_fare"] == []
+
+
+def test_cruscotto_di_direzione_legge_il_registro():
+    import dd
+    righe, _, _ = rc.importa_excel(_file())
+    payload = {"pratiche": righe, "params": {"preavviso_gg": 7}}
+    m = {"rc": dd.metriche_da_payload("rc", payload, OGGI)}
+    ri, gen, az = dd.semafori(m)
+    r = [x for x in ri if x["Indicatore"].startswith("Pipeline commerciale")][0]
+    assert r["Valore"].startswith("150") and gen in ("ok", "warn", "bad")
+    bl = dd.dettagli(m)
+    assert bl and bl[0]["id"] == "rc_scaduti" and bl[0]["squadra"] == "Commerciale" and bl[0]["righe"][0]["Pratica"] == "001-MI-ROSSI"
+    assert dd.metriche_da_payload("rc", {"pratiche": []}, OGGI) is None
+    assert "rc" in dd.MODULI_METRICHE

@@ -28,13 +28,13 @@ ss = st.session_state
 
 MODULI = [("sc", "Scadenzario", "Cassa, crediti e debiti"), ("cf", "Cash Flow di cantiere", "Liquidità e margine dei cantieri"),
           ("pv", "Computo e Preventivo", "Margine del preventivo"), ("credit", "Credit Risk & Rating", "Rating indicativo"),
-          ("bp", "Business Plan Studio", "DSCR del piano"), ("sl", "SAL e contabilità lavori", "Margine a finire delle commesse"), ("ga", "Gare e offerte", "Scadenze delle gare"), ("fo", "Fornitori", "Documenti in scadenza"),
+          ("bp", "Business Plan Studio", "DSCR del piano"), ("sl", "SAL e contabilità lavori", "Margine a finire delle commesse"), ("rc", "Registro commerciale", "Pipeline e interventi scaduti"), ("ga", "Gare e offerte", "Scadenze delle gare"), ("fo", "Fornitori", "Documenti in scadenza"),
           ("sx", "Sicurezza", "Formazioni e documenti di cantiere"), ("mz", "Parco mezzi", "Scadenze e utilizzo"), ("og", "Organico", "Carico di lavoro"), ("rp", "Rapportini di cantiere", "Segnalazioni e rapportini"), ("gt", "Cronoprogramma", "Ritardi sulle fasi dei cantieri")]
 SESSIONE = "Dati della sessione"
 NESSUNO = "Non usare"
 
 
-_SESS_KEY = {"ga": "ga_gare", "fo": "fo_doc", "sx": "sx_pers", "mz": "mz_mezzi", "og": "og_ris", "rp": "rp_rapp", "gt": "gt_fasi", "lg": "lg_riserve"}
+_SESS_KEY = {"rc": "rc_df", "ga": "ga_gare", "fo": "fo_doc", "sx": "sx_pers", "mz": "mz_mezzi", "og": "og_ris", "rp": "rp_rapp", "gt": "gt_fasi", "lg": "lg_riserve"}
 
 
 def _sessione_disponibile(m):
@@ -54,7 +54,7 @@ def _sessione_disponibile(m):
 
 
 def _payload_sessione(m):
-    return {"sc": sc_ui._raccogli, "cf": cf_ui._raccogli, "pv": pv_ui._raccogli, "bp": bp_ui._raccogli, "sl": sl_ui._raccogli, "ga": ga_ui._raccogli, "fo": fo_ui._raccogli, "sx": sx_ui._raccogli, "mz": mz_ui._raccogli, "og": og_ui._raccogli, "rp": rp_ui._dati, "gt": gt_ui._raccogli, "lg": __import__("lg_ui")._raccogli}[m]()
+    return {"sc": sc_ui._raccogli, "cf": cf_ui._raccogli, "pv": pv_ui._raccogli, "bp": bp_ui._raccogli, "sl": sl_ui._raccogli, "rc": __import__("rc_ui")._raccogli, "ga": ga_ui._raccogli, "fo": fo_ui._raccogli, "sx": sx_ui._raccogli, "mz": mz_ui._raccogli, "og": og_ui._raccogli, "rp": rp_ui._dati, "gt": gt_ui._raccogli, "lg": __import__("lg_ui")._raccogli}[m]()
 
 
 def _elenco_salvati(m):
@@ -74,7 +74,7 @@ def _calcola(m, payload):
             return dd.metriche_pv(payload)
         if m == "sl":
             return dd.metriche_sl(payload)
-        if m in ("ga", "fo", "sx", "mz", "og", "rp", "gt"):
+        if m in ("rc", "ga", "fo", "sx", "mz", "og", "rp", "gt"):
             return getattr(dd, "metriche_" + m)(payload)
         if m == "credit":
             return dd.metriche_credit(payload)

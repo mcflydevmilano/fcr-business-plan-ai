@@ -11,6 +11,7 @@ import pv
 import sc
 import sl
 import ga
+import rc
 import fo
 import gt
 import sx
@@ -68,6 +69,14 @@ def metriche_sl(payload, oggi=None):
         p["oggi"] = oggi
     out = sl.calcola_sl(com, sal, cos, p)
     return {"kpi": out["kpi"], "avvisi": out["avvisi"], "commesse": out["commesse"]}
+
+
+def metriche_rc(payload, oggi=None):
+    righe, _ = rc.normalizza(payload.get("pratiche"))
+    if not [r for r in righe if r["Archivio"] == "Attiva"]:
+        return None
+    out = rc.calcola(righe, oggi, payload.get("params"))
+    return {"kpi": out["kpi"], "avvisi": out["avvisi"], "da_fare": out["da_fare"], "per_commerciale": out["per_commerciale"]}
 
 
 def metriche_ga(payload, oggi=None):
@@ -289,6 +298,14 @@ def semafori(m, soglie=None):
             righe.append(_riga("Crediti", "Lavori eseguiti da fatturare", f"{fmt_num(k['da_fatturare'])} €", st12, "Emetti il prossimo SAL: è liquidità che aspetta"))
             azioni.append(("warn", f"Hai {fmt_num(k['da_fatturare'])} € di lavori eseguiti non ancora fatturati: emetti i SAL."))
 
+    if m.get("rc"):
+        k = m["rc"]["kpi"]
+        n_ap = max(k["n_aperte"], 1)
+        strc = "bad" if (k["n_scadute"] >= 10 or k["n_scadute"] / n_ap > 0.3) else ("warn" if k["n_scadute"] or k["n_in_scadenza"] else "ok")
+        righe.append(_riga("Commerciale", "Pipeline commerciale (valore pesato)", f"{fmt_num(k['pipeline'])} €", strc,
+                           f"{k['n_aperte']} pratiche aperte per {fmt_num(k['valore_aperte'])} € · {k['n_offerte']} offerte · {k['n_scadute']} interventi scaduti"))
+        if strc != "ok":
+            azioni.append((strc, f"Registro commerciale: {k['n_scadute']} prossimi interventi sono scaduti e {k['n_in_scadenza']} stanno per scadere: aggiorna le pratiche o ricontatta i clienti."))
     if m.get("ga"):
         k = m["ga"]["kpi"]
         stg = "bad" if k["scadute"] or k["n_bad"] else ("warn" if k["in_scadenza"] or k["doc_mancanti"] else "ok")
@@ -353,7 +370,7 @@ def conteggio(righe):
     return c
 
 
-MODULI_METRICHE = ("sc", "cf", "pv", "sl", "ga", "fo", "sx", "mz", "og", "rp", "gt", "credit", "bp")
+MODULI_METRICHE = ("sc", "cf", "pv", "sl", "rc", "ga", "fo", "sx", "mz", "og", "rp", "gt", "credit", "bp")
 
 
 def metriche_da_payload(m, payload, oggi=None):
@@ -372,7 +389,7 @@ def metriche_da_payload(m, payload, oggi=None):
 
 
 SQUADRE = {"Amministrazione": "Amministrazione e contabilità", "Acquisti": "Ufficio acquisti e fornitori", "Cantieri": "Direzione lavori e capicantiere",
-           "Direzione": "Direzione"}
+           "Direzione": "Direzione", "Commerciale": "Ufficio commerciale"}
 
 
 def dettagli(m):
@@ -399,6 +416,12 @@ def dettagli(m):
         righe.sort(key=lambda r: (r["Stato"] != "scaduto", r["Scadenza"]))
         grav = "bad" if any(r["Stato"] == "scaduto" for r in righe) else "warn"
         blocco("fo_doc", grav, "Documenti dei fornitori da rinnovare", "Acquisti", "fo", ["Fornitore", "Documento", "Scadenza", "Stato"], righe)
+    rc_ = m.get("rc")
+    if rc_:
+        righe = [{"Pratica": d["Codice"], "Indirizzo": d["Indirizzo"], "Chi": d["Chi"] or "da assegnare", "Scadenza": d["Scadenza"], "Giorni di ritardo": -d["Giorni"]}
+                 for d in rc_.get("da_fare") or [] if d["Stato_scad"] == "bad"][:30]
+        blocco("rc_scaduti", "bad" if len(righe) >= 10 else "warn", "Pratiche commerciali con intervento scaduto", "Commerciale", "rc",
+               ["Pratica", "Indirizzo", "Chi", "Scadenza", "Giorni di ritardo"], righe)
     sl_ = m.get("sl")
     if sl_:
         righe = [{"Commessa": c["Commessa"], "Cliente": c.get("Cliente", ""), "Situazione": "critica" if c["Stato"] == "bad" else "da tenere d'occhio"}
