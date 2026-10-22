@@ -12,11 +12,12 @@ import ru
 import sc
 import theme
 from core import fmt_num
-from ui_util import banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
+from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
 
 ss = st.session_state
 
 
+@senza_esempi
 def _esempio():
     mk = lambda cols, rows: pd.DataFrame([dict(zip(cols, r)) for r in rows], columns=cols)
     anno = dt.date.today().year
@@ -149,7 +150,7 @@ def render(fcr_uri, audit=None, utente=""):
     guida.mostra("ru")
     if "ru_cont" not in ss:
         ss["ru_cont"], ss["ru_can"] = _esempio()
-        ss["ru_demo"] = True
+        ss["ru_demo"] = esempi_attivi()
     pannello_archivio("ru", "la rubrica", _raccogli, _applica, audit, utente)
     t1, t2, t3, t5, t4 = st.tabs(["🧾 1. Contatti e cantieri", "📇 2. Scheda contatto", "🔗 3. Codici cantiere", "🔍 4. Controllo nomi", "📄 5. Dossier"])
     cc, ccan = _cfg()

@@ -27,6 +27,32 @@ def _applica_modifiche(df, stato):
     return df
 
 
+def esempi_attivi():
+    """I dati di esempio nelle tabelle sono spenti: la suite parte vuota. Per riaccenderli (prove, demo) imposta ESEMPI_ATTIVI=1."""
+    import os
+    return os.environ.get("ESEMPI_ATTIVI", "").strip().lower() in ("1", "true", "si", "sì", "yes")
+
+
+def senza_esempi(f):
+    """Decoratore di `_esempio()`: quando gli esempi sono spenti restituisce le stesse tabelle, ma vuote (colonne e tipi restano). `f.originale()` da' comunque l'esempio (serve ai modelli Excel)."""
+    import functools
+    import pandas as pd
+
+    def _vuoti(x):
+        if isinstance(x, pd.DataFrame):
+            return x.iloc[0:0].copy()
+        if isinstance(x, (tuple, list)):
+            return type(x)(_vuoti(i) for i in x)
+        return x
+
+    @functools.wraps(f)
+    def w(*a, **k):
+        r = f(*a, **k)
+        return r if esempi_attivi() else _vuoti(r)
+    w.originale = f
+    return w
+
+
 def sola_lettura():
     """True per gli utenti con ruolo «lettore»: possono consultare e scaricare i dossier, non modificare ne' salvare."""
     return (ss.get("utente") or {}).get("ruolo") == "lettore"

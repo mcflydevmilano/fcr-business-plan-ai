@@ -10,11 +10,12 @@ import ops_report
 import sc
 import theme
 from core import fmt_num
-from ui_util import banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
+from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
 
 ss = st.session_state
 
 
+@senza_esempi
 def _esempio():
     g = lambda n: (dt.date.today() + dt.timedelta(days=n)).isoformat()
     mov = [(g(-3), "BONIFICO DA COMUNE DI ESEMPIO SAL 2 FATT 14/2026", 42500.00), (g(-2), "BONIFICO A CALCESTRUZZI ALFA SRL FATT 311", -9800.00), (g(-2), "COMMISSIONI E SPESE TENUTA CONTO", -18.50),
@@ -67,7 +68,7 @@ def render(fcr_uri, audit=None, utente=""):
     guida.mostra("bk")
     if "bk_mov" not in ss:
         ss["bk_mov"] = _esempio()
-        ss["bk_demo"] = True
+        ss["bk_demo"] = esempi_attivi()
     pannello_archivio("bk", "i movimenti", _raccogli, _applica, audit, utente)
     t1, t2, t3 = st.tabs(["🏦 1. Movimenti", "🔗 2. Abbinamenti", "📄 3. Dossier"])
     t = st.column_config
@@ -100,9 +101,9 @@ def render(fcr_uri, audit=None, utente=""):
                 righe = [{"Conferma": a["Esito"] == "sicuro", "Esito": ("🟢 sicuro" if a["Esito"] == "sicuro" else "🟡 da verificare"), "Data": a["Movimento"]["Data"], "Movimento": a["Movimento"]["Descrizione"][:48],
                           "Importo €": a["Movimento"]["Importo"], "Fattura": f"{a['Fattura']['Controparte']} · {a['Fattura']['Documento'] or 'n.d.'}", "Residuo €": a["Fattura"]["Importo"] - a["Fattura"]["Saldato"],
                           "Chiude": "sì" if a["Chiude"] else "parziale", "Perché": "; ".join(a["Motivi"])} for a in ab]
-                ed = st.data_editor(pd.DataFrame(righe), hide_index=True, width="stretch", key=f"bk_conf_{len(ab)}_{k['importo_riconciliato']:.0f}", disabled=[c for c in righe[0] if c != "Conferma"] if not sola_lettura() else True)
+                ed = st.data_editor(pd.DataFrame(righe), hide_index=True, width="stretch", key=f"conf_bk_{len(ab)}_{k['importo_riconciliato']:.0f}", disabled=[c for c in righe[0] if c != "Conferma"] if not sola_lettura() else True)
                 scelti = [a for a, c in zip(ab, ed["Conferma"].tolist()) if c]
-                if st.button(f"✅ Segna {len(scelti)} fatture come pagate/incassate nello Scadenzario", key="bk_applica", type="primary", disabled=sola_lettura() or not scelti):
+                if st.button(f"✅ Segna {len(scelti)} fatture come pagate/incassate nello Scadenzario", key="applica_bk", type="primary", disabled=sola_lettura() or not scelti):
                     n = _aggiorna_scadenzario(docs, scelti)
                     audit("bk_riconciliati", f"{len(scelti)} abbinamenti confermati, {n} righe aggiornate nello Scadenzario")
                     if n:

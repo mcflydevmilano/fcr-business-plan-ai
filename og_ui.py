@@ -10,12 +10,13 @@ import og
 import ops_report
 import theme
 from core import fmt_num
-from ui_util import banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella
+from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella
 
 ss = st.session_state
 PARAM = ("mesi", "sat_min_pct")
 
 
+@senza_esempi
 def _esempio():
     oggi = dt.date.today()
     g = lambda n: (oggi + dt.timedelta(days=n)).isoformat()
@@ -58,7 +59,7 @@ def render(fcr_uri, audit=None, utente=""):
     guida.mostra("og")
     if "og_ris" not in ss:
         ss["og_ris"], ss["og_ass"] = _esempio()
-        ss["og_demo"] = True
+        ss["og_demo"] = esempi_attivi()
     pannello_archivio("og", "l'organico", _raccogli, _applica, audit, utente)
     t1, t2, t3 = st.tabs(["👷 1. Risorse e Assegnazioni", "📊 2. Carico di lavoro", "📄 3. Dossier"])
     cr, ca = _cfg()

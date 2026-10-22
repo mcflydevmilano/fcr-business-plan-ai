@@ -11,13 +11,14 @@ import ops_report
 import sl
 import theme
 from core import fmt_num
-from ui_util import banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella, sola_lettura
+from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella, sola_lettura
 
 ss = st.session_state
 ICONE = {"ok": "🟢", "warn": "🟡", "bad": "🔴", "nd": "⚪"}
 PARAM = ("preavviso_gg", "utilizzo_min_pct")
 
 
+@senza_esempi
 def _esempio():
     g = lambda n: (dt.date.today() + dt.timedelta(days=n)).isoformat()
     mezzi = [("Escavatore CAT 320", "Movimento terra", 18000, 28, 1100), ("Autocarro Iveco", "Trasporto", 9000, 22, 900), ("Gru a torre", "Sollevamento", 26000, 12, 500), ("Minipala Bobcat", "Movimento terra", 6000, 15, 700)]
@@ -62,7 +63,7 @@ def render(fcr_uri, audit=None, utente=""):
     guida.mostra("mz")
     if "mz_mezzi" not in ss:
         ss["mz_mezzi"], ss["mz_uso"], ss["mz_scad"] = _esempio()
-        ss["mz_demo"] = True
+        ss["mz_demo"] = esempi_attivi()
     pannello_archivio("mz", "il parco mezzi", _raccogli, _applica, audit, utente)
     t1, t2, t3, t4 = st.tabs(["🚜 1. Mezzi e Utilizzo", "📊 2. Costi e Scadenze", "🔗 3. Integrazioni", "📄 4. Dossier"])
     cm, cu, cs = _cfg()

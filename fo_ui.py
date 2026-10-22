@@ -10,12 +10,13 @@ import fo
 import ops_report
 import theme
 from core import fmt_num
-from ui_util import banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella
+from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella
 
 ss = st.session_state
 ICONE = {"ok": "🟢", "warn": "🟡", "bad": "🔴", "nd": "⚪"}
 
 
+@senza_esempi
 def _esempio():
     g = lambda n: (dt.date.today() + dt.timedelta(days=n)).isoformat()
     docs = [("Calcestruzzi Alfa", "Fornitore", "DURC", g(-5)), ("Calcestruzzi Alfa", "Fornitore", "Visura camerale", g(200)), ("Elettroimpianti Beta", "Subappaltatore", "DURC", g(12)),
@@ -64,7 +65,7 @@ def render(fcr_uri, audit=None, utente=""):
     guida.mostra("fo")
     if "fo_doc" not in ss:
         ss["fo_doc"], ss["fo_contr"], ss["fo_off"] = _esempio()
-        ss["fo_demo"] = True
+        ss["fo_demo"] = esempi_attivi()
     pannello_archivio("fo", "i fornitori", _raccogli, _applica, audit, utente)
     t1, t2, t3, t4 = st.tabs(["🧾 1. Dati", "🔎 2. Controllo", "⚖️ 3. Confronto preventivi", "📄 4. Dossier"])
     cd, cc, co = _cfg()

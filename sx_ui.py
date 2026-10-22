@@ -9,12 +9,13 @@ import charts
 import ops_report
 import sx
 import theme
-from ui_util import banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella
+from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella
 
 ss = st.session_state
 ICONE = {"ok": "🟢", "warn": "🟡", "bad": "🔴", "nd": "⚪"}
 
 
+@senza_esempi
 def _esempio():
     g = lambda n: (dt.date.today() + dt.timedelta(days=n)).isoformat()
     pers = [("Mario Rossi", "Muratore", "Villa Lago", "Visita medica", g(-10)), ("Mario Rossi", "Muratore", "Villa Lago", "Formazione specifica", g(400)),
@@ -51,7 +52,7 @@ def render(fcr_uri, audit=None, utente=""):
     guida.mostra("sx")
     if "sx_pers" not in ss:
         ss["sx_pers"], ss["sx_docc"] = _esempio()
-        ss["sx_demo"] = True
+        ss["sx_demo"] = esempi_attivi()
     pannello_archivio("sx", "i dati di sicurezza", _raccogli, _applica, audit, utente)
     t1, t2, t3 = st.tabs(["🦺 1. Dati", "🔎 2. Controllo", "📄 3. Dossier"])
     cp, cd = _cfg()

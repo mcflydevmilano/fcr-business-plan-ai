@@ -12,7 +12,7 @@ import pz_ui
 import pv_report
 import theme
 from core import fmt_num
-from ui_util import modello_excel, pannello_archivio, sola_lettura, sostituisci_tabella, tabella_modificabile
+from ui_util import modello_excel, esempi_attivi, pannello_archivio, sola_lettura, sostituisci_tabella, tabella_modificabile
 
 ss = st.session_state
 
@@ -71,7 +71,7 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None, utente=""):
                 unsafe_allow_html=True)
     guida.mostra("pv")
     if "pv_df" not in ss:
-        ss["pv_df"] = pd.DataFrame(ESEMPIO, columns=pv.COLONNE_VOCI)
+        ss["pv_df"] = pd.DataFrame(ESEMPIO if esempi_attivi() else [], columns=pv.COLONNE_VOCI)
     for k, v in (("pv_cliente", ""), ("pv_oggetto", "Ristrutturazione edificio"), ("pv_validita", 30), ("pv_note", "")):
         ss.setdefault(k, v)
     pannello_archivio("pv", "il preventivo", _raccogli, _applica, audit, utente)

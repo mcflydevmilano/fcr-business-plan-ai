@@ -11,11 +11,12 @@ import pe
 import permessi
 import storage
 import theme
-from ui_util import banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
+from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
 
 ss = st.session_state
 
 
+@senza_esempi
 def _esempio():
     righe = [("Anna Bianchi", "Direttore generale", "Direzione", "02 5551001", "a.bianchi@fcr.example", "", "Dipendente", "", "Sì"),
              ("Luca Verdi", "Direttore tecnico", "Tecnico", "333 1000002", "l.verdi@fcr.example", "", "Dipendente", "", "Sì"),
@@ -159,7 +160,7 @@ def render(fcr_uri, audit=None, utente="", utenti_secrets=None):
     guida.mostra("pe")
     if "pe_pers" not in ss:
         ss["pe_pers"] = _esempio()
-        ss["pe_demo"] = True
+        ss["pe_demo"] = esempi_attivi()
     pannello_archivio("pe", "l'elenco", _raccogli, _applica, audit, utente)
     st.caption("🔒 Dati personali dei lavoratori: tienili essenziali e dai accesso a questo strumento solo a chi serve (si decide da Utenti → Permessi).")
     t1, t2, t3, t4 = st.tabs(["🧾 1. Elenco del personale", "🎭 2. Ruoli e profili", "🔐 3. Accessi all'app", "📄 4. Dossier"])

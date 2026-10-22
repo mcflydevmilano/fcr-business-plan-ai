@@ -11,7 +11,7 @@ import ops_report
 import theme
 from core import fmt_num
 from sc import data_da
-from ui_util import banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
+from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
 
 ss = st.session_state
 PARAM = ("soglia_pct", "preavviso_gg")
@@ -19,6 +19,7 @@ ICONE = {"ok": "🟢", "warn": "🟡", "bad": "🔴", "done": "✅", "wait": "�
 NOMI_STATO = {"ok": "Nei tempi", "warn": "In ritardo", "bad": "Critica", "done": "Completata", "wait": "Da iniziare"}
 
 
+@senza_esempi
 def _esempio():
     oggi = dt.date.today()
     g = lambda n: (oggi + dt.timedelta(days=n)).isoformat()
@@ -85,7 +86,7 @@ def render(fcr_uri, audit=None, utente=""):
     guida.mostra("gt")
     if "gt_fasi" not in ss:
         ss["gt_fasi"] = _esempio()
-        ss["gt_demo"] = True
+        ss["gt_demo"] = esempi_attivi()
     if "gt_fermi" not in ss:
         ss["gt_fermi"] = _esempio_fermi() if ss.get("gt_demo") else pd.DataFrame(columns=gt.COLONNE_FERMI)
     for k in PARAM:

@@ -9,7 +9,7 @@ import cf_report
 import charts
 import theme
 from core import fmt_num
-from ui_util import modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile
+from ui_util import esempi_attivi, modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile
 
 ss = st.session_state
 
@@ -61,8 +61,8 @@ def render(fcr_uri, audit=None, utente=""):
                 unsafe_allow_html=True)
     guida.mostra("cf")
     if "cf_df" not in ss:
-        ss["cf_df"] = pd.DataFrame(cf.genera_portafoglio(100, 5_000_000, 1, 12, 3, 50, 50, 30, 75.0), columns=cf.COLONNE_CANTIERI)
-        ss["cf_demo"] = True
+        ss["cf_df"] = pd.DataFrame(cf.genera_portafoglio(100, 5_000_000, 1, 12, 3, 50, 50, 30, 75.0) if esempi_attivi() else [], columns=cf.COLONNE_CANTIERI)
+        ss["cf_demo"] = esempi_attivi()
     pannello_archivio("cf", "il portafoglio", _raccogli, _applica, audit, utente)
     t1, t2, t3, t4 = st.tabs(["🏗️ 1. Portafoglio e Ipotesi", "💶 2. Cash Flow", "🧪 3. Stress e Soluzioni", "📄 4. Dossier"])
 

@@ -11,7 +11,7 @@ import ops_report
 import rp
 import storage
 import theme
-from ui_util import banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
+from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
 
 ss = st.session_state
 NOME = "Rapportini"                     # salvataggio condiviso: tutti i capicantiere scrivono qui
@@ -19,6 +19,7 @@ PARAM = ("giorni_senza_rapporto", "preavviso_gg", "finestra_gg")
 NUOVO = "➕ Nuovo cantiere (scrivilo qui sotto)"
 
 
+@senza_esempi
 def _esempio():
     oggi = rp.oggi_italia()
     g = lambda n: (oggi - dt.timedelta(days=n)).isoformat()
@@ -73,7 +74,7 @@ def _carica_condiviso():
         ss["_base_rp"] = {"nome": NOME, "agg": meta["aggiornato"] if meta else ""}
     else:
         ss["rp_rapp"], ss["rp_segn"] = _esempio()
-        ss["rp_demo"] = True
+        ss["rp_demo"] = esempi_attivi()
 
 
 def _aggiorna_se_cambiato():

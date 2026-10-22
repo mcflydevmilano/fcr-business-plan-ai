@@ -11,6 +11,7 @@ import dd
 import dd_ui
 import riepilogo
 import storage
+from ui_util import esempi_attivi
 import theme
 from core import fmt_num
 
@@ -48,7 +49,7 @@ def render(fcr_uri, audit=None, consentiti=None):
     guida.mostra("ca")
     a, b, c = st.columns([1, 2, 1])
     ss.setdefault("ca_orizzonte", 30)
-    ss.setdefault("ca_demo", True)
+    ss.setdefault("ca_demo", esempi_attivi())
     a.number_input("Giorni da mostrare", 7, 365, step=7, key="ca_orizzonte")
     b.multiselect("Tipo di scadenza", calendario.CATEGORIE, key="ca_cat", placeholder="Tutte")
     c.markdown("<div style='height:1.9rem'></div>", unsafe_allow_html=True)

@@ -12,7 +12,7 @@ import ops_report
 import sc
 import theme
 from core import fmt_num
-from ui_util import banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
+from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
 
 ss = st.session_state
 ICONE = {"ok": "🟢", "warn": "🟡", "bad": "🔴", "nd": "⚪"}
@@ -20,6 +20,7 @@ _PRINC = ("lg_riserve", "lg_contratti", "lg_termini", "lg_solleciti")
 _COLS = {"lg_riserve": lg.COLONNE_RISERVE, "lg_contratti": lg.COLONNE_CONTRATTI, "lg_termini": lg.COLONNE_TERMINI, "lg_solleciti": lg.COLONNE_SOLLECITI}
 
 
+@senza_esempi
 def _esempio():
     g = lambda n: (dt.date.today() + dt.timedelta(days=n)).isoformat()
     mk = lambda cols, rows: pd.DataFrame([dict(zip(cols, r)) for r in rows], columns=cols)
@@ -97,7 +98,7 @@ def render(fcr_uri, audit=None, utente=""):
     if "lg_riserve" not in ss:
         for k, df in zip(_PRINC, _esempio()):
             ss[k] = df
-        ss["lg_demo"] = True
+        ss["lg_demo"] = esempi_attivi()
     ss.setdefault("lg_invii", [])
     pannello_archivio("lg", "lo studio legale", _raccogli, _applica, audit, utente)
     st.caption("Promemoria organizzativo: le scadenze di legge le fissa lo studio legale, qui si scrivono le date che comunica. Non è una consulenza legale.")
@@ -142,12 +143,12 @@ def render(fcr_uri, audit=None, utente=""):
             canali = lg.canali_attivi()
             pdf, xlsx, rid = _fascicolo_pdf(f, out, f"Fascicolo {f['Cliente']}")
             c1, c2, c3 = st.columns(3)
-            c1.download_button("📥 Fascicolo PDF", pdf, file_name=f"fascicolo_{rid}.pdf", mime="application/pdf", width="stretch", key="lg_dl_pdf")
+            c1.download_button("📥 Fascicolo PDF", pdf, file_name=f"fascicolo_{rid}.pdf", mime="application/pdf", width="stretch", key="dlpdf_lg")
             studio = lg.destinatari()
             mail = f"mailto:{','.join(studio)}?" + urllib.parse.urlencode({"subject": ogg, "body": corpo[:1500]}, quote_via=urllib.parse.quote) if studio else ""
             if mail:
                 c2.link_button("✉️ Apri nella tua posta", mail, width="stretch")
-            if c3.button("📨 Invia allo studio", key="lg_invia", type="primary", width="stretch", disabled=sola_lettura() or not (canali["email"] or canali["slack"])):
+            if c3.button("📨 Invia allo studio", key="invia_lg", type="primary", width="stretch", disabled=sola_lettura() or not (canali["email"] or canali["slack"])):
                 try:
                     usati = lg.invia_studio(ogg, corpo, [(f"fascicolo_{rid}.pdf", pdf, "application/pdf")])
                     ss["lg_invii"] = [*ss.get("lg_invii", []), {"Data": dt.datetime.now().strftime("%Y-%m-%d %H:%M"), "Cliente": f["Cliente"], "Importo": f["Totale scaduto"], "Canale": " + ".join(usati), "Utente": utente}]

@@ -12,7 +12,7 @@ import sl
 import sl_report
 import theme
 from core import fmt_num
-from ui_util import modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile, sola_lettura
+from ui_util import esempi_attivi, senza_esempi, modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile, sola_lettura
 
 ss = st.session_state
 PARAM_CHIAVI = ("gg_pagamento", "gg_svincolo")
@@ -22,6 +22,7 @@ TABELLE = (("sl_com", "up_slc", "imp_slc", sl.COLONNE_COMMESSE, sl.ETICHETTE_COM
 STATI = {"ok": "🟢 In linea", "warn": "🟡 Attenzione", "bad": "🔴 Critica"}
 
 
+@senza_esempi
 def _esempio():
     oggi = dt.date.today()
     g = lambda n: (oggi + dt.timedelta(days=n)).isoformat()
@@ -120,7 +121,7 @@ def render(fcr_uri, audit=None, utente=""):
     if "sl_com" not in ss:
         c, s, k = _esempio()
         ss["sl_com"], ss["sl_sal"], ss["sl_cos"] = c, s, k
-        ss["sl_demo"] = True
+        ss["sl_demo"] = esempi_attivi()
     pannello_archivio("sl", "le commesse", _raccogli, _applica, audit, utente)
     t1, t2, t3, t4 = st.tabs(["🏗️ 1. Commesse e Dati", "📊 2. Controllo commesse", "🔗 3. Integrazioni", "📄 4. Dossier"])
     cfg = _cfg()
@@ -133,7 +134,7 @@ def render(fcr_uri, audit=None, utente=""):
                     sostituisci_tabella(chiave, pd.DataFrame(columns=cols))
                 ss["sl_demo"] = False
                 st.rerun()
-        ex = _esempio()
+        ex = _esempio.originale()
         st.subheader("Commesse")
         st.caption("Una riga per commessa (da un preventivo accettato). L'avanzamento reale è quello che stimi oggi in cantiere; i costi preventivati vengono dal Computo e Preventivo.")
         tabella_modificabile("sl_com", ss["sl_com"], cfg["sl_com"], altezza=220)

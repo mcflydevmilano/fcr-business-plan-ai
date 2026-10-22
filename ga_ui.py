@@ -11,12 +11,13 @@ import ops_report
 import sl
 import theme
 from core import fmt_num
-from ui_util import banner_esempio, blocco_tabella, scarica_dossier, sostituisci_tabella, sola_lettura
+from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, scarica_dossier, sostituisci_tabella, sola_lettura
 
 ss = st.session_state
 PARAM_CHIAVI = ("margine_target", "preavviso_gg")
 
 
+@senza_esempi
 def _esempio():
     g = lambda n: (dt.date.today() + dt.timedelta(days=n)).isoformat()
     gare = [("Scuola Primaria Via Roma", "Comune di Esempio", 1_200_000, g(6), "In preparazione", 12, 80, 30, 2500), ("Ristrutturazione Palazzo Civico", "Comune di Esempio", 650_000, g(20), "Da valutare", 15, 84, 25, 1500),
@@ -67,7 +68,7 @@ def render(fcr_uri, audit=None, utente=""):
     guida.mostra("ga")
     if "ga_gare" not in ss:
         ss["ga_gare"], ss["ga_doc"] = _esempio()
-        ss["ga_demo"] = True
+        ss["ga_demo"] = esempi_attivi()
     from ui_util import pannello_archivio
     pannello_archivio("ga", "le gare", _raccogli, _applica, audit, utente)
     t1, t2, t3, t4 = st.tabs(["🏛️ 1. Gare e Documenti", "📊 2. Valutazione", "🔗 3. Integrazioni", "📄 4. Dossier"])

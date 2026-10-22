@@ -10,7 +10,7 @@ import oa
 import ops_report
 import theme
 from core import fmt_num
-from ui_util import banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
+from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
 
 ss = st.session_state
 ICONE = {"Da approvare": "🟡", "Da riapprovare": "🟠", "Approvato": "🟢", "Respinto": "🔴"}
@@ -23,6 +23,7 @@ def _ord_df(righe):
     return df
 
 
+@senza_esempi
 def _esempio():
     g = lambda n: (dt.date.today() + dt.timedelta(days=n)).isoformat()
     anno = dt.date.today().year
@@ -70,7 +71,7 @@ def render(fcr_uri, audit=None, utente=""):
     guida.mostra("oa")
     if "oa_ord" not in ss:
         ss["oa_ord"], ss["oa_sog"] = _esempio()
-        ss["oa_demo"] = True
+        ss["oa_demo"] = esempi_attivi()
     ss.setdefault("oa_appr", [])
     pannello_archivio("oa", "gli ordini", _raccogli, _applica, audit, utente)
     t1, t2, t3, t4 = st.tabs(["🧾 1. Ordini e regole", "✅ 2. Da approvare", "🔎 3. Controllo", "📄 4. Dossier"])

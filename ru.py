@@ -11,8 +11,8 @@ from sc import data_da
 RUOLI = ["Fornitore", "Subappaltatore", "Cliente", "Professionista", "Ente / PA", "Banca", "Studio legale", "Altro"]
 COLONNE_CONTATTI = ["Nome", "Ruolo", "Referente", "Telefono", "Email", "Note"]
 ETICHETTE_CONTATTI = {"Nome": "Ragione sociale", "Ruolo": "Tipo", "Referente": "Persona di riferimento", "Telefono": "Telefono / cellulare", "Email": "Email", "Note": "Note"}
-SINONIMI_CONTATTI = {"Nome": ("Ragione sociale", "Anagrafica", "Fornitore", "Cliente"), "Telefono": ("Tel", "Cellulare", "Telefono / cellulare"), "Email": ("Mail", "E-mail", "PEC"),
-                     "Referente": ("Contatto", "Persona di riferimento")}
+SINONIMI_CONTATTI = {"Nome": ("Ragione sociale", "Anagrafica", "Fornitore", "Cliente", "Nominativo"), "Telefono": ("Tel", "Cellulare", "cell", "Telefono / cellulare"),
+                     "Email": ("Mail", "E-mail", "PEC"), "Referente": ("Contatto", "Persona di riferimento"), "Ruolo": ("Funzione", "Tipo"), "Note": ("Indirizzo",)}
 STATI_CANTIERE = ["In preparazione", "In corso", "Sospeso", "Concluso"]
 COLONNE_CANTIERI = ["Codice", "Cantiere", "Cliente", "Indirizzo", "Responsabile", "Stato", "Esterno"]
 ETICHETTE_CANTIERI = {"Codice": "Codice unico", "Cantiere": "Nome del cantiere", "Cliente": "Cliente", "Indirizzo": "Indirizzo", "Responsabile": "Responsabile",
