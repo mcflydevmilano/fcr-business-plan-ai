@@ -12,7 +12,7 @@ import pz_ui
 import pv_report
 import theme
 from core import fmt_num
-from ui_util import modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile
+from ui_util import modello_excel, pannello_archivio, sola_lettura, sostituisci_tabella, tabella_modificabile
 
 ss = st.session_state
 
@@ -139,6 +139,22 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None, utente=""):
                 sostituisci_tabella("pv_df", pd.concat([_base, pd.DataFrame(_nuove, columns=pv.COLONNE_VOCI)], ignore_index=True))
                 audit("pv_prezziario", f"{len(_nuove)} voci aggiunte dal prezziario")
                 st.rerun()
+        if not sola_lettura() and len(ss["pv_df"]):
+            with st.expander("🗑️ Togli voci dal computo"):
+                _tb = ss["pv_df"].reset_index(drop=True)
+                _et = {i: f"{i + 1}. {str(r.get('Codice') or '').strip()} {str(r.get('Descrizione') or '').strip()[:70]}".replace("  ", " ") for i, r in _tb.iterrows()}
+                _sel = st.multiselect("Scegli le voci da togliere", list(_et), format_func=lambda i: _et[i], key=f"togli_voci_sel_{ss.get('pv_df_v', 0)}",
+                                      placeholder="Scegli una o più voci…")
+                _c1, _c2 = st.columns(2)
+                if _c1.button("🗑️ Togli le voci scelte", key="togli_voci_ok", disabled=not _sel, width="stretch"):
+                    sostituisci_tabella("pv_df", _tb.drop(index=_sel).reset_index(drop=True))
+                    audit("pv_voci_tolte", f"{len(_sel)} voci tolte")
+                    st.rerun()
+                if _c2.button("Svuota tutta la tabella", key="togli_voci_tutte", width="stretch"):
+                    sostituisci_tabella("pv_df", _tb.iloc[0:0])
+                    audit("pv_voci_tolte", "tabella svuotata")
+                    st.rerun()
+                st.caption("In alternativa, nella tabella spunta la casella a sinistra della riga e usa il cestino che compare in alto a destra.")
         n, e_ = st.column_config.NumberColumn, pv.ETICHETTE_VOCI
         cfg = {"Codice": st.column_config.TextColumn(e_["Codice"]), "Categoria": st.column_config.TextColumn(e_["Categoria"]),
                "Descrizione": st.column_config.TextColumn(e_["Descrizione"], width="large"), "UM": st.column_config.TextColumn(e_["UM"]),

@@ -187,3 +187,17 @@ def test_ordini_salvati_prima_del_prezziario_si_riaprono():
     import oa_ui
     df = oa_ui._ord_df([{"Numero": "ODA-2026-001", "Fornitore": "Alfa", "Importo": 100, "Data": "2026-10-01"}])
     assert df["Voce"].tolist() == [""] and list(df.columns) == oa.COLONNE_ORDINI
+
+
+def test_togli_voci_dal_computo():
+    at = _admin("pv")
+    assert not at.exception, [e.value for e in at.exception]
+    n0 = len(at.session_state["pv_df"])
+    assert n0 >= 2
+    ms = [m for m in at.multiselect if m.key.startswith("togli_voci_sel")][0]
+    ms.set_value([0]).run()
+    at.button(key="togli_voci_ok").click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert len(at.session_state["pv_df"]) == n0 - 1
+    at.button(key="togli_voci_tutte").click().run()
+    assert not at.exception and len(at.session_state["pv_df"]) == 0
