@@ -281,8 +281,83 @@ def _freschezza(righe):
             st.markdown(f"{ico[r['stato']]} **{r['nome']}** — {quando}{chi}  <span style='color:#94a3b8'>(si aggiorna ogni {r['soglia']} gg)</span>", unsafe_allow_html=True)
 
 
+DATI_RICERCA = ["ru", "fo", "sc", "sl", "ga", "sx", "mz", "og", "rp", "gt", "lg", "bk", "oa", "pe", "pv", "cf", "bp"]
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def _dati_salvati(moduli):
+    """Gli ultimi salvataggi degli strumenti indicati ({sigla: {pratica: dati}}). Letti al piu' ogni 30 secondi."""
+    import storage
+    out = {}
+    for m in moduli:
+        try:
+            for i, p in enumerate(storage.elenca_pratiche(modulo=m)[:3]):
+                d = storage.carica_pratica(p["nome"], modulo=m)
+                if d:
+                    out.setdefault(m, {})[f"p{i}"] = d
+        except Exception:
+            continue
+    return out
+
+
+def _ricerca(vai_a, consentiti):
+    """Casella di ricerca dell'Hub. Restituisce True se sta mostrando i risultati (allora gli strumenti sotto si nascondono)."""
+    import ricerca
+    q = st.text_input("Cerca nella suite", key="ricerca_hub", label_visibility="collapsed",
+                      placeholder="🔍  Cerca: uno strumento, un cantiere, un fornitore, una fattura, una persona, una voce di prezziario…")
+    if len(q.strip()) < 2:
+        return False
+    cons = set(CARDS) if consentiti is None else set(consentiti)
+    strum = ricerca.cerca_strumenti(q, cons, CARDS)
+    nomi = {s: CARDS[s]["bottone"] for s in CARDS}
+    dati = ricerca.cerca_dati(q, _dati_salvati(tuple(sorted(m for m in DATI_RICERCA if m in cons))), nomi)
+    prez, meta_prez = None, None
+    if "pz" in cons:
+        try:
+            import pz
+            import pz_ui
+            meta_prez, righe = pz_ui.attivo()
+            if righe:
+                df = pz_ui._df(meta_prez["id"], pz.aggiornato_il(meta_prez["id"]))
+                prez = pz.cerca(df, q, limite=100000)
+        except Exception:
+            prez = None
+    st.caption(f"Risultati per «{q.strip()}» · svuota la casella per tornare agli strumenti.")
+    if not strum and not dati and (prez is None or prez.empty):
+        st.info("Nessun risultato. Prova con una parola più corta o con un altro nome. La ricerca nei dati guarda quelli **salvati** negli strumenti.")
+        return True
+    if strum:
+        st.markdown("**🧰 Strumenti**")
+        cols = st.columns(min(len(strum), 4))
+        for i, s in enumerate(strum[:8]):
+            with cols[i % len(cols)]:
+                if st.button(f"{CARDS[s]['icona']} {CARDS[s]['bottone']}", key=f"rs_{s}", width="stretch"):
+                    vai_a(s)
+    if dati:
+        st.markdown("**🗂️ Nei dati salvati**")
+        for d in dati:
+            with st.container(border=True):
+                st.markdown(f"**{CARDS[d['sigla']]['icona']} {d['nome']}** · {d['trovate']} {'risultato' if d['trovate'] == 1 else 'risultati'}")
+                for r in d["righe"]:
+                    st.markdown(f"- <span style='color:#64748b;font-size:.8rem'>{r['tabella']}</span> &nbsp; {r['testo']}", unsafe_allow_html=True)
+                if d["trovate"] > len(d["righe"]):
+                    st.caption(f"…e altri {d['trovate'] - len(d['righe'])}: aprili nello strumento.")
+                if st.button(f"Apri {d['nome']}  →", key=f"rd_{d['sigla']}"):
+                    vai_a(d["sigla"])
+    if prez is not None and not prez.empty:
+        st.markdown(f"**📚 Prezziario** · {len(prez)} voci ({meta_prez['periodo']})")
+        mostra = prez.head(6)
+        st.dataframe({"Codice": list(mostra["codice"]), "Descrizione": list(mostra["descrizione"]), "UM": list(mostra["um"]), "Prezzo €": list(mostra["prezzo"])}, hide_index=True, width="stretch")
+        if st.button("Apri il Prezziario con questa ricerca  →", key="rd_prezziario"):
+            st.session_state["_pz_prefill"] = q.strip()
+            vai_a("pz")
+    return True
+
+
 def render(vai_a, consentiti=None, freschezza_righe=None):
     """consentiti: insieme di sigle visibili a chi guarda (None = tutte). I gruppi rimasti vuoti spariscono."""
+    if _ricerca(vai_a, consentiti):
+        return
     _da_dove_comincio(vai_a, consentiti)
     _freschezza(freschezza_righe or [])
     for n, (titolo, sotto, sigle) in enumerate(GRUPPI):

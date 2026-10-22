@@ -255,6 +255,8 @@ def render(fcr_uri, audit=None, utente=""):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Prezziario", "I prezzi di riferimento per preventivi e acquisti: cercali, usali nel Computo e controlla gli ordini."), unsafe_allow_html=True)
     guida.mostra("pz")
+    if ss.get("_pz_prefill"):                                   # arrivo dalla ricerca dell'Hub: la parola cercata passa alla ricerca del prezziario
+        ss["cerca_testo"] = ss.pop("_pz_prefill")
     indice = pz.carica_indice()
     s = pz.stato_validita(indice)
     if s["stato"] == "nd":

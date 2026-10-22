@@ -56,6 +56,7 @@ import freschezza
 import permessi
 import pausa
 import profilo
+import sessione
 import pz
 import pz_ui
 import pwa
@@ -89,7 +90,7 @@ COL_STORICO = ["anno", "ricavi", "ebitda", "patrimonio_netto", "pfn"]
 
 st.set_page_config(
     page_title="FCR General Contractor & Aetheris Labs | Financial Suite",
-    page_icon=core.LOGO_FCR_PATH if os.path.exists(core.LOGO_FCR_PATH) else "📊",
+    page_icon=pwa.icona_scheda(),
     layout="wide",
 )
 
@@ -165,6 +166,12 @@ def _utenti_secrets():
 
 UTENTI_SECRETS = _utenti_secrets()
 APP_PASSWORD = get_secret("APP_PASSWORD")
+try:
+    ORE_SESSIONE = max(1, min(168, int(float(get_secret("SESSIONE_ORE", sessione.ORE_PREDEFINITE)))))      # quanto resta valido il «ricordami» (ore)
+except (TypeError, ValueError):
+    ORE_SESSIONE = sessione.ORE_PREDEFINITE
+CHIAVE_SESSIONE = sessione.chiave([get_secret("SESSION_SECRET"), get_secret("DATABASE_URL"), get_secret("APP_PASSWORD"),
+                                   json.dumps({k: v.get("hash", "") for k, v in UTENTI_SECRETS.items()}, sort_keys=True) if UTENTI_SECRETS else ""])
 
 
 def audit(azione, dettaglio=""):
@@ -181,7 +188,19 @@ def check_login():
         if auth.ancora_valido(u, UTENTI_SECRETS):
             return True
         ss.clear()                                # accesso revocato mentre la sessione era aperta
+        ss["_cancella_cookie"] = True
         st.warning("Il tuo accesso non e' piu' valido. Accedi di nuovo.")
+    if not ss.get("_addio") and not ss.get("_cancella_cookie"):        # dopo «Esci» non si rientra dal cookie
+        _tok = sessione.cookie_corrente()
+        if _tok:
+            _u = sessione.ripristina(_tok, CHIAVE_SESSIONE, UTENTI_SECRETS, APP_PASSWORD)
+            if _u:
+                ss["utente"] = _u
+                storage.log_evento(_u["username"], "sessione_ripresa", "cookie")
+                return True
+            ss["_cancella_cookie"] = True                              # gettone scaduto o non valido: lo toglie dal browser
+    if ss.pop("_cancella_cookie", False):
+        sessione.scrivi_cookie("")
     _addio = ss.pop("_addio", None)
     if _addio:
         assistenza.bolla_saluto(assistenza.frase_addio(_addio), 9, con_foto=True)
@@ -198,6 +217,7 @@ def check_login():
             if utente:
                 ss["utente"] = utente
                 ss["_benvenuto"] = True                # fumetto di benvenuto, una volta per accesso
+                ss["_set_cookie"] = sessione.crea(utente, CHIAVE_SESSIONE, UTENTI_SECRETS, APP_PASSWORD, ORE_SESSIONE)
                 st.rerun()
             st.error(errore)
         if APP_PASSWORD and not UTENTI_SECRETS:
@@ -412,6 +432,8 @@ PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nom
 
 pwa.inietta()
 pausa.inietta()
+if ss.get("_set_cookie"):
+    sessione.scrivi_cookie(ss.pop("_set_cookie"), ORE_SESSIONE)
 PERM = permessi.carica_config()
 CONSENTITI = permessi.moduli_consentiti(ss["utente"], PERM)
 PROFILO = "accesso completo" if ss["utente"].get("ruolo") == "admin" else permessi.profilo_di(ss["utente"], PERM)
@@ -487,6 +509,7 @@ with st.sidebar:
             _nome_addio = _u["username"]
             ss.clear()
             ss["_addio"] = _nome_addio                      # fumetto di arrivederci nella pagina di login
+            ss["_cancella_cookie"] = True
             st.rerun()
     _nav_strumenti()
     st.markdown("<div class='sb-label'>Utilità</div>", unsafe_allow_html=True)

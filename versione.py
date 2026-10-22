@@ -1,6 +1,6 @@
 """versione.py - Nome, versione e proprieta' del software. Unico punto da aggiornare a ogni rilascio."""
 NOME = "FCR Suite"
-VERSIONE = "3.2.0"
+VERSIONE = "3.3.0"
 DATA_RILASCIO = "22/10/2026"
 PROPRIETARIO = "Aetheris Labs"
 COPYRIGHT = "© 2026 Aetheris Labs. Tutti i diritti riservati."

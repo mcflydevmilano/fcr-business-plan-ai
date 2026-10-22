@@ -308,6 +308,15 @@ hr { border-color: var(--line); }
   .hero { gap: 12px; } .hero-logo { width: 62px; } .hero-title { font-size: 1.35rem; }
   .hub-title { font-size: 1.5rem; } .score-num { font-size: 2.8rem; }
 }
+/* Telefono: le scritte dei tasti vanno a capo invece di essere tagliate */
+.stButton > button, .stDownloadButton > button, .stFormSubmitButton > button, [data-testid="stBaseButton-secondary"], [data-testid="stBaseButton-primary"] {
+  height: auto !important; min-height: 2.5rem; white-space: normal !important; overflow-wrap: anywhere; line-height: 1.25; padding-top: .45rem; padding-bottom: .45rem;
+}
+.stButton > button p, .stDownloadButton > button p, .stFormSubmitButton > button p { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; overflow-wrap: anywhere; line-height: 1.25; }
+@media (max-width: 640px) {
+  .stButton > button, .stDownloadButton > button, .stFormSubmitButton > button { font-size: .88rem; padding-left: .55rem; padding-right: .55rem; }
+  .stTabs [data-baseweb="tab"] { padding-left: 10px; padding-right: 10px; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }

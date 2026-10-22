@@ -24,6 +24,7 @@ export default function(component) {
     icons: [{ src: icona(192), sizes: '192x192', type: 'image/png', purpose: 'any' }, { src: icona(512), sizes: '512x512', type: 'image/png', purpose: 'any' }] };
   const url = URL.createObjectURL(new Blob([JSON.stringify(man)], { type: 'application/manifest+json' }));
   rimpiazza('link[rel="manifest"]', link('manifest', url));
+  rimpiazza('link[rel="icon"], link[rel="shortcut icon"]', link('icon', icona(192), { type: 'image/png' }));
   rimpiazza('link[rel="apple-touch-icon"]', link('apple-touch-icon', icona(180)));
   rimpiazza('meta[name="theme-color"]', meta('theme-color', '#0b4f9c'));
   rimpiazza('meta[name="apple-mobile-web-app-capable"]', meta('apple-mobile-web-app-capable', 'yes'));
@@ -57,6 +58,19 @@ export default function(component) {
 
 
 @st.cache_resource(show_spinner=False)
+def icona_scheda():
+    """Immagine per la linguetta del browser: logo FCR su fondo bianco (il PNG originale e' trasparente e sparisce)."""
+    from PIL import Image
+    try:
+        logo = Image.open(core.LOGO_FCR_PATH).convert("RGBA")
+        base = Image.new("RGBA", (128, 128), (255, 255, 255, 255))
+        logo.thumbnail((116, 116))
+        base.alpha_composite(logo, ((128 - logo.width) // 2, (128 - logo.height) // 2))
+        return base.convert("RGB")
+    except Exception:
+        return "📊"
+
+
 def _icone():
     """Icone PNG in base64: logo FCR centrato su fondo blu, nei tre formati richiesti."""
     from PIL import Image

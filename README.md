@@ -175,3 +175,8 @@ Strumento «Prezziario» (gruppo *Offerte e commesse*): carica un listino Excel 
 - **Scadenza**: il listino vale per il suo quadrimestre. Finito il periodo, nell'Hub e nel Cruscotto compare «prezzi da aggiornare» (rosso dopo oltre 120 giorni).
 - **Confronto**: con due quadrimestri caricati, la scheda 3 mostra quali prezzi sono saliti o scesi, per capitolo e per voce.
 - Permessi: lo strumento è abilitato ai profili amministrazione, commerciale, cantiere e direzione; i profili già salvati lo ricevono da soli secondo queste regole.
+
+## Novità 3.3.0
+- **Ricerca nella home**: casella unica per strumenti, dati salvati (cantieri, fornitori, fatture, persone…) e voci del prezziario.
+- **Resta collegato dopo F5**: il login viene ricordato 12 ore (cookie firmato, senza password dentro). Si cancella con «Esci», cambiando la password o disattivando l'utente. Opzionale nei Secrets: `SESSIONE_ORE` (1-168) e `SESSION_SECRET` (testo lungo casuale; senza, la chiave deriva dagli altri segreti).
+- **Favicon** con il logo FCR su fondo bianco; **tasti su telefono** con le scritte a capo invece che tagliate.
