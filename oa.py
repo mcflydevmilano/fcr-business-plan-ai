@@ -13,8 +13,8 @@ import re
 from core import fmt_num, to_float
 from sc import data_da
 
-COLONNE_ORDINI = ["Numero", "Data", "Fornitore", "Cantiere", "Descrizione", "Importo", "Richiedente", "Note"]
-ETICHETTE_ORDINI = {"Numero": "N. ordine", "Data": "Data", "Fornitore": "Fornitore", "Cantiere": "Cantiere", "Descrizione": "Cosa si ordina", "Importo": "Importo (€, IVA esclusa)", "Richiedente": "Chi lo chiede", "Note": "Note"}
+COLONNE_ORDINI = ["Numero", "Data", "Fornitore", "Cantiere", "Descrizione", "Importo", "Richiedente", "Note", "Voce", "Quantita"]
+ETICHETTE_ORDINI = {"Numero": "N. ordine", "Data": "Data", "Fornitore": "Fornitore", "Cantiere": "Cantiere", "Descrizione": "Cosa si ordina", "Importo": "Importo (€, IVA esclusa)", "Richiedente": "Chi lo chiede", "Note": "Note", "Voce": "Voce del prezziario (codice)", "Quantita": "Quantità"}
 COLONNE_SOGLIE = ["Fino_a", "Livello", "Approvatori"]
 ETICHETTE_SOGLIE = {"Fino_a": "Fino a (€) — vuoto = oltre l'ultima", "Livello": "Chi approva (ruolo)", "Approvatori": "Nomi utente autorizzati (separati da virgola)"}
 SOGLIE_BASE = [{"Fino_a": 2000.0, "Livello": "Capocantiere", "Approvatori": ""}, {"Fino_a": 20000.0, "Livello": "Direttore tecnico", "Approvatori": ""}, {"Fino_a": None, "Livello": "Presidente", "Approvatori": ""}]
@@ -52,7 +52,8 @@ def normalizza_ordini(righe, anno=None):
         usati.add(num)
         d = data_da(r.get("Data"))
         out.append({"Numero": num, "Data": d.isoformat() if d else "", "Fornitore": f, "Cantiere": _t(r.get("Cantiere")), "Descrizione": _t(r.get("Descrizione")), "Importo": imp,
-                    "Richiedente": _t(r.get("Richiedente")), "Note": _t(r.get("Note"))})
+                    "Richiedente": _t(r.get("Richiedente")), "Note": _t(r.get("Note")),
+                    "Voce": _t(r.get("Voce")), "Quantita": to_float(r.get("Quantita"), 0.0)})
     return out, avvisi
 
 
@@ -115,7 +116,7 @@ def registra(approvazioni, o, esito, utente, quando, motivo=""):
     return [*approvazioni, {"Numero": o["Numero"], "Esito": esito, "Da": utente, "Quando": quando, "Importo": o["Importo"], "Motivo": _t(motivo)}]
 
 
-def calcola_oa(ordini, soglie, approvazioni, docs_fornitori=None, oggi=None, giorni_attesa=7):
+def calcola_oa(ordini, soglie, approvazioni, docs_fornitori=None, oggi=None, giorni_attesa=7, prezzi=None, soglia_prezzo=10.0):
     import datetime as dt
     oggi = oggi or dt.date.today()
     irr = fornitori_irregolari(docs_fornitori, oggi)
@@ -134,6 +135,14 @@ def calcola_oa(ordini, soglie, approvazioni, docs_fornitori=None, oggi=None, gio
             anom.append("approvato da chi l'ha chiesto")
         if not o["Cantiere"]:
             anom.append("senza cantiere")
+        if prezzi:
+            try:
+                import pz
+                cp = pz.controllo_prezzo(o, prezzi, soglia_prezzo)
+            except Exception:
+                cp = None
+            if cp:
+                anom.append(cp)
         righe.append({**o, "Stato": stato, "Livello": liv["Livello"], "Decisione": dec, "Attesa gg": attesa, "Anomalie": anom})
         if anom and stato != "Respinto":
             avvisi.append(f"{o['Numero']} · {o['Fornitore']}: " + "; ".join(anom) + ".")

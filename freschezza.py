@@ -41,5 +41,7 @@ def fermi(righe):
 
 
 def frase(r):
+    if r.get("testo"):                                        # righe con un testo gia' pronto (es. il prezziario: scade a una data, non dopo N giorni)
+        return r["testo"]
     chi = f" (ultimo: {r['autore']})" if r["autore"] else ""
     return f"{r['nome']}: fermo da {r['giorni']} giorni{chi}, di solito si aggiorna ogni {r['soglia']}"

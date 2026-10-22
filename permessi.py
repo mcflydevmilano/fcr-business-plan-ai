@@ -6,22 +6,23 @@ Il ruolo (admin / utente / lettore) decide invece se si puo' MODIFICARE: sono du
 """
 import storage
 
-TUTTI = ["credit", "bp", "cf", "sc", "bk", "oa", "ga", "pv", "sl", "gt", "rp", "sx", "mz", "og", "fo", "ru", "pe", "lg", "ca", "dd"]
+TUTTI = ["credit", "bp", "cf", "sc", "bk", "oa", "ga", "pv", "sl", "gt", "rp", "sx", "mz", "og", "fo", "ru", "pe", "lg", "ca", "dd", "pz"]
 NOMI = {"credit": "Credit Risk & Rating", "bp": "Business Plan", "cf": "Cash Flow di cantiere", "sc": "Scadenzario", "bk": "Riconciliazione bancaria",
         "oa": "Ordini e approvazioni", "ga": "Gare e offerte", "pv": "Computo e Preventivo", "sl": "SAL e contabilità lavori", "gt": "Cronoprogramma",
         "rp": "Rapportini", "sx": "Sicurezza", "mz": "Parco mezzi", "og": "Organico", "fo": "Fornitori", "ru": "Rubrica e cantieri", "pe": "Persone e ruoli",
-        "lg": "Studio legale", "ca": "Calendario", "dd": "Cruscotto di direzione"}
+        "lg": "Studio legale", "ca": "Calendario", "dd": "Cruscotto di direzione", "pz": "Prezziario"}
 RISERVATI = {"dd"}            # strumenti che nessun profilo (tranne presidente e admin) riceve per impostazione predefinita
 
 PROFILI_BASE = {
     "presidente": list(TUTTI),
     "direzione": [s for s in TUTTI if s not in RISERVATI],
-    "amministrazione": ["credit", "bp", "cf", "sc", "bk", "oa", "pv", "fo", "ru", "pe", "ca"],
-    "commerciale": ["ga", "pv", "sl", "gt", "ru", "ca"],
-    "cantiere": ["rp", "sx", "mz", "og", "gt", "fo", "ru", "oa", "ca"],
+    "amministrazione": ["credit", "bp", "cf", "sc", "bk", "oa", "pv", "pz", "fo", "ru", "pe", "ca"],
+    "commerciale": ["ga", "pv", "pz", "sl", "gt", "ru", "ca"],
+    "cantiere": ["rp", "sx", "mz", "og", "gt", "fo", "ru", "oa", "pz", "ca"],
     "legale": ["lg", "ru", "sc", "fo", "ca"],
 }
 PROFILO_PREDEFINITO = "direzione"
+NUOVI_STRUMENTI = ["pz"]      # aggiunti dopo i primi salvataggi dei permessi: ai profili gia' salvati si danno secondo le regole base
 NOME_PRATICA = "permessi"
 
 
@@ -38,13 +39,19 @@ def normalizza(cfg):
         n = str(nome).strip().lower()
         if n:
             profili[n] = [s for s in TUTTI if s in set(mod or [])]
+    noti = set(cfg.get("noti") or [s for s in TUTTI if s not in NUOVI_STRUMENTI])
+    for s in TUTTI:                                            # strumento nato dopo il salvataggio: i profili base lo ricevono, quelli personalizzati no
+        if s not in noti:
+            for nome, mod in PROFILI_BASE.items():
+                if nome in profili and s in mod and s not in profili[nome]:
+                    profili[nome] = [x for x in TUTTI if x in set(profili[nome]) | {s}]
     profili["presidente"] = list(TUTTI)                        # il presidente non puo' restare senza strumenti
     profili.setdefault(PROFILO_PREDEFINITO, list(PROFILI_BASE[PROFILO_PREDEFINITO]))      # chi non ha un profilo cade sempre su uno esistente
     pred = str(cfg.get("predefinito") or PROFILO_PREDEFINITO).strip().lower()
     if pred not in profili:
         pred = PROFILO_PREDEFINITO if PROFILO_PREDEFINITO in profili else next(iter(profili))
     utenti = {str(u).strip().lower(): str(p).strip().lower() for u, p in (cfg.get("utenti") or {}).items() if str(p).strip().lower() in profili}
-    return {"profili": profili, "utenti": utenti, "predefinito": pred}
+    return {"profili": profili, "utenti": utenti, "predefinito": pred, "noti": list(TUTTI)}
 
 
 def carica_config(path=None):

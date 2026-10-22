@@ -117,7 +117,7 @@ def _db(path=None):
         con.close()
 
 
-MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl", "ga", "fo", "sx", "mz", "og", "rp", "gt", "cfg", "ru", "lg", "bk", "oa", "al", "pe")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
+MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl", "ga", "fo", "sx", "mz", "og", "rp", "gt", "cfg", "ru", "lg", "bk", "oa", "al", "pe", "pz")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
 
 
 MAX_VERSIONI = 20          # versioni precedenti conservate per ogni salvataggio
@@ -179,6 +179,9 @@ def salva_pratica(nome, payload, path=None, autore="", modulo="credit", atteso=N
 def _registra_modifiche(chiave, modulo, vecchio_testo, nuovo, autore, path):
     """Registro attivita': ogni salvataggio scrive chi, quando, quale strumento e COSA e' cambiato. Non blocca mai il salvataggio."""
     try:
+        if modulo == "pz":                                           # prezziario: migliaia di righe compresse, niente confronto voce per voce
+            log_evento(autore, "prezziario_salvato", f"«{chiave.split('|', 1)[-1]}»: prezziario caricato o aggiornato", path)
+            return
         if modulo == "al":                                           # foto e firme: niente confronto sui dati binari, solo chi e quando
             log_evento(autore, "allegati_salvati", f"«{chiave.split('|', 1)[-1]}»: foto o firme aggiornate", path)
             return
@@ -209,7 +212,7 @@ def ultimi_aggiornamenti(path=None):
     out = {}
     for nome, agg, aut in righe:
         pref = next((m for m in MODULI_ARCHIVIO if nome.startswith(m + "|")), "credit")
-        if pref in ("cfg", "al"):
+        if pref in ("cfg", "al", "pz"):
             continue
         out.setdefault(pref, (agg, aut or "", nome.split("|", 1)[1] if pref != "credit" else nome))
     return out

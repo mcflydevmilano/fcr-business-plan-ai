@@ -8,6 +8,7 @@ import guida
 import charts
 import cf
 import pv
+import pz_ui
 import pv_report
 import theme
 from core import fmt_num
@@ -130,6 +131,14 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None, utente=""):
                 st.error(str(e))
             except Exception as e:
                 st.error(f"File non leggibile: {e}")
+        with st.expander("📚 Aggiungi voci dal prezziario"):
+            _nuove = pz_ui.scegli_voci("voce_prezziario", ss.get("pv_sg_pct", pv.PV_DEFAULT["sg_pct"]), ss.get("pv_utile_pct", pv.PV_DEFAULT["utile_pct"]))
+            if _nuove:
+                _base = ss["pv_df"]
+                _base = _base[_base.apply(lambda r: any(str(r.get(c) or "").strip() not in ("", "nan", "0", "0.0") for c in pv.COLONNE_VOCI), axis=1)] if len(_base) else _base
+                sostituisci_tabella("pv_df", pd.concat([_base, pd.DataFrame(_nuove, columns=pv.COLONNE_VOCI)], ignore_index=True))
+                audit("pv_prezziario", f"{len(_nuove)} voci aggiunte dal prezziario")
+                st.rerun()
         n, e_ = st.column_config.NumberColumn, pv.ETICHETTE_VOCI
         cfg = {"Codice": st.column_config.TextColumn(e_["Codice"]), "Categoria": st.column_config.TextColumn(e_["Categoria"]),
                "Descrizione": st.column_config.TextColumn(e_["Descrizione"], width="large"), "UM": st.column_config.TextColumn(e_["UM"]),

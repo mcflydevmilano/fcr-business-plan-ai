@@ -119,6 +119,13 @@ PASSI = {
         ("Scarica il dossier", "Nella scheda «3. Dossier» premi il pulsante per PDF ed Excel.", "dossier"),
         ("Salva", "Apri «💾 Salva e riapri il cronoprogramma» in alto e premi Salva.", "salvato"),
     ], "I legami valgono dentro lo stesso cantiere e il nome della fase va scritto uguale. I giorni di fermo e le date «Non prima del» le scrivi tu: il programma non sa da solo che piove o che il camion è in ritardo."),
+    "pz": ("Avere i prezzi di riferimento a portata di mano per preventivi e acquisti, e sapere quando vanno aggiornati.", [
+        ("Carica il prezziario", "Nella scheda «2. Carica un prezziario» scegli il file Excel del listino: l'app riconosce il quadrimestre dal nome, mostra cosa ha letto e cosa ha saltato. Poi premi «Salva».", None),
+        ("Cerca una voce", "Nella scheda «1. Cerca» scrivi una parola («intonaco»), un codice o scegli un capitolo. Clicca una riga per vedere il dettaglio e le varianti.", None),
+        ("Usalo nel preventivo", "In «Computo e Preventivo», apri «📚 Aggiungi voci dal prezziario», scegli le voci e la quantità: codice, unità e costo arrivano da soli.", None),
+        ("Controlla gli ordini", "In «Ordini e approvazioni» scrivi nell'ordine il codice della voce e la quantità: chi approva vede un avviso se il prezzo supera quello del prezziario.", None),
+        ("Aggiorna ogni quadrimestre", "Quando esce il nuovo listino caricalo qui: nella scheda «3. Confronta quadrimestri» vedi quali prezzi sono saliti o scesi.", None),
+    ], "Sono prezzi di riferimento, non offerte dei fornitori. Se un listino è scaduto, nell'Hub compare l'avviso «prezzi da aggiornare»."),
     "ru": ("Avere telefono, email e referente di tutti a portata di mano, e dare a ogni cantiere un codice unico.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:ru_demo"),
         ("Inserisci i contatti", "Nella scheda «1. Contatti e cantieri» scrivi o importa da Excel fornitori, clienti ed enti, con telefono ed email.", "dati:ru_cont"),

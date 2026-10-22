@@ -56,6 +56,8 @@ import freschezza
 import permessi
 import pausa
 import profilo
+import pz
+import pz_ui
 import pwa
 import pv_ui
 import theme
@@ -584,6 +586,8 @@ if MODULO is None:
     st.markdown(theme.hub_header(FCR_URI, len([c for c in hub.CARDS if c in CONSENTITI])), unsafe_allow_html=True)
     try:
         _fresc = freschezza.valuta(storage.ultimi_aggiornamenti(), moduli=CONSENTITI)
+        if "pz" in CONSENTITI:
+            _fresc.append(pz.stato_validita(pz.carica_indice()))        # il prezziario scade a una data, non dopo N giorni
     except Exception:
         _fresc = []
     hub.render(vai_a, CONSENTITI, _fresc)
@@ -605,7 +609,7 @@ if MODULO == "sl":
     sl_ui.render(FCR_URI, audit, ss["utente"]["username"])
     st.stop()
 
-for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og", og_ui), ("rp", rp_ui), ("gt", gt_ui), ("ru", ru_ui), ("lg", lg_ui), ("bk", bk_ui), ("oa", oa_ui)):
+for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og", og_ui), ("rp", rp_ui), ("gt", gt_ui), ("ru", ru_ui), ("lg", lg_ui), ("bk", bk_ui), ("oa", oa_ui), ("pz", pz_ui)):
     if MODULO == _m:
         _ui.render(FCR_URI, audit, ss["utente"]["username"])
         st.stop()

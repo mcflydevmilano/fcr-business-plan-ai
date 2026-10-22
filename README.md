@@ -160,3 +160,18 @@ con scenari pessimistico/base/ottimistico modificabili, grafico tornado e mappa 
 ## Foto, firma e app sul telefono
 
 Nel Rapportino e nelle Segnalazioni si possono allegare foto (ridotte a 1280 px) e, nel rapportino, la firma disegnata con il dito (`firma.py`). Gli allegati stanno in un salvataggio a parte, legati all'Id, e il registro attività scrive solo «chi e quando». `pwa.py` rende la suite installabile (Android: menu ⋮ → Installa app; iPhone: Condividi → Aggiungi alla schermata Home).
+
+## Persone e ruoli
+
+`pe.py`, `pe_ui.py`: elenco del personale (ruolo, reparto, recapiti, cantiere, in servizio) e accessi all'app. Ogni **ruolo aziendale** propone un profilo di accesso (es. Capocantiere → «cantiere», Responsabile amministrativo → «amministrazione», Presidente → «presidente»). L'amministratore, dalla scheda «Accessi», crea l'account di una persona direttamente dall'elenco (password temporanea mostrata una sola volta), le assegna il profilo, la collega a un account esistente o ne revoca l'accesso. Avvisa se qualcuno non più in servizio ha ancora l'accesso o se esistono account senza persona. I nomi del personale entrano anche nel «Controllo nomi» della Rubrica (responsabili, richiedenti, compilatori). Strumento con dati personali: per impostazione predefinita lo vedono presidente, direzione e amministrazione.
+
+## Prezziario (3.2.0)
+Strumento «Prezziario» (gruppo *Offerte e commesse*): carica un listino Excel (per esempio quello della Camera di Commercio Milano Monza Brianza Lodi, un quadrimestre alla volta) e lo trasforma in prezzi consultabili.
+
+- **Carica**: l'app riconosce il quadrimestre dal nome del file, salta intestazioni e avvertenze, ripulisce i caratteri HTML (`&apos;`) e segnala cosa manca (descrizioni accorciate, incidenze a zero, voci senza unità). I codici ripetuti restano come varianti (`codice`, `codice#2`…).
+- **Cerca**: per parola, inizio del codice, capitolo, gruppo e unità. Clic su una riga per il dettaglio e le varianti; risultati scaricabili in Excel.
+- **Computo e Preventivo**: «📚 Aggiungi voci dal prezziario». Il prezzo diventa costo diretto togliendo spese generali e utile (o si usa com'è); se il file ha le incidenze, il costo si divide tra manodopera, noli e materiali.
+- **Ordini e approvazioni**: due colonne facoltative, «Voce» (codice) e «Quantità». Se il prezzo unitario supera il prezziario oltre la soglia scelta (predefinita 10%) compare un avviso per chi approva; non blocca.
+- **Scadenza**: il listino vale per il suo quadrimestre. Finito il periodo, nell'Hub e nel Cruscotto compare «prezzi da aggiornare» (rosso dopo oltre 120 giorni).
+- **Confronto**: con due quadrimestri caricati, la scheda 3 mostra quali prezzi sono saliti o scesi, per capitolo e per voce.
+- Permessi: lo strumento è abilitato ai profili amministrazione, commerciale, cantiere e direzione; i profili già salvati lo ricevono da soli secondo queste regole.

@@ -16,13 +16,20 @@ ss = st.session_state
 ICONE = {"Da approvare": "🟡", "Da riapprovare": "🟠", "Approvato": "🟢", "Respinto": "🔴"}
 
 
+def _ord_df(righe):
+    """Tabella degli ordini; le colonne nuove (Voce) mancanti nei salvataggi vecchi diventano testo vuoto, non numeri."""
+    df = pd.DataFrame(righe or [], columns=oa.COLONNE_ORDINI)
+    df["Voce"] = df["Voce"].astype(object).where(df["Voce"].notna(), "")
+    return df
+
+
 def _esempio():
     g = lambda n: (dt.date.today() + dt.timedelta(days=n)).isoformat()
     anno = dt.date.today().year
     ordini = [(f"ODA-{anno}-001", g(-12), "Calcestruzzi Alfa", "Villa Lago", "Calcestruzzo fondazioni", 8400, "capocantiere", ""),
               (f"ODA-{anno}-002", g(-3), "Elettroimpianti Beta", "Scuola Elementare", "Quadri elettrici piano terra", 24500, "capocantiere", ""),
               (f"ODA-{anno}-003", g(-1), "Ponteggi Gamma", "Villa Lago", "Noleggio ponteggi, 4 settimane", 1800, "capocantiere", "")]
-    mk = lambda cols, rows: pd.DataFrame([dict(zip(cols, r)) for r in rows], columns=cols)
+    mk = lambda cols, rows: _ord_df([dict(zip(cols, r)) for r in rows])
     return mk(oa.COLONNE_ORDINI, ordini), pd.DataFrame(oa.SOGLIE_BASE, columns=oa.COLONNE_SOGLIE)
 
 
@@ -30,18 +37,21 @@ def _cfg():
     n, t = st.column_config.NumberColumn, st.column_config.TextColumn
     a, b = oa.ETICHETTE_ORDINI, oa.ETICHETTE_SOGLIE
     return ({"Numero": t(a["Numero"], help="Lascialo vuoto: lo assegna l'app."), "Data": t(a["Data"]), "Fornitore": t(a["Fornitore"]), "Cantiere": t(a["Cantiere"]), "Descrizione": t(a["Descrizione"], width="large"),
-             "Importo": n(a["Importo"], min_value=0.0, step=100.0, format="%.0f"), "Richiedente": t(a["Richiedente"], help="Il nome utente di chi chiede l'ordine."), "Note": t(a["Note"])},
+             "Importo": n(a["Importo"], min_value=0.0, step=100.0, format="%.0f"), "Richiedente": t(a["Richiedente"], help="Il nome utente di chi chiede l'ordine."), "Note": t(a["Note"]),
+             "Voce": t(a["Voce"], help="Facoltativo: il codice della voce nel Prezziario (es. B.06.04.0025.b). Con la quantità, l'app controlla se il prezzo unitario supera quello di riferimento."),
+             "Quantita": n(a["Quantita"], min_value=0.0, step=1.0, format="%.2f", help="Quantità ordinata, nell'unità del prezziario.")},
             {"Fino_a": n(b["Fino_a"], min_value=0.0, step=500.0, format="%.0f"), "Livello": t(b["Livello"]), "Approvatori": t(b["Approvatori"], width="large", help="Vuoto = può approvare chiunque non sia il richiedente.")})
 
 
 def _raccogli():
-    return {"ordini": ss["oa_ord"].to_dict("records"), "soglie": ss["oa_sog"].to_dict("records"), "approvazioni": ss.get("oa_appr", [])}
+    return {"ordini": ss["oa_ord"].to_dict("records"), "soglie": ss["oa_sog"].to_dict("records"), "approvazioni": ss.get("oa_appr", []), "soglia_prezzario": ss.get("oa_soglia_pz", 10.0)}
 
 
 def _applica(p, nome):
-    sostituisci_tabella("oa_ord", pd.DataFrame(p.get("ordini") or [], columns=oa.COLONNE_ORDINI))
+    sostituisci_tabella("oa_ord", _ord_df(p.get("ordini")))
     sostituisci_tabella("oa_sog", pd.DataFrame(p.get("soglie") or oa.SOGLIE_BASE, columns=oa.COLONNE_SOGLIE))
     ss["oa_appr"] = list(p.get("approvazioni") or [])
+    ss["_pending"] = {"oa_soglia_pz": float(p.get("soglia_prezzario", 10.0))}
     ss["oa_demo"] = False
 
 
@@ -72,9 +82,12 @@ def render(fcr_uri, audit=None, utente=""):
         blocco_tabella("oa_ord", "Ordini di acquisto", "Una riga per ordine. Se cambi l'importo di un ordine già approvato, torna da riapprovare.", oa.COLONNE_ORDINI, oa.ETICHETTE_ORDINI, co, ss["oa_ord"], "oa", 1, audit, 260)
         if st.button("🔢 Assegna i numeri mancanti", key="numeri_oa", disabled=sola_lettura()):
             nuovi, _ = oa.normalizza_ordini(ss["oa_ord"].to_dict("records"))
-            sostituisci_tabella("oa_ord", pd.DataFrame(nuovi, columns=oa.COLONNE_ORDINI))
+            sostituisci_tabella("oa_ord", _ord_df(nuovi))
             audit("oa_numeri_assegnati", f"{len(nuovi)} ordini")
             st.rerun()
+        ss.setdefault("oa_soglia_pz", 10.0)
+        st.number_input("Avviso se il prezzo unitario supera il prezziario di più del… (%)", min_value=0.0, max_value=100.0, step=1.0, key="oa_soglia_pz",
+                        help="Vale per gli ordini con «Voce» e «Quantità» compilate. L'avviso non blocca l'approvazione: la persona che decide lo vede.")
         blocco_tabella("oa_sog", "Chi approva cosa", "Per ogni fascia d'importo: il ruolo e, se vuoi, i nomi utente autorizzati. L'ultima riga (senza limite) vale per gli importi più alti.",
                        oa.COLONNE_SOGLIE, oa.ETICHETTE_SOGLIE, cs, ss["oa_sog"], "oa", 2, audit, 160)
     with t1:
@@ -90,7 +103,12 @@ def render(fcr_uri, audit=None, utente=""):
     ordini, av = oa.normalizza_ordini(grezzi)
     soglie = oa.normalizza_soglie(ss["oa_sog"].to_dict("records"))
     docs_fo = _docs_fornitori()
-    out = oa.calcola_oa(ordini, soglie, ss["oa_appr"], docs_fo)
+    try:
+        import pz_ui
+        _prezzi = pz_ui.prezzi_attivi()
+    except Exception:
+        _prezzi = {}
+    out = oa.calcola_oa(ordini, soglie, ss["oa_appr"], docs_fo, prezzi=_prezzi, soglia_prezzo=float(ss.get("oa_soglia_pz", 10.0)))
     k = out["kpi"]
     senza_numero = any(not str(r.get("Numero") or "").strip() for r in grezzi if str(r.get("Fornitore") or "").strip())
 

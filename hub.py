@@ -150,6 +150,15 @@ CARDS = {'credit': {'icona': '📊',
                  'Storico di ogni decisione con nome e ora'],
         'tag': ['Approvazioni', 'Tracciabilità', 'PDF + Excel'],
         'bottone': 'Ordini e approvazioni'},
+ 'pz': {'icona': '📚',
+        'titolo': 'Prezziario',
+        'desc': 'I prezzi di riferimento per preventivi e acquisti, da cercare per codice, parola o capitolo.',
+        'voci': ['Listino della Camera di Commercio, un quadrimestre alla volta',
+                 'Le voci passano nel Computo con codice, unità e prezzo',
+                 'Controllo del prezzo negli ordini d\'acquisto',
+                 'Confronto tra quadrimestri e avviso quando scade'],
+        'tag': ['Prezzi', 'Ricerca', 'Excel'],
+        'bottone': 'Prezziario'},
  'gt': {'icona': '📅',
         'titolo': 'Cronoprogramma dei cantieri (Gantt)',
         'desc': 'Quando parte e finisce ogni fase, a che punto è davvero e dove si accumula ritardo.',
@@ -192,7 +201,7 @@ GRUPPI = [
     ("Parte finanziaria", "Dott. Claudio Arosio",
      ["credit", "bp", "cf", "sc", "bk"]),
     ("Offerte e commesse", "Dalla gara al preventivo, fino all'avanzamento lavori",
-     ["ga", "pv", "sl", "gt"]),
+     ["ga", "pv", "pz", "sl", "gt"]),
     ("Cantiere e risorse", "Rapportini, sicurezza, mezzi e persone",
      ["rp", "sx", "mz", "og"]),
     ("Fornitori, acquisti e scadenze", "Contatti, ordini approvati, documenti dei fornitori e calendario unico",
@@ -264,6 +273,9 @@ def _freschezza(righe):
     with st.expander(titolo, expanded=bool([r for r in fermi if r["stato"] == "bad"])):
         st.caption("Quando è stato l'ultimo salvataggio di ogni strumento. Se i dati sono fermi, i semafori e il Cruscotto non raccontano la situazione di oggi.")
         for r in righe:
+            if r.get("testo"):
+                st.markdown(f"{ico[r['stato']]} **{r['nome']}** — {r['testo']}")
+                continue
             quando = "mai salvato" if r["giorni"] is None else ("oggi" if r["giorni"] == 0 else f"{r['giorni']} giorni fa")
             chi = f" · da {r['autore']}" if r["autore"] else ""
             st.markdown(f"{ico[r['stato']]} **{r['nome']}** — {quando}{chi}  <span style='color:#94a3b8'>(si aggiorna ogni {r['soglia']} gg)</span>", unsafe_allow_html=True)

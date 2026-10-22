@@ -147,7 +147,13 @@ def render(fcr_uri, audit=None, vai_a=None):
     guida.mostra("dd")
     try:
         import freschezza
-        _fermi = freschezza.fermi(freschezza.valuta(storage.ultimi_aggiornamenti()))
+        _righe_fr = freschezza.valuta(storage.ultimi_aggiornamenti())
+        try:
+            import pz
+            _righe_fr.append(pz.stato_validita(pz.carica_indice()))
+        except Exception:
+            pass
+        _fermi = freschezza.fermi(_righe_fr)
     except Exception:
         _fermi = []
     if _fermi:
