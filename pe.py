@@ -18,7 +18,7 @@ TIPI = ["Dipendente", "Collaboratore", "Tirocinante"]
 COLONNE_PERSONE = ["Persona", "Ruolo", "Reparto", "Telefono", "Email", "Cantiere", "Tipo", "Utente", "Attivo"]
 ETICHETTE_PERSONE = {"Persona": "Nome e cognome", "Ruolo": "Ruolo in azienda", "Reparto": "Reparto / ufficio", "Telefono": "Telefono / cellulare", "Email": "Email", "Cantiere": "Cantiere assegnato",
                      "Tipo": "Tipo", "Utente": "Nome utente nell'app", "Attivo": "In servizio"}
-SINONIMI_PERSONE = {"Persona": ("Nominativo", "Dipendente", "Cognome e nome", "Nome"), "Ruolo": ("Mansione", "Qualifica", "Funzione"), "Telefono": ("Cellulare", "Tel"), "Email": ("Mail", "E-mail"),
+SINONIMI_PERSONE = {"Persona": ("Nominativo", "Dipendente", "Cognome e nome", "Nome"), "Ruolo": ("Mansione", "Qualifica", "Funzione"), "Telefono": ("Cellulare", "cell", "Tel"), "Email": ("Mail", "E-mail"),
                     "Cantiere": ("Commessa", "Sede")}
 _RE_USER = re.compile(r"^[a-z0-9][a-z0-9._-]{2,39}$")
 
