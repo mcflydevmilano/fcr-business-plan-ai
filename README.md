@@ -216,3 +216,6 @@ Strumento «Chat interna» (gruppo Comunicazione): canali pubblici, gruppi priva
 - **Allegati**: foto ridotte a 1600 px (JPEG), originale max 12 MB; PDF max 8 MB; salvati nel database (nessun file su disco: si trasferisce con il database sul vostro hosting).
 - **Conservazione**: pulsante «Cancella i messaggi più vecchi di N mesi» in Gestione (proposta 24 mesi).
 - Nuovi secrets facoltativi: `CHAT_KEY`, `TELEGRAM_BOT_TOKEN`, `NTFY_URL`, `APP_URL`. Nuova dipendenza: `cryptography`.
+
+### Avvisi del Cruscotto (3.7.1)
+Nel Cruscotto, riquadro «🔔 Avvisi per email e chat interna»: per ogni area (Cassa, Margine, Crediti, …) l'amministratore indica da quale gravità avvisare (rosso, o giallo e rosso), il canale della chat, le persone (messaggio diretto dal «Cruscotto» + avviso sul telefono) e gli indirizzi email. Lo stesso problema si manda al massimo una volta al giorno. L'invio automatico parte all'apertura del Cruscotto solo se tutti i dati vengono da salvataggi veri (mai da prove o dati dimostrativi); c'è anche «Invia ora». Email: Secrets `SMTP_HOST`, `SMTP_PORT` (587 o 465), `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` (facoltativo).

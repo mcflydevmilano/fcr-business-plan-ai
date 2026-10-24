@@ -121,7 +121,7 @@ def _da_fare(blocchi, vai_a, audit):
         return
     lettore = sola_lettura()
     squadre = sorted({b["squadra"] for b in blocchi})
-    with st.container(key="dd_avvisi_team"):
+    with st.container(key="avvdd_team"):
         st.caption("Gli avvisi vanno sul canale Slack e/o sull'email del team (gli stessi del riepilogo del mattino). Nel messaggio c'è l'elenco con i nomi.")
         cols = st.columns(len(squadre) + 1)
         for col, s in zip(cols, squadre):
@@ -161,6 +161,70 @@ def _griglia_semafori(righe, vai_a, apri, audit):
                     ss["_torna_dd"] = {"indicatore": r["Indicatore"], "valore": r["Valore"], "nota": r["Nota"], "stato": r["Stato"]}
                     audit("dd_semaforo_aperto", f"{r['Indicatore']} -> {m}")
                     vai_a(m)
+
+
+def _avvisi(righe, modo_demo, apri, metriche, audit):
+    """Avvisi del Cruscotto per email e chat interna: invio automatico (solo da dati veri e salvati) e impostazione di chi riceve cosa."""
+    import avvisi_dd
+    import chat
+    import notifiche
+    u = ss.get("utente") or {}
+    admin = u.get("ruolo") == "admin"
+    try:
+        cfg = avvisi_dd.carica_cfg()
+    except Exception:
+        return
+    noti = []
+    try:
+        noti = [x["username"] for x in storage.elenca_utenti()]
+    except Exception:
+        pass
+    salvati = bool(metriche) and all(apri.get(m) for m in metriche)          # tutti i dati vengono da salvataggi, non da prove nella sessione
+    if cfg["auto"] and cfg["regole"] and not modo_demo and salvati and u.get("ruolo") in ("admin", "utente") and not ss.get("_dd_auto"):
+        ss["_dd_auto"] = True                              # una volta per sessione: poi vale il «una volta al giorno»
+        try:
+            esito = avvisi_dd.invia(righe, cfg, utenti_noti=noti)
+            if esito["regole"]:
+                audit("avvisi_cruscotto_auto", f"chat {esito['chat']}, email {esito['email']}")
+                st.toast(f"Avvisi inviati: {esito['chat']} in chat, {esito['email']} email", icon="🔔")
+        except Exception:
+            pass
+    with st.expander("🔔 Avvisi per email e chat interna", expanded=False):
+        n_gr = sum(1 for r in righe if r["Stato"] in ("bad", "warn"))
+        st.caption("Chi viene avvisato quando un semaforo diventa giallo o rosso. Lo stesso problema si manda al massimo una volta al giorno. "
+                   "Gli avvisi automatici partono solo da dati veri e salvati, mai da prove o dati dimostrativi.")
+        st.write(f"- Email: **{'pronta' if avvisi_dd.smtp_pronto() else 'non configurata (servono SMTP_HOST, SMTP_USER, SMTP_PASSWORD nei Secrets)'}**")
+        if admin and not sola_lettura():
+            canali = [""] + [c["nome"] for c in chat.tutti_i_canali_gestibili() if c["tipo"] == "pubblico" and not c["archiviato"]]
+            base = pd.DataFrame([{"Area": r["area"], "Da": avvisi_dd.GRAVITA[r["da"]], "Canale chat": r["canale"], "Persone (nomi utente)": ", ".join(r["persone"]),
+                                  "Email": ", ".join(r["email"])} for r in cfg["regole"]] or [{"Area": avvisi_dd.TUTTE, "Da": avvisi_dd.GRAVITA["bad"], "Canale chat": "", "Persone (nomi utente)": "", "Email": ""}])
+            ed = st.data_editor(base, num_rows="dynamic", hide_index=True, width="stretch", key="avvdd_tab", column_config={
+                "Area": st.column_config.SelectboxColumn(options=[avvisi_dd.TUTTE] + avvisi_dd.AREE, required=True),
+                "Da": st.column_config.SelectboxColumn(options=list(avvisi_dd.GRAVITA.values()), required=True),
+                "Canale chat": st.column_config.SelectboxColumn(options=canali),
+                "Persone (nomi utente)": st.column_config.TextColumn(help="Nomi utente separati da virgola: ricevono un messaggio diretto dal «Cruscotto» e l'avviso sul telefono."),
+                "Email": st.column_config.TextColumn(help="Indirizzi separati da virgola.")})
+            auto = st.checkbox("Invia automaticamente quando qualcuno apre il Cruscotto (da dati salvati)", value=cfg["auto"], key="avvdd_auto")
+            if st.button("💾 Salva le regole", key="avvdd_salva"):
+                inv = {v: k for k, v in avvisi_dd.GRAVITA.items()}
+                regole = [{"area": r["Area"], "da": inv.get(r["Da"], "bad"), "canale": r["Canale chat"] or "", "persone": r["Persone (nomi utente)"] or "", "email": r["Email"] or ""}
+                          for r in ed.to_dict("records")]
+                nuova = avvisi_dd.salva_cfg({"regole": regole, "auto": auto}, u.get("username", ""))
+                audit("avvisi_cruscotto_regole", f"{len(nuova['regole'])} regole")
+                ignote = sorted({p for r in nuova["regole"] for p in r["persone"] if p not in noti})
+                if ignote:
+                    st.warning("Nomi utente non riconosciuti: " + ", ".join(ignote))
+                st.success(f"Salvate {len(nuova['regole'])} regole.")
+        else:
+            st.caption("Le regole le imposta l'amministratore." if cfg["regole"] else "Nessuna regola impostata: le imposta l'amministratore.")
+        if cfg["regole"] and u.get("ruolo") in ("admin", "utente"):
+            if st.button(f"📨 Invia ora gli avvisi ({n_gr} semafori da guardare)", key="avvdd_ora", disabled=not n_gr,
+                         help="Manda subito, anche se sono gia' stati inviati oggi. Se stai guardando dati dimostrativi o non salvati, gli avvisi si basano su quelli."):
+                esito = avvisi_dd.invia(righe, cfg, forza=True, utenti_noti=noti)
+                audit("avvisi_cruscotto_manuale", f"chat {esito['chat']}, email {esito['email']}")
+                st.success(f"Inviati: {esito['chat']} messaggi in chat, {esito['email']} email, {esito['telefono']} avvisi sul telefono.")
+                for e in esito["errori"]:
+                    st.error(e)
 
 
 def render(fcr_uri, audit=None, vai_a=None):
@@ -238,6 +302,7 @@ def render(fcr_uri, audit=None, vai_a=None):
     titolo = {"ok": "Tutto sotto controllo", "warn": "Alcuni punti di attenzione", "bad": "Servono interventi", "nd": "Dati insufficienti"}[gen]
     st.markdown(theme.semaforo_generale(gen, titolo, f"{c['ok']} in regola · {c['warn']} da tenere d'occhio · {c['bad']} {'critico' if c['bad'] == 1 else 'critici'} · {c['nd']} senza dati"), unsafe_allow_html=True)
     _griglia_semafori(righe, vai_a, apri, audit)
+    _avvisi(righe, modo_demo, apri, metriche, audit)
     st.caption("🟢 in regola · 🟡 da tenere d'occhio · 🔴 serve un intervento · ⚪ mancano i dati. Sotto, «Cosa fare» dice cosa decidere e «Chi contattare» chi chiamare.")
     st.subheader("Cosa fare")
     if azioni:
