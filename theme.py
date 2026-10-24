@@ -307,6 +307,15 @@ hr { border-color: var(--line); }
 .dvn-scroller::-webkit-scrollbar-thumb { background: #64748b; border-radius: 8px; border: 3px solid #e2e8f0; }
 [data-testid="stElementToolbar"] { opacity: 1 !important; visibility: visible !important; }
 
+/* caselle del Cruscotto cliccabili: sotto ogni casella il pulsante che porta allo strumento da cui arriva il dato */
+[class*="st-key-semc_"] { margin-bottom: 4px; }
+[class*="st-key-semc_"] .sem { margin-bottom: 6px; min-height: 172px; }
+[class*="st-key-semc_"] .stButton > button { min-height: 2rem; padding: .25rem .6rem; font-size: .82rem; border-radius: 10px; width: 100%; }
+[class*="st-key-semc_"] button[data-testid="stBaseButton-secondary"] { background: #fff !important; border: 1px solid #bfdbfe !important; box-shadow: none !important; }
+[class*="st-key-semc_"] button[data-testid="stBaseButton-secondary"] p { color: var(--acc) !important; }
+[class*="st-key-semc_"] button[data-testid="stBaseButton-secondary"]:hover { background: var(--accsoft) !important; }
+.sem-torna { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 10px 14px; margin: 4px 0 10px 0; color: var(--navy); font-size: .92rem; }
+
 .st-key-hub_top { display: none; }
 @media (max-width: 700px) {
   .st-key-hub_top { display: block !important; margin-left: 46px; max-width: 100px; }
@@ -648,13 +657,15 @@ def hub_card(numero, icona, titolo, descrizione, voci, tags, variante=""):
             f'<h2>{_e(titolo)}</h2><p>{_e(descrizione)}</p><ul>{li}</ul><div class="hub-tags">{tg}</div></div>')
 
 
+def semaforo_card(r):
+    """Una casella del Cruscotto (HTML)."""
+    return (f'<div class="sem {_e(r["Stato"])}"><div class="dot"></div><div><div class="area">{_e(r["Area"])}</div>'
+            f'<div class="ind">{_e(r["Indicatore"])}</div><div class="vl">{_e(r["Valore"])}</div><div class="nt">{_e(r["Nota"])}</div></div></div>')
+
+
 def semafori_html(righe):
     """Griglia di semafori. righe: dict con Area, Indicatore, Valore, Stato (ok|warn|bad|nd), Nota."""
-    celle = "".join(
-        f'<div class="sem {_e(r["Stato"])}"><div class="dot"></div><div><div class="area">{_e(r["Area"])}</div>'
-        f'<div class="ind">{_e(r["Indicatore"])}</div><div class="vl">{_e(r["Valore"])}</div><div class="nt">{_e(r["Nota"])}</div></div></div>'
-        for r in righe)
-    return f'<div class="sem-grid">{celle}</div>'
+    return f'<div class="sem-grid">{"".join(semaforo_card(r) for r in righe)}</div>'
 
 
 def semaforo_generale(stato, titolo, sotto):

@@ -141,6 +141,28 @@ def _da_fare(blocchi, vai_a, audit):
                 _avvisa([b], b["squadra"], audit)
 
 
+def _griglia_semafori(righe, vai_a, apri, audit):
+    """Le caselle del Cruscotto, tre per riga. Sotto ognuna un pulsante che apre lo strumento da cui arriva il dato
+    (con il salvataggio che il Cruscotto sta usando) e lascia il pulsante «Torna al Cruscotto» in cima."""
+    nomi = {m: n for m, n, _ in MODULI}
+    for i0 in range(0, len(righe), 3):
+        cols = st.columns(3)
+        for j, r in enumerate(righe[i0:i0 + 3]):
+            i = i0 + j
+            with cols[j], st.container(key=f"semc_{i}"):
+                st.markdown(theme.semaforo_card(r), unsafe_allow_html=True)
+                m = r.get("Modulo")
+                if not (vai_a and m):
+                    continue
+                etichetta = {"bad": "Vai al problema  →", "warn": "Vai al problema  →", "nd": "Compila i dati  →"}.get(r["Stato"], "Apri  →")
+                if st.button(etichetta, key=f"semvai_{i}", type="primary" if r["Stato"] in ("bad", "warn") else "secondary",
+                             help=f"Apre «{nomi.get(m, m)}»", width="stretch"):
+                    ss["_apri_pratica"] = {"modulo": m, "nome": apri.get(m), "giri": 0}
+                    ss["_torna_dd"] = {"indicatore": r["Indicatore"], "valore": r["Valore"], "nota": r["Nota"], "stato": r["Stato"]}
+                    audit("dd_semaforo_aperto", f"{r['Indicatore']} -> {m}")
+                    vai_a(m)
+
+
 def render(fcr_uri, audit=None, vai_a=None):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Cruscotto di direzione",
@@ -159,7 +181,7 @@ def render(fcr_uri, audit=None, vai_a=None):
         _fermi = []
     if _fermi:
         st.warning("**Attenzione: alcuni dati sono vecchi.** I semafori sotto si basano su dati che non vengono salvati da tempo:  \n" + "  \n".join("• " + freschezza.frase(r) for r in _fermi[:8]))
-    metriche, fonti = {}, {}
+    metriche, fonti, apri = {}, {}, {}
     demo_presenti = demo_mod.presenti()
     n_veri = sum(1 for m, _, _ in MODULI if _elenco_salvati(m))
     modo_demo = False
@@ -178,6 +200,7 @@ def render(fcr_uri, audit=None, vai_a=None):
             if scelta == NESSUNO:
                 fonti[nome] = "non usato"
                 continue
+            apri[m] = None if scelta == SESSIONE else scelta          # cosa aprire se si clicca il semaforo di questo strumento
             if scelta == SESSIONE:
                 payload = _payload_sessione(m)
                 demo = (m in ("sc", "cf", "sl", "ga", "fo", "sx", "mz", "og", "rp", "gt") and ss.get(f"{m}_demo"))
@@ -214,7 +237,7 @@ def render(fcr_uri, audit=None, vai_a=None):
     c = dd.conteggio(righe)
     titolo = {"ok": "Tutto sotto controllo", "warn": "Alcuni punti di attenzione", "bad": "Servono interventi", "nd": "Dati insufficienti"}[gen]
     st.markdown(theme.semaforo_generale(gen, titolo, f"{c['ok']} in regola · {c['warn']} da tenere d'occhio · {c['bad']} {'critico' if c['bad'] == 1 else 'critici'} · {c['nd']} senza dati"), unsafe_allow_html=True)
-    st.markdown(theme.semafori_html(righe), unsafe_allow_html=True)
+    _griglia_semafori(righe, vai_a, apri, audit)
     st.caption("🟢 in regola · 🟡 da tenere d'occhio · 🔴 serve un intervento · ⚪ mancano i dati. Sotto, «Cosa fare» dice cosa decidere e «Chi contattare» chi chiamare.")
     st.subheader("Cosa fare")
     if azioni:

@@ -209,11 +209,18 @@ def semafori(m, soglie=None):
     """`m`: {"cf":…, "sc":…, "pv":…, "credit":…, "bp":…} (i moduli assenti sono None). Restituisce (righe, stato generale, azioni)."""
     s = {**DD_DEFAULT, **(soglie or {})}
     righe, azioni = [], []
+    cur = [None]                                  # strumento da cui arriva la riga: serve al clic sul semaforo
+
+    def R(*a, **k):
+        r = _riga(*a, **k)
+        r["Modulo"] = cur[0]
+        return r
 
     if m.get("sc"):
+        cur[0] = "sc"
         k = m["sc"]["kpi"]
         stato = "ok" if k["cassa_settimana1"] >= 0 else ("warn" if -k["cassa_settimana1"] <= k["fido"] else "bad")
-        righe.append(_riga("Cassa", "Cassa a fine settimana 1", f"{fmt_num(k['cassa_settimana1'])} €", stato,
+        righe.append(R("Cassa", "Cassa a fine settimana 1", f"{fmt_num(k['cassa_settimana1'])} €", stato,
                            "Quanto resta sul conto dopo i movimenti dei prossimi 7 giorni"))
         if stato != "ok":
             azioni.append(("bad" if stato == "bad" else "warn", "Questa settimana la cassa non regge: anticipa gli incassi piu' sicuri o dilaziona i pagamenti non urgenti."))
@@ -223,53 +230,58 @@ def semafori(m, soglie=None):
             st2 = "warn"
         else:
             st2 = "ok"
-        righe.append(_riga("Cassa", f"Scoperto massimo ({k['settimane']} settimane)", f"{fmt_num(k['picco_fabbisogno'])} €", st2,
+        righe.append(R("Cassa", f"Scoperto massimo ({k['settimane']} settimane)", f"{fmt_num(k['picco_fabbisogno'])} €", st2,
                            f"Fido {fmt_num(k['fido'])} €" + (f" · fuori fido dalla settimana {k['prima_settimana_fuori_fido']}" if k["prima_settimana_fuori_fido"] else "")))
         if st2 == "bad":
             azioni.append(("bad", f"Lo scoperto supera il fido dalla settimana {k['prima_settimana_fuori_fido']}: parla con la banca o recupera liquidita' prima di quella data."))
         pct = k["scaduto_attivo_pct"]
         st3 = "ok" if pct <= s["scaduto_warn"] else ("warn" if pct <= s["scaduto_bad"] else "bad")
-        righe.append(_riga("Crediti", "Crediti scaduti sul totale da incassare", f"{fmt_num(pct, 1)}%", st3,
+        righe.append(R("Crediti", "Crediti scaduti sul totale da incassare", f"{fmt_num(pct, 1)}%", st3,
                            f"{fmt_num(k['scaduto_attivo'])} € scaduti, ritardo medio {fmt_num(k['ritardo_medio_gg'], 0)} gg"))
         if st3 != "ok":
             n = len(m["sc"].get("solleciti") or [])
             azioni.append((st3, f"Sollecita i clienti con fatture scadute ({n} da contattare, {fmt_num(k['scaduto_attivo'])} €)."))
         st4 = "ok" if k["scaduto_passivo"] <= 0 else ("warn" if k["scaduto_passivo"] <= 0.1 * max(k["da_pagare"], 1) else "bad")
-        righe.append(_riga("Debiti", "Debiti verso fornitori scaduti", f"{fmt_num(k['scaduto_passivo'])} €", st4, f"Da pagare in totale {fmt_num(k['da_pagare'])} €"))
+        righe.append(R("Debiti", "Debiti verso fornitori scaduti", f"{fmt_num(k['scaduto_passivo'])} €", st4, f"Da pagare in totale {fmt_num(k['da_pagare'])} €"))
         if st4 != "ok":
             azioni.append((st4, "Hai fornitori scaduti: regola i piu' critici per evitare blocchi di forniture e interessi di mora."))
     else:
-        righe.append(_riga("Cassa", "Scadenzario", "dati mancanti", "nd", "Inserisci le fatture nel modulo Scadenzario"))
+        cur[0] = "sc"
+        righe.append(R("Cassa", "Scadenzario", "dati mancanti", "nd", "Inserisci le fatture nel modulo Scadenzario"))
 
     if m.get("cf"):
+        cur[0] = "cf"
         k = m["cf"]["kpi"]
         st5 = "bad" if k["primo_mese_fuori_fido"] else ("warn" if k["picco_fabbisogno"] > 0 else "ok")
-        righe.append(_riga("Liquidita' di cantiere", f"Picco di fabbisogno ({k['mesi']} mesi)", f"{fmt_num(k['picco_fabbisogno'])} €", st5,
+        righe.append(R("Liquidita' di cantiere", f"Picco di fabbisogno ({k['mesi']} mesi)", f"{fmt_num(k['picco_fabbisogno'])} €", st5,
                            f"Fido {fmt_num(k['fido'])} €" + (f" · fuori fido dal mese {k['primo_mese_fuori_fido']}" if k["primo_mese_fuori_fido"] else "")))
         if st5 == "bad":
             azioni.append(("bad", f"Il portafoglio cantieri supera il fido dal mese {k['primo_mese_fuori_fido']}: aumenta gli anticipi contrattuali o il fido (vedi Stress e Soluzioni nel Cash Flow)."))
         mg = k["margine_lordo_pct"]
         st6 = "ok" if mg >= s["margine_target"] else ("warn" if mg >= s["margine_target"] - 5 else "bad")
-        righe.append(_riga("Margine", "Margine lordo del portafoglio cantieri", f"{fmt_num(mg, 1)}%", st6, f"Obiettivo {fmt_num(s['margine_target'], 0)}% · {fmt_num(k['margine_lordo'])} €"))
+        righe.append(R("Margine", "Margine lordo del portafoglio cantieri", f"{fmt_num(mg, 1)}%", st6, f"Obiettivo {fmt_num(s['margine_target'], 0)}% · {fmt_num(k['margine_lordo'])} €"))
         if st6 != "ok":
             azioni.append((st6, "Il margine del portafoglio e' sotto l'obiettivo: rivedi prezzi, costi o mix di cantieri."))
         st7 = "ok" if k["margine_netto"] >= 0 else "bad"
-        righe.append(_riga("Margine", "Margine dopo i costi generali", f"{fmt_num(k['margine_netto'])} €", st7, "Nell'orizzonte considerato"))
+        righe.append(R("Margine", "Margine dopo i costi generali", f"{fmt_num(k['margine_netto'])} €", st7, "Nell'orizzonte considerato"))
     else:
-        righe.append(_riga("Liquidita' di cantiere", "Cash flow di cantiere", "dati mancanti", "nd", "Compila il modulo Cash Flow di cantiere"))
+        cur[0] = "cf"
+        righe.append(R("Liquidita' di cantiere", "Cash flow di cantiere", "dati mancanti", "nd", "Compila il modulo Cash Flow di cantiere"))
 
     if m.get("pv"):
+        cur[0] = "pv"
         k, q = m["pv"]["kpi"], m["pv"]["params"]
         mg = k["margine_pct"]
         mn = q["margine_min_pct"]
         st8 = "ok" if mg >= mn else ("warn" if mg >= 0.75 * mn else "bad")
-        righe.append(_riga("Margine", "Margine dell'ultimo preventivo", f"{fmt_num(mg, 1)}%", st8, f"Minimo accettabile {fmt_num(mn, 1)}% · imponibile {fmt_num(k['imponibile'])} €"))
+        righe.append(R("Margine", "Margine dell'ultimo preventivo", f"{fmt_num(mg, 1)}%", st8, f"Minimo accettabile {fmt_num(mn, 1)}% · imponibile {fmt_num(k['imponibile'])} €"))
         if st8 != "ok":
             azioni.append((st8, "Il preventivo in esame ha un margine sotto il minimo: riduci lo sconto o rinegozia i costi prima di offrire."))
 
     if m.get("credit"):
+        cur[0] = "credit"
         c = m["credit"]
-        righe.append(_riga("Rating", "Rating indicativo dell'azienda", c["classe"].split(" - ")[0].replace("FASCIA ", "").title(),
+        righe.append(R("Rating", "Rating indicativo dell'azienda", c["classe"].split(" - ")[0].replace("FASCIA ", "").title(),
                            {"VERDE": "ok", "GIALLA": "warn", "ROSSA": "bad"}.get(c["classe"].split(" - ")[0].replace("FASCIA ", ""), "nd"),
                            f"{c['punti']}/8 punti · PFN/EBITDA {fmt_num(c['pfn_ebitda'], 1)}x" + (" · dati di esempio" if c["demo"] else "")))
         if c["classe"].startswith("FASCIA ROSSA"):
@@ -277,48 +289,53 @@ def semafori(m, soglie=None):
         elif c["classe"].startswith("FASCIA GIALLA"):
             azioni.append(("warn", "Rating in fascia gialla: lavora su PFN/EBITDA o DSCR per migliorare la bancabilita'."))
     else:
-        righe.append(_riga("Rating", "Rating indicativo dell'azienda", "dati mancanti", "nd", "Salva una pratica nel modulo Credit Risk"))
+        cur[0] = "credit"
+        righe.append(R("Rating", "Rating indicativo dell'azienda", "dati mancanti", "nd", "Salva una pratica nel modulo Credit Risk"))
 
     if m.get("bp"):
+        cur[0] = "bp"
         k = m["bp"]["kpi"]
         d = k["dscr_min"]
         if d is None:
             st9 = "nd"
         else:
             st9 = "ok" if d >= s["dscr_ok"] else ("warn" if d >= s["dscr_warn"] else "bad")
-        righe.append(_riga("Piano", "DSCR minimo del business plan", "n.d." if d is None else f"{fmt_num(d, 2)}x", st9,
+        righe.append(R("Piano", "DSCR minimo del business plan", "n.d." if d is None else f"{fmt_num(d, 2)}x", st9,
                            f"Cassa minima {fmt_num(k['cassa_minima'])} €" + (f" · {m['bp']['nome']}" if m["bp"].get("nome") else "")))
         if st9 in ("warn", "bad"):
             azioni.append((st9, "Il business plan copre poco il servizio del debito: rivedi investimento, mutuo o ricavi."))
 
     if m.get("sl"):
+        cur[0] = "sl"
         k = m["sl"]["kpi"]
         gap = k["margine_atteso_pct"] - k["margine_finale_pct"]
         st10 = "bad" if k["margine_finale"] < 0 or gap > sl.TOLL_WARN else ("warn" if gap > sl.TOLL_OK else "ok")
-        righe.append(_riga("Margine", "Margine a finire delle commesse", f"{fmt_num(k['margine_finale_pct'], 1)}%", st10,
+        righe.append(R("Margine", "Margine a finire delle commesse", f"{fmt_num(k['margine_finale_pct'], 1)}%", st10,
                            f"Preventivato {fmt_num(k['margine_atteso_pct'], 1)}% · {k['n_commesse']} commesse, avanzamento {fmt_num(k['avanzamento'], 0)}%"))
         if st10 != "ok":
             azioni.append((st10, "Le commesse in corso chiuderanno con meno margine del preventivato: controlla costi e varianti non fatturate."))
         n_crit = k["n_bad"]
         st11 = "bad" if n_crit else ("warn" if k["n_warn"] else "ok")
-        righe.append(_riga("Commesse", "Commesse in sofferenza", str(n_crit), st11, f"{k['n_warn']} da tenere d'occhio su {k['n_commesse']}"))
+        righe.append(R("Commesse", "Commesse in sofferenza", str(n_crit), st11, f"{k['n_warn']} da tenere d'occhio su {k['n_commesse']}"))
         if n_crit:
             nomi = ", ".join(d["Commessa"] for d in m["sl"].get("commesse", []) if d["Stato"] == "bad")
             azioni.append(("bad", "Commesse critiche" + (f" ({nomi})" if nomi else "") + ": verifica subito costi a finire e rinegozia varianti o prezzi."))
         if k["da_fatturare"] > 0:
             st12 = "warn"
-            righe.append(_riga("Crediti", "Lavori eseguiti da fatturare", f"{fmt_num(k['da_fatturare'])} €", st12, "Emetti il prossimo SAL: è liquidità che aspetta"))
+            righe.append(R("Crediti", "Lavori eseguiti da fatturare", f"{fmt_num(k['da_fatturare'])} €", st12, "Emetti il prossimo SAL: è liquidità che aspetta"))
             azioni.append(("warn", f"Hai {fmt_num(k['da_fatturare'])} € di lavori eseguiti non ancora fatturati: emetti i SAL."))
 
     if m.get("rc"):
+        cur[0] = "rc"
         k = m["rc"]["kpi"]
         n_ap = max(k["n_aperte"], 1)
         strc = "bad" if (k["n_scadute"] >= 10 or k["n_scadute"] / n_ap > 0.3) else ("warn" if k["n_scadute"] or k["n_in_scadenza"] else "ok")
-        righe.append(_riga("Commerciale", "Pipeline commerciale (valore pesato)", f"{fmt_num(k['pipeline'])} €", strc,
+        righe.append(R("Commerciale", "Pipeline commerciale (valore pesato)", f"{fmt_num(k['pipeline'])} €", strc,
                            f"{k['n_aperte']} pratiche aperte per {fmt_num(k['valore_aperte'])} € · {k['n_offerte']} offerte · {k['n_scadute']} interventi scaduti"))
         if strc != "ok":
             azioni.append((strc, f"Registro commerciale: {k['n_scadute']} prossimi interventi sono scaduti e {k['n_in_scadenza']} stanno per scadere: aggiorna le pratiche o ricontatta i clienti."))
     if m.get("of"):
+        cur[0] = "of"
         o = m["of"]
         cov = o["cov"]
         if not o["n_richieste"]:
@@ -327,55 +344,62 @@ def semafori(m, soglie=None):
             sto = "ok" if cov["pct_approvato"] >= 99.5 else ("bad" if cov["rifiutato"] > 0 and cov["pct_potenziale"] < 99.5 else "warn")
             val = f"{fmt_num(cov['pct_approvato'], 1)}% coperto"
             nota = f"Approvato {fmt_num(cov['approvato'])} € · in istruttoria {fmt_num(cov['in_corso'])} € · rifiutato {fmt_num(cov['rifiutato'])} € su {fmt_num(cov['totale'])} €"
-        righe.append(_riga("Commerciale", "Copertura finanziaria dell'appalto" + (f" ({o['pratica']})" if o["pratica"] else ""), val, sto, nota))
+        righe.append(R("Commerciale", "Copertura finanziaria dell'appalto" + (f" ({o['pratica']})" if o["pratica"] else ""), val, sto, nota))
         if sto != "ok":
             azioni.append((sto, f"Continuità finanziaria: restano scoperti {fmt_num(cov['scoperto'])} € dell'appalto. " + ("Registra le richieste di finanziamento (Condominio e condomini)." if not o["n_richieste"] else "Segui le richieste in istruttoria e sostituisci quelle rifiutate.")))
         for a in cov["avvisi"][:3]:
             azioni.append(("warn", "Finanziamenti: " + a))
     if m.get("ga"):
+        cur[0] = "ga"
         k = m["ga"]["kpi"]
         stg = "bad" if k["scadute"] or k["n_bad"] else ("warn" if k["in_scadenza"] or k["doc_mancanti"] else "ok")
-        righe.append(_riga("Commerciale", "Gare in scadenza o in ritardo", str(k["in_scadenza"] + k["scadute"]), stg,
+        righe.append(R("Commerciale", "Gare in scadenza o in ritardo", str(k["in_scadenza"] + k["scadute"]), stg,
                            f"{k['n_aperte']} gare aperte · pipeline ponderata {fmt_num(k['ponderato'])} € · {k['doc_mancanti']} documenti mancanti"))
         if stg != "ok":
             azioni.append((stg, "Ci sono gare con scadenza vicina o superata, o documenti mancanti: completa le offerte in tempo."))
     if m.get("fo"):
+        cur[0] = "fo"
         k = m["fo"]["kpi"]
         stf = "bad" if k["doc_scaduti"] else ("warn" if k["doc_in_scadenza"] or k["sovrafatturati"] else "ok")
-        righe.append(_riga("Fornitori", "Documenti dei fornitori scaduti", str(k["doc_scaduti"]), stf, f"{k['doc_in_scadenza']} in scadenza · {k['forn_critici']} fornitori critici"))
+        righe.append(R("Fornitori", "Documenti dei fornitori scaduti", str(k["doc_scaduti"]), stf, f"{k['doc_in_scadenza']} in scadenza · {k['forn_critici']} fornitori critici"))
         if stf != "ok":
             azioni.append((stf, "Chiedi il rinnovo dei documenti scaduti o in scadenza (DURC, assicurazioni) ai fornitori."))
     if m.get("sx"):
+        cur[0] = "sx"
         k = m["sx"]["kpi"]
         sts = "bad" if k["cantieri_a_rischio"] else ("warn" if k["in_scadenza"] else "ok")
-        righe.append(_riga("Sicurezza", "Cantieri con documenti o formazioni non in regola", str(k["cantieri_a_rischio"]), sts,
+        righe.append(R("Sicurezza", "Cantieri con documenti o formazioni non in regola", str(k["cantieri_a_rischio"]), sts,
                            f"{k['persone_non_in_regola']} persone non in regola · {k['doc_mancanti']} documenti mancanti"))
         if sts != "ok":
             azioni.append((sts, "Sicurezza: aggiorna formazioni, idoneità e documenti di cantiere in scadenza o mancanti (verifica con il RSPP)."))
     if m.get("mz"):
+        cur[0] = "mz"
         k = m["mz"]["kpi"]
         stm = "bad" if k["scad_scadute"] else ("warn" if k["scad_in_arrivo"] or k["sottoutilizzati"] else "ok")
-        righe.append(_riga("Mezzi", "Scadenze dei mezzi superate", str(k["scad_scadute"]), stm, f"{k['scad_in_arrivo']} in arrivo · fissi non assorbiti {fmt_num(k['fissi_non_assorbiti'])} €"))
+        righe.append(R("Mezzi", "Scadenze dei mezzi superate", str(k["scad_scadute"]), stm, f"{k['scad_in_arrivo']} in arrivo · fissi non assorbiti {fmt_num(k['fissi_non_assorbiti'])} €"))
         if stm != "ok":
             azioni.append((stm, "Parco mezzi: rinnova le scadenze e valuta i mezzi poco usati (costi fissi non coperti)."))
     if m.get("og"):
+        cur[0] = "og"
         k = m["og"]["kpi"]
         sto = "bad" if k["mesi_sovraccarico"] else ("warn" if k["mesi_scarico"] else "ok")
-        righe.append(_riga("Organico", "Mesi in sovraccarico", str(k["mesi_sovraccarico"]), sto, f"saturazione media {fmt_num(k['saturazione_media'], 0)}% · {k['mesi_scarico']} mesi con poco lavoro"))
+        righe.append(R("Organico", "Mesi in sovraccarico", str(k["mesi_sovraccarico"]), sto, f"saturazione media {fmt_num(k['saturazione_media'], 0)}% · {k['mesi_scarico']} mesi con poco lavoro"))
         if sto != "ok":
             azioni.append((sto, "Organico: nei mesi di sovraccarico servono più risorse; nei mesi scarichi ci sono ore ferme da riempire."))
 
     if m.get("gt"):
+        cur[0] = "gt"
         k = m["gt"]["kpi"]
         stg = "bad" if k["fasi_critiche"] else ("warn" if k["fasi_in_ritardo"] or k["fasi_in_scadenza"] else "ok")
-        righe.append(_riga("Cantieri", "Cantieri in ritardo sul cronoprogramma", str(k["commesse_in_ritardo"]), stg,
+        righe.append(R("Cantieri", "Cantieri in ritardo sul cronoprogramma", str(k["commesse_in_ritardo"]), stg,
                            f"{k['fasi_critiche']} fasi critiche · ritardo massimo {k['ritardo_max_gg']} giorni"))
         if stg != "ok":
             azioni.append((stg, "Cronoprogramma: recupera le fasi in ritardo o ripianifica le date dei cantieri in ritardo."))
     if m.get("rp"):
+        cur[0] = "rp"
         k = m["rp"]["kpi"]
         str_ = "bad" if (k["segn_alte"] or k["segn_scadute"]) else ("warn" if k["cantieri_senza_rapporto"] or k["segn_aperte"] else "ok")
-        righe.append(_riga("Cantieri", "Segnalazioni gravi o scadute", str(k["segn_alte"] + k["segn_scadute"]), str_,
+        righe.append(R("Cantieri", "Segnalazioni gravi o scadute", str(k["segn_alte"] + k["segn_scadute"]), str_,
                            f"{k['segn_aperte']} segnalazioni aperte · {k['cantieri_senza_rapporto']} cantieri senza rapportino"))
         if str_ != "ok":
             azioni.append((str_, "Cantieri: chiudi le segnalazioni gravi o scadute e fatti mandare i rapportini mancanti."))

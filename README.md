@@ -202,3 +202,8 @@ Nuovo strumento (sigla `of`, gruppo «Offerte e commesse») che segue la catena 
 - **Rotella di caricamento**: l'emblema Aetheris gira al centro dello schermo quando la suite sta lavorando (compare solo se l'attesa supera circa un terzo di secondo, non blocca i clic; sostituisce l'omino «Running» di Streamlit). File `aetheris_icona.png`.
 - **Velocità**: le connessioni al database (Neon) restano aperte e si riusano invece di riaprirne una a ogni lettura (il Cruscotto ne apriva fino a 53 per ogni clic, ora 0-1); le liste dei salvataggi, i permessi e l'indice dei prezziari si ricordano per pochi secondi e si aggiornano a ogni salvataggio; i grafici con gli stessi dati non si ridisegnano; google-genai si carica solo quando si usa l'IA; i caratteri di Google non rallentano più lo stile.
 - L'orologio della barra laterale usa `st.iframe` (il vecchio componente è deprecato).
+
+## Cruscotto cliccabile (3.6.1)
+- Ogni casella del Cruscotto ha sotto un pulsante: «Vai al problema →» (rosse e arancioni), «Compila i dati →» (senza dati), «Apri →» (verdi). Apre lo strumento da cui arriva il dato, con il salvataggio che il Cruscotto sta usando già caricato, e in cima compaiono «← Torna al Cruscotto» e la riga con il semaforo da cui si arriva.
+- Corretto un errore che compariva tornando in uno strumento (per esempio il Cruscotto) dopo averne visitato un altro: i pulsanti non vengono più ripristinati come se fossero valori.
+- Cambiando strumento la pagina riparte dall'alto.

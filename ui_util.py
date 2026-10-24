@@ -124,6 +124,19 @@ def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente="
     """Riquadro 'Salva / apri' per un modulo. `raccogli()` -> payload (dict JSON); `applica(payload, nome)` ripristina i dati."""
     import storage
     audit = audit or (lambda *a, **k: None)
+    ap = ss.get("_apri_pratica")
+    if ap and ap.get("modulo") == modulo and ap.get("nome"):          # arrivo dal clic su un semaforo del Cruscotto: apre subito quel salvataggio
+        ss.pop("_apri_pratica", None)
+        try:
+            payload = storage.carica_pratica(ap["nome"], modulo=modulo)
+            meta = storage.meta_pratica(ap["nome"], modulo=modulo) if payload else None
+        except Exception:
+            payload, meta = None, None
+        if payload:
+            ss[f"_base_{modulo}"] = {"nome": ap["nome"], "agg": meta["aggiornato"] if meta else ""}
+            ss.pop(f"_conf_{modulo}", None)
+            applica(payload, ap["nome"])
+            st.rerun()
     with st.expander(f"💾 Salva e riapri {etichetta}"):
         if not storage.database_persistente():
             st.warning("Database esterno non configurato: i salvataggi si perdono al riavvio dell'app (vedi DATABASE_URL nei Secrets).")

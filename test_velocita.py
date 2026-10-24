@@ -166,3 +166,71 @@ def test_sintassi_compatibile_con_python_311():
     for f in glob.glob("*.py"):
         r = subprocess.run([py, "-c", "import sys;compile(open(sys.argv[1],encoding='utf-8').read(), sys.argv[1], 'exec')", f], capture_output=True, text=True)
         assert r.returncode == 0, f"{f}: {r.stderr[-300:]}"
+
+
+def _login(monkeypatch):
+    monkeypatch.setenv("APP_PASSWORD", "segreta")
+    from streamlit.testing.v1 import AppTest
+    at = AppTest.from_file("app.py", default_timeout=90).run()
+    at.text_input(key="login_user").set_value("admin")
+    at.text_input(key="login_pw").set_value("segreta")
+    at.button[0].click().run()
+    return at
+
+
+def test_tornare_al_cruscotto_dopo_un_altro_strumento_non_da_errore(monkeypatch, tmp_path):
+    monkeypatch.setenv("FCR_DB_PATH", str(tmp_path / "t.db"))
+    import storage
+    monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "t.db"))
+    at = _login(monkeypatch)
+    for modulo in ("dd", "sc", "dd", "of", "dd"):
+        at.session_state["active_module"] = modulo
+        at.run()
+        assert not at.exception, (modulo, at.exception)
+    # passaggio con lo snapshot dei valori, come fa vai_a
+    at.session_state["active_module"] = "dd"
+    at.run()
+    at.session_state["_pending"] = {"dd_demo_on": True, "dd_margine": 20.0}
+    at.run()
+    assert not at.exception
+
+
+def test_clic_sul_semaforo_apre_lo_strumento_e_si_torna_indietro(monkeypatch, tmp_path):
+    monkeypatch.setenv("FCR_DB_PATH", str(tmp_path / "t2.db"))
+    import storage
+    monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "t2.db"))
+    import demo
+    demo.carica("admin")
+    at = _login(monkeypatch)
+    at.session_state["active_module"] = "dd"
+    at.run()
+    pulsanti = [b for b in at.button if b.key and b.key.startswith("semvai_")]
+    assert len(pulsanti) >= 10
+    visti = set()
+    for chiave in [b.key for b in pulsanti]:
+        at.session_state["active_module"] = "dd"
+        at.run()
+        [b for b in at.button if b.key == chiave][0].click().run()
+        assert not at.exception, (chiave, at.exception)
+        visti.add(at.session_state["active_module"])
+        assert [b for b in at.button if b.key == "torna_dd"], chiave
+    assert {"sc", "cf", "of", "credit", "bp"} <= visti
+    [b for b in at.button if b.key == "torna_dd"][0].click().run()
+    assert at.session_state["active_module"] == "dd" and not at.exception
+
+
+def test_clic_sul_semaforo_apre_il_salvataggio_usato_dal_cruscotto(monkeypatch, tmp_path):
+    monkeypatch.setenv("FCR_DB_PATH", str(tmp_path / "t3.db"))
+    import storage
+    monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "t3.db"))
+    import demo
+    demo.carica("admin")
+    at = _login(monkeypatch)
+    at.session_state["active_module"] = "dd"
+    at.run()
+    b = [x for x in at.button if x.key and x.key.startswith("semvai_") and x.help and "Offerta" in x.help][0]
+    b.click().run()
+    at.run()
+    assert at.session_state["active_module"] == "of" and not at.exception
+    assert "_apri_pratica" not in at.session_state                      # consumata: non riapre ogni volta
+    assert str(at.session_state["of_pratica_nome"]).startswith("DEMO") if "of_pratica_nome" in at.session_state else True

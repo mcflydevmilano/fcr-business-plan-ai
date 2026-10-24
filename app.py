@@ -15,9 +15,11 @@ Secrets / variabili d'ambiente:
     GEMINI_MODEL     (opzionale, default: gemini-3.8-flash)
     FCR_DB_PATH      (opzionale, percorso del database delle pratiche)
 """
+import html
 import json
 import math
 import os
+import re
 
 import pandas as pd
 import streamlit as st
@@ -371,6 +373,48 @@ def imposta_commesse(df):
     ss["commesse"] = d
 
 
+_JS_SCROLL_SU = """
+export default function(c) {
+  const su = () => { const m = document.querySelector('[data-testid="stMain"]'); if (m) m.scrollTo(0, 0); window.scrollTo(0, 0); };
+  su();
+  [150, 500, 1200, 2500].forEach(t => setTimeout(su, t));
+}
+"""
+
+
+@st.cache_resource(show_spinner=False)
+def _chiavi_pulsanti():
+    """Chiavi (esatte e prefissi di quelle con f-string) dei pulsanti dichiarati nel codice: i loro valori non vanno mai ripristinati."""
+    import glob
+    esatte, prefissi = set(), set()
+    for f in glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), "*.py")):
+        if os.path.basename(f).startswith("test_"):
+            continue
+        try:
+            src = open(f, encoding="utf-8").read()
+        except OSError:
+            continue
+        for mm in re.finditer(r"(?:button|form_submit_button|download_button)\(", src):
+            i, prof = mm.end(), 1
+            while i < len(src) and prof:
+                prof += (src[i] == "(") - (src[i] == ")")
+                i += 1
+            chiamata = src[mm.end():i]
+            for km in re.finditer(r"\bkey\s*=\s*(f?)([\"'])(.*?)\2", chiamata):
+                f_, _q, testo = km.groups()
+                if f_ and "{" in testo:
+                    prefissi.add(testo.split("{", 1)[0])
+                else:
+                    esatte.add(testo)
+    prefissi.discard("")
+    return esatte, tuple(prefissi)
+
+
+def _e_pulsante(chiave):
+    esatte, prefissi = _chiavi_pulsanti()
+    return isinstance(chiave, str) and (chiave in esatte or (bool(prefissi) and chiave.startswith(prefissi)))
+
+
 if "financial_data" not in ss:
     ss["financial_data"] = dict(DATI_DEFAULT)
     ss["dati_demo"] = True
@@ -383,7 +427,12 @@ if "financial_data" not in ss:
 # Valori di widget da applicare PRIMA che i widget vengano creati (carica pratica / scenario)
 if "_pending" in ss:
     for _k, _v in ss.pop("_pending").items():
-        ss[_k] = _v
+        if _e_pulsante(_k):                    # i pulsanti non hanno un valore da ripristinare: assegnarlo fa dare errore a Streamlit
+            continue
+        try:
+            ss[_k] = _v
+        except Exception:
+            pass
 
 dati = ss["financial_data"]
 leve = {k: ss.get(k, 0) for k in LEVE_DEFAULT}
@@ -439,6 +488,17 @@ pwa.inietta()
 pausa.inietta()
 if ss.get("_set_cookie"):
     sessione.scrivi_cookie(ss.pop("_set_cookie"), ORE_SESSIONE)
+_ap = ss.get("_apri_pratica")                                  # apertura da un semaforo del Cruscotto: vale per lo strumento di destinazione e per pochi giri
+if _ap:
+    _ap["giri"] = _ap.get("giri", 0) + 1
+    if _ap.get("modulo") != MODULO or _ap["giri"] > 3:
+        ss.pop("_apri_pratica", None)
+if ss.get("_scroll_su"):                                          # cambio di strumento: la pagina riparte dall'alto (altrimenti resta alla posizione di prima)
+    try:
+        st.components.v2.component("fcr_scroll_su", js=_JS_SCROLL_SU)(key=f"fcr_scroll_su_{ss['_scroll_su']}")
+    except Exception:
+        pass
+    ss["_scroll_su"] = 0
 PERM = permessi.carica_config()
 CONSENTITI = permessi.moduli_consentiti(ss["utente"], PERM)
 PROFILO = "accesso completo" if ss["utente"].get("ruolo") == "admin" else permessi.profilo_di(ss["utente"], PERM)
@@ -451,8 +511,9 @@ def vai_a(modulo):
         return
     if MODULO in PREFISSI_STATO:
         pf = PREFISSI_STATO[MODULO]
-        ss["_snap_" + MODULO] = {k: v for k, v in ss.items() if isinstance(k, str) and k.startswith(pf)}
+        ss["_snap_" + MODULO] = {k: v for k, v in ss.items() if isinstance(k, str) and k.startswith(pf) and not _e_pulsante(k)}
     ss["active_module"] = modulo
+    ss["_scroll_su"] = ss.get("_scroll_su", 0) + 1
     if modulo in PREFISSI_STATO and ss.get("_snap_" + modulo):
         ss["_pending"] = dict(ss["_snap_" + modulo])
     st.rerun()
@@ -536,10 +597,28 @@ with st.sidebar:
 if MODULO is not None:
     if st.button("🏠 Hub", key="hub_top"):                    # visibile solo su telefono (la barra laterale e' chiusa)
         vai_a(None)
+if MODULO in (None, "dd"):
+    ss.pop("_torna_dd", None)
+elif ss.get("_torna_dd"):
+    _td = ss["_torna_dd"]
+    _c1, _c2 = st.columns([1, 3])
+    if _c1.button("← Torna al Cruscotto", key="torna_dd", width="stretch"):
+        ss.pop("_torna_dd", None)
+        vai_a("dd")
+    _c2.markdown(f"<div class='sem-torna'>🚦 Arrivi dal Cruscotto: <b>{html.escape(str(_td['indicatore']))}</b> — {html.escape(str(_td['valore']))}. {html.escape(str(_td['nota']))}</div>",
+                 unsafe_allow_html=True)
 
 if MODULO == "credit":
     with st.sidebar:
         st.markdown("#### 📁 Pratica")
+        _ap2 = ss.pop("_apri_pratica", None) if (ss.get("_apri_pratica") or {}).get("modulo") == "credit" else None
+        if _ap2 and _ap2.get("nome"):                                  # arrivo dal semaforo del Rating: apre il salvataggio usato dal Cruscotto
+            _pl = storage.carica_pratica(_ap2["nome"])
+            if _pl:
+                _meta2 = storage.meta_pratica(_ap2["nome"])
+                ss["_base_credit"] = {"nome": _ap2["nome"], "agg": _meta2["aggiornato"] if _meta2 else ""}
+                applica_payload(_pl, _ap2["nome"])
+                st.rerun()
         st.text_input("Nome pratica", key="pratica_nome", placeholder="es. Rossi Costruzioni 2025")
         if st.button("💾 Salva pratica", width="stretch", disabled=ss["utente"]["ruolo"] == "lettore"):
             try:
