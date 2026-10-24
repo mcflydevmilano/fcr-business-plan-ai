@@ -79,6 +79,18 @@ def metriche_rc(payload, oggi=None):
     return {"kpi": out["kpi"], "avvisi": out["avvisi"], "da_fare": out["da_fare"], "per_commerciale": out["per_commerciale"]}
 
 
+def metriche_of(payload, oggi=None):
+    """Offerta e finanziamenti: copertura finanziaria dell'appalto (richieste al Condominio e ai condomini)."""
+    import of
+    ctx = of.contesto(payload)
+    if not ctx["opzioni"]:
+        return None
+    cov = ctx["copertura"]
+    n_rich = sum(v["n"] for v in cov["tipi"].values())
+    da_seguire = [r for r in of.normalizza_fin(payload.get("richieste")) if r["Stato"] in of.IN_CORSO]
+    return {"cov": cov, "n_richieste": n_rich, "da_seguire": da_seguire, "pratica": (payload.get("pratica") or {}).get("cod") or (payload.get("pratica") or {}).get("condominio") or ""}
+
+
 def metriche_ga(payload, oggi=None):
     gare, _ = ga.normalizza_gare(payload.get("gare"))
     if not gare:
@@ -306,6 +318,20 @@ def semafori(m, soglie=None):
                            f"{k['n_aperte']} pratiche aperte per {fmt_num(k['valore_aperte'])} € · {k['n_offerte']} offerte · {k['n_scadute']} interventi scaduti"))
         if strc != "ok":
             azioni.append((strc, f"Registro commerciale: {k['n_scadute']} prossimi interventi sono scaduti e {k['n_in_scadenza']} stanno per scadere: aggiorna le pratiche o ricontatta i clienti."))
+    if m.get("of"):
+        o = m["of"]
+        cov = o["cov"]
+        if not o["n_richieste"]:
+            sto, val, nota = "warn", "0 richieste", "Nessuna richiesta di finanziamento registrata per questo appalto"
+        else:
+            sto = "ok" if cov["pct_approvato"] >= 99.5 else ("bad" if cov["rifiutato"] > 0 and cov["pct_potenziale"] < 99.5 else "warn")
+            val = f"{fmt_num(cov['pct_approvato'], 1)}% coperto"
+            nota = f"Approvato {fmt_num(cov['approvato'])} € · in istruttoria {fmt_num(cov['in_corso'])} € · rifiutato {fmt_num(cov['rifiutato'])} € su {fmt_num(cov['totale'])} €"
+        righe.append(_riga("Commerciale", "Copertura finanziaria dell'appalto" + (f" ({o['pratica']})" if o["pratica"] else ""), val, sto, nota))
+        if sto != "ok":
+            azioni.append((sto, f"Continuità finanziaria: restano scoperti {fmt_num(cov['scoperto'])} € dell'appalto. " + ("Registra le richieste di finanziamento (Condominio e condomini)." if not o["n_richieste"] else "Segui le richieste in istruttoria e sostituisci quelle rifiutate.")))
+        for a in cov["avvisi"][:3]:
+            azioni.append(("warn", "Finanziamenti: " + a))
     if m.get("ga"):
         k = m["ga"]["kpi"]
         stg = "bad" if k["scadute"] or k["n_bad"] else ("warn" if k["in_scadenza"] or k["doc_mancanti"] else "ok")
@@ -370,7 +396,7 @@ def conteggio(righe):
     return c
 
 
-MODULI_METRICHE = ("sc", "cf", "pv", "sl", "rc", "ga", "fo", "sx", "mz", "og", "rp", "gt", "credit", "bp")
+MODULI_METRICHE = ("sc", "cf", "pv", "sl", "rc", "ga", "fo", "sx", "mz", "og", "rp", "gt", "of", "credit", "bp")
 
 
 def metriche_da_payload(m, payload, oggi=None):
@@ -422,6 +448,10 @@ def dettagli(m):
                  for d in rc_.get("da_fare") or [] if d["Stato_scad"] == "bad"][:30]
         blocco("rc_scaduti", "bad" if len(righe) >= 10 else "warn", "Pratiche commerciali con intervento scaduto", "Commerciale", "rc",
                ["Pratica", "Indirizzo", "Chi", "Scadenza", "Giorni di ritardo"], righe)
+    of_ = m.get("of")
+    if of_ and of_["da_seguire"]:
+        righe = [{"Tipo": r["Tipo"], "Richiedente": r["Richiedente"] or r["Unita"], "Istituto": r["Istituto"], "Stato": r["Stato"], "Richiesto (€)": round(r["Richiesto"], 2)} for r in of_["da_seguire"]][:40]
+        blocco("of_richieste", "warn", "Richieste di finanziamento da seguire", "Commerciale", "of", ["Tipo", "Richiedente", "Istituto", "Stato", "Richiesto (€)"], righe)
     sl_ = m.get("sl")
     if sl_:
         righe = [{"Commessa": c["Commessa"], "Cliente": c.get("Cliente", ""), "Situazione": "critica" if c["Stato"] == "bad" else "da tenere d'occhio"}

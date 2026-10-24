@@ -5,6 +5,7 @@ import guida
 import bp_ui
 import cf_ui
 import dd
+import demo as demo_mod
 import dd_report
 import pv_ui
 import sc_ui
@@ -28,13 +29,13 @@ ss = st.session_state
 
 MODULI = [("sc", "Scadenzario", "Cassa, crediti e debiti"), ("cf", "Cash Flow di cantiere", "Liquidità e margine dei cantieri"),
           ("pv", "Computo e Preventivo", "Margine del preventivo"), ("credit", "Credit Risk & Rating", "Rating indicativo"),
-          ("bp", "Business Plan Studio", "DSCR del piano"), ("sl", "SAL e contabilità lavori", "Margine a finire delle commesse"), ("rc", "Registro commerciale", "Pipeline e interventi scaduti"), ("ga", "Gare e offerte", "Scadenze delle gare"), ("fo", "Fornitori", "Documenti in scadenza"),
+          ("bp", "Business Plan Studio", "DSCR del piano"), ("sl", "SAL e contabilità lavori", "Margine a finire delle commesse"), ("rc", "Registro commerciale", "Pipeline e interventi scaduti"), ("of", "Offerta e finanziamenti", "Copertura finanziaria dell'appalto"), ("ga", "Gare e offerte", "Scadenze delle gare"), ("fo", "Fornitori", "Documenti in scadenza"),
           ("sx", "Sicurezza", "Formazioni e documenti di cantiere"), ("mz", "Parco mezzi", "Scadenze e utilizzo"), ("og", "Organico", "Carico di lavoro"), ("rp", "Rapportini di cantiere", "Segnalazioni e rapportini"), ("gt", "Cronoprogramma", "Ritardi sulle fasi dei cantieri")]
 SESSIONE = "Dati della sessione"
 NESSUNO = "Non usare"
 
 
-_SESS_KEY = {"rc": "rc_df", "ga": "ga_gare", "fo": "fo_doc", "sx": "sx_pers", "mz": "mz_mezzi", "og": "og_ris", "rp": "rp_rapp", "gt": "gt_fasi", "lg": "lg_riserve"}
+_SESS_KEY = {"rc": "rc_df", "of": "of_voci", "ga": "ga_gare", "fo": "fo_doc", "sx": "sx_pers", "mz": "mz_mezzi", "og": "og_ris", "rp": "rp_rapp", "gt": "gt_fasi", "lg": "lg_riserve"}
 
 
 def _sessione_disponibile(m):
@@ -54,12 +55,12 @@ def _sessione_disponibile(m):
 
 
 def _payload_sessione(m):
-    return {"sc": sc_ui._raccogli, "cf": cf_ui._raccogli, "pv": pv_ui._raccogli, "bp": bp_ui._raccogli, "sl": sl_ui._raccogli, "rc": __import__("rc_ui")._raccogli, "ga": ga_ui._raccogli, "fo": fo_ui._raccogli, "sx": sx_ui._raccogli, "mz": mz_ui._raccogli, "og": og_ui._raccogli, "rp": rp_ui._dati, "gt": gt_ui._raccogli, "lg": __import__("lg_ui")._raccogli}[m]()
+    return {"sc": sc_ui._raccogli, "cf": cf_ui._raccogli, "pv": pv_ui._raccogli, "bp": bp_ui._raccogli, "sl": sl_ui._raccogli, "rc": __import__("rc_ui")._raccogli, "of": __import__("of_ui")._raccogli, "ga": ga_ui._raccogli, "fo": fo_ui._raccogli, "sx": sx_ui._raccogli, "mz": mz_ui._raccogli, "og": og_ui._raccogli, "rp": rp_ui._dati, "gt": gt_ui._raccogli, "lg": __import__("lg_ui")._raccogli}[m]()
 
 
-def _elenco_salvati(m):
+def _elenco_salvati(m, demo=False):
     try:
-        return storage.elenca_pratiche(modulo=m)
+        return storage.elenca_pratiche(modulo=m, demo=demo)
     except Exception:
         return []
 
@@ -74,7 +75,7 @@ def _calcola(m, payload):
             return dd.metriche_pv(payload)
         if m == "sl":
             return dd.metriche_sl(payload)
-        if m in ("rc", "ga", "fo", "sx", "mz", "og", "rp", "gt"):
+        if m in ("rc", "of", "ga", "fo", "sx", "mz", "og", "rp", "gt"):
             return getattr(dd, "metriche_" + m)(payload)
         if m == "credit":
             return dd.metriche_credit(payload)
@@ -124,19 +125,19 @@ def _da_fare(blocchi, vai_a, audit):
         st.caption("Gli avvisi vanno sul canale Slack e/o sull'email del team (gli stessi del riepilogo del mattino). Nel messaggio c'è l'elenco con i nomi.")
         cols = st.columns(len(squadre) + 1)
         for col, s in zip(cols, squadre):
-            if col.button(f"📨 Avvisa {s}", key=f"avv_{s}", disabled=lettore, use_container_width=True):
+            if col.button(f"📨 Avvisa {s}", key=f"avv_{s}", disabled=lettore, width="stretch"):
                 _avvisa(blocchi, s, audit)
-        if cols[-1].button("📨 Avvisa tutti", key="avv_tutti", disabled=lettore, use_container_width=True):
+        if cols[-1].button("📨 Avvisa tutti", key="avv_tutti", disabled=lettore, width="stretch"):
             _avvisa(blocchi, None, audit)
     nomi_mod = {m: n for m, n, _ in MODULI}
     for b in blocchi:
         ico = "🔴" if b["gravita"] == "bad" else "🟡"
         with st.expander(f"{ico} {b['titolo']} · {len(b['righe'])}  —  a cura di: {b['squadra']}", expanded=b["gravita"] == "bad"):
-            st.dataframe(pd.DataFrame(b["righe"], columns=b["colonne"]), hide_index=True, use_container_width=True)
+            st.dataframe(pd.DataFrame(b["righe"], columns=b["colonne"]), hide_index=True, width="stretch")
             a, c = st.columns(2)
-            if vai_a and a.button(f"Apri {nomi_mod.get(b['modulo'], b['modulo'])}  →", key=f"vai_{b['id']}", use_container_width=True):
+            if vai_a and a.button(f"Apri {nomi_mod.get(b['modulo'], b['modulo'])}  →", key=f"vai_{b['id']}", width="stretch"):
                 vai_a(b["modulo"])
-            if c.button(f"📨 Avvisa solo per questa lista", key=f"avvb_{b['id']}", disabled=lettore, use_container_width=True):
+            if c.button(f"📨 Avvisa solo per questa lista", key=f"avvb_{b['id']}", disabled=lettore, width="stretch"):
                 _avvisa([b], b["squadra"], audit)
 
 
@@ -159,12 +160,21 @@ def render(fcr_uri, audit=None, vai_a=None):
     if _fermi:
         st.warning("**Attenzione: alcuni dati sono vecchi.** I semafori sotto si basano su dati che non vengono salvati da tempo:  \n" + "  \n".join("• " + freschezza.frase(r) for r in _fermi[:8]))
     metriche, fonti = {}, {}
+    demo_presenti = demo_mod.presenti()
+    n_veri = sum(1 for m, _, _ in MODULI if _elenco_salvati(m))
+    modo_demo = False
+    if demo_presenti:
+        modo = st.radio("Dati mostrati", ["Dati veri", "🎬 Dati dimostrativi"], index=1 if n_veri < 3 else 0, horizontal=True, key="dd_modo",
+                        help="I dati dimostrativi sono fittizi: servono a vedere come funziona il cruscotto. Non toccano i dati veri.")
+        modo_demo = modo.startswith("🎬")
+        if modo_demo:
+            st.info("🎬 **Stai vedendo dati dimostrativi (fittizi).** Servono a mostrare come funziona il cruscotto: per i dati dell'azienda scegli «Dati veri» qui sopra.")
     with st.expander("🔌 Fonti dei dati", expanded=False):
         st.caption("Per ogni modulo scegli i dati da usare: quelli su cui stai lavorando ora, un salvataggio, oppure nessuno.")
         for m, nome, _ in MODULI:
-            salvati = _elenco_salvati(m)
-            opz = ([SESSIONE] if _sessione_disponibile(m) else []) + [p["nome"] for p in salvati] + [NESSUNO]
-            scelta = st.selectbox(nome, opz, key=f"dd_fonte_{m}")
+            salvati = _elenco_salvati(m, modo_demo)
+            opz = ([SESSIONE] if _sessione_disponibile(m) and not modo_demo else []) + [p["nome"] for p in salvati] + [NESSUNO]
+            scelta = st.selectbox(nome, opz, key=f"dd_fonte_{m}_{'d' if modo_demo else 'v'}")
             if scelta == NESSUNO:
                 fonti[nome] = "non usato"
                 continue
@@ -182,6 +192,22 @@ def render(fcr_uri, audit=None, vai_a=None):
             marg = a.number_input("Margine lordo obiettivo (%)", 0.0, 80.0, dd.DD_DEFAULT["margine_target"], 1.0, key="dd_margine")
             sw = b.number_input("Crediti scaduti: giallo oltre (%)", 0.0, 100.0, dd.DD_DEFAULT["scaduto_warn"], 1.0, key="dd_scw")
             sb = c.number_input("Crediti scaduti: rosso oltre (%)", 0.0, 100.0, dd.DD_DEFAULT["scaduto_bad"], 1.0, key="dd_scb")
+    if (ss.get("utente") or {}).get("ruolo") == "admin" and not sola_lettura():
+        with st.expander("🎬 Dati dimostrativi (per far vedere la suite)"):
+            st.caption("Carica un esempio compilato per ogni strumento, con date aggiornate a oggi. **Non tocca i dati veri**: i salvataggi di prova si chiamano «DEMO - Esempio» e non entrano nel riepilogo email, nella ricerca o nei permessi.")
+            c1, c2 = st.columns(2)
+            if c1.button("🎬 Carica i dati dimostrativi", key="dd_demo_on", width="stretch"):
+                fatti = demo_mod.carica((ss.get("utente") or {}).get("username", ""))
+                audit("demo_caricati", ", ".join(fatti))
+                st.toast(f"Caricati {len(fatti)} strumenti di prova", icon="🎬")
+                st.rerun()
+            if c2.button("🧹 Togli i dati dimostrativi", key="dd_demo_off", width="stretch", disabled=not demo_presenti):
+                n = demo_mod.rimuovi()
+                audit("demo_rimossi", str(n))
+                st.toast(f"Tolti {n} salvataggi di prova", icon="🧹")
+                st.rerun()
+            if demo_presenti:
+                st.caption("Presenti per: " + ", ".join(sorted(demo_presenti)) + ". In ogni strumento, nel riquadro «Salva e riapri», spunta «Mostra anche i dati dimostrativi» per aprirli.")
     soglie = {"margine_target": ss.get("dd_margine", dd.DD_DEFAULT["margine_target"]), "scaduto_warn": ss.get("dd_scw", dd.DD_DEFAULT["scaduto_warn"]),
               "scaduto_bad": ss.get("dd_scb", dd.DD_DEFAULT["scaduto_bad"])}
     righe, gen, azioni = dd.semafori(metriche, soglie)
@@ -189,6 +215,7 @@ def render(fcr_uri, audit=None, vai_a=None):
     titolo = {"ok": "Tutto sotto controllo", "warn": "Alcuni punti di attenzione", "bad": "Servono interventi", "nd": "Dati insufficienti"}[gen]
     st.markdown(theme.semaforo_generale(gen, titolo, f"{c['ok']} in regola · {c['warn']} da tenere d'occhio · {c['bad']} {'critico' if c['bad'] == 1 else 'critici'} · {c['nd']} senza dati"), unsafe_allow_html=True)
     st.markdown(theme.semafori_html(righe), unsafe_allow_html=True)
+    st.caption("🟢 in regola · 🟡 da tenere d'occhio · 🔴 serve un intervento · ⚪ mancano i dati. Sotto, «Cosa fare» dice cosa decidere e «Chi contattare» chi chiamare.")
     st.subheader("Cosa fare")
     if azioni:
         for g, t in azioni:

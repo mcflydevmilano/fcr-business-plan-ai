@@ -184,3 +184,15 @@ Strumento «Prezziario» (gruppo *Offerte e commesse*): carica un listino Excel 
 ## Registro commerciale (3.4.0)
 Strumento nuovo nel gruppo «Offerte e commesse». Importa il tuo Excel (fogli Registro ed Eliminati), mostra le pratiche per stato (S0-S9) e per commerciale, il valore in corso, la pipeline pesata (valore × % di successo, ricalcolata dall'app), i prossimi interventi scaduti o in arrivo e permette ricerca e filtri. Si salva e si riapre come gli altri strumenti; l'Excel si può riscaricare. Lo ricevono i profili presidente, direzione e commerciale. Le pratiche eliminate restano nel registro con «Archivio = Eliminata».
 Nei Secrets si può mettere `ESEMPI_ATTIVI = "1"` solo per riavere i dati di esempio (di norma gli strumenti partono vuoti).
+
+## Offerta e finanziamenti (3.5.0)
+
+Nuovo strumento (sigla `of`, gruppo «Offerte e commesse») che segue la catena commerciale: computo → parcelle → QTE → offerta, più la continuità finanziaria.
+
+- **Computo A/B**: import del file del collega (foglio «Table 1», sconti dal «Foglio1»); voci comuni o per ipotesi; imponibile per ipotesi.
+- **Parcelle D.Lgs. 36/2023**: V·P·G·ΣQ con le tabelle Z1/Z2 (`parcelle_z.json`, ricavato dal foglio Rev7; le prestazioni a scaglioni progressivi non sono incluse: per quelle usare l'importo a mano). BIM +10%, spese e oneri accessori, sconto; in alternativa parcella a mano.
+- **QTE**: lavori + IVA, parcella e Responsabile Lavori con cassa 4% e IVA 22% (come il foglio «Quadro economico»).
+- **Finanziamento**: rata alla francese a più durate, TAN, detrazione (%), anni di recupero e risparmio energetico modificabili per pratica; riparto per millesimi (tabella da Excel); impatto reale = rata − recupero fiscale − risparmio.
+- **Mercato**: annunci «così com'è» / «efficientato» → €/m² e differenza.
+- **Continuità finanziaria**: richieste al Condominio e ai condomini (AGOS, fino al 50% dei lavori privati) con stato, esito, documenti e copertura dell'appalto.
+- **Offerta**: PowerPoint e PDF generati dallo stesso schema (`of_report.py`), più Excel dei calcoli. Il PDF usa i font in `fonts/`; il PPTX richiede `python-pptx` (aggiunto a `requirements.txt`).

@@ -141,6 +141,8 @@ def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente="
         conflitto_salvataggio(modulo, utente, audit)
         try:
             elenco = storage.elenca_pratiche(modulo=modulo)
+            if storage.elenca_pratiche(modulo=modulo, demo=True) and st.checkbox("Mostra anche i dati dimostrativi", key=f"sv_demo_{modulo}", help="Salvataggi di prova «DEMO - …»: non toccano i dati veri."):
+                elenco = storage.elenca_pratiche(modulo=modulo, demo=True) + elenco
         except Exception as e:
             elenco = []
             st.error(f"Database non disponibile: {e}")

@@ -119,6 +119,17 @@ PASSI = {
         ("Scarica il dossier", "Nella scheda «3. Dossier» premi il pulsante per PDF ed Excel.", "dossier"),
         ("Salva", "Apri «💾 Salva e riapri il cronoprogramma» in alto e premi Salva.", "salvato"),
     ], "I legami valgono dentro lo stesso cantiere e il nome della fase va scritto uguale. I giorni di fermo e le date «Non prima del» le scrivi tu: il programma non sa da solo che piove o che il camion è in ritardo."),
+    "of": ("Preparare un'offerta completa: computo, parcelle, quadro economico, finanziamento per millesimi e richieste di finanziamento.", [
+        ("Descrivi la pratica", "Nella scheda «1. Pratica» scrivi condominio, indirizzo, unità e i testi dell'intervento (o prendi i dati dal Registro commerciale).", None),
+        ("Carica il computo", "Nella scheda «2. Computo» importa il file del collega: l'app legge le voci dei capitoli, le ipotesi A/B e gli sconti.", None),
+        ("Calcola le parcelle", "Nella scheda «3. Parcelle» scegli categoria e prestazioni (D.Lgs. 36/2023) oppure scrivi la parcella a mano; aggiungi il Responsabile Lavori.", None),
+        ("Controlla il QTE", "Nella scheda «4. QTE» trovi lavori, IVA, spese professionali e totale progetto per ogni opzione.", None),
+        ("Carica i millesimi e simula", "Nella scheda «5. Finanziamento e millesimi» importa la tabella millesimale e scegli tasso, durate, detrazione e risparmio energetico.", None),
+        ("Aggiungi il mercato", "Nella scheda «6. Mercato» scrivi gli annunci della zona (così com'è / efficientato).", None),
+        ("Segui i finanziamenti", "Nella scheda «7. Continuità finanziaria» registra le richieste al Condominio e ai condomini (AGOS) con stato, esito e documenti.", None),
+        ("Genera l'offerta", "Nella scheda «8. Offerta» premi «Genera» e scarica PowerPoint, PDF ed Excel.", "dossier"),
+        ("Salva", "Apri «💾 Salva e riapri l'offerta» in alto, scrivi il codice pratica come nome e premi Salva.", "salvato"),
+    ], "I calcoli sono simulazioni: recupero fiscale, risparmio e valori di mercato vanno verificati caso per caso. Salva una pratica per ogni condominio."),
     "rc": ("Sapere a che punto è ogni pratica commerciale, quanto vale e cosa va fatto adesso.", [
         ("Importa il registro", "Nella scheda «4. Importa dal tuo Excel» carica il file del registro: l'app legge i fogli Registro ed Eliminati e riconosce da sola le colonne.", None),
         ("Guarda il cruscotto", "Nella scheda «1. Cruscotto» vedi le pratiche per stato e per commerciale, il valore in corso e la pipeline (valore × % di successo).", None),

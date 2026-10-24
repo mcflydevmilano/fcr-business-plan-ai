@@ -117,7 +117,7 @@ def _db(path=None):
         con.close()
 
 
-MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl", "ga", "fo", "sx", "mz", "og", "rp", "gt", "cfg", "ru", "lg", "bk", "oa", "al", "pe", "pz", "rc")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
+MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl", "ga", "fo", "sx", "mz", "og", "rp", "gt", "cfg", "ru", "lg", "bk", "oa", "al", "pe", "pz", "rc", "of")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
 
 
 MAX_VERSIONI = 20          # versioni precedenti conservate per ogni salvataggio
@@ -194,13 +194,22 @@ def _registra_modifiche(chiave, modulo, vecchio_testo, nuovo, autore, path):
         pass
 
 
-def elenca_pratiche(path=None, modulo="credit"):
+PREFISSO_DEMO = "DEMO - "          # i salvataggi dimostrativi si riconoscono dal nome e non finiscono mai nei dati veri (riepilogo, freschezza, ricerca)
+
+
+def e_demo(nome):
+    return str(nome or "").startswith(PREFISSO_DEMO)
+
+
+def elenca_pratiche(path=None, modulo="credit", demo=False):
+    """Salvataggi di un modulo, dal piu' recente. `demo=False` (default) esclude quelli dimostrativi, `demo=True` restituisce solo quelli."""
     with _db(path) as con:
         righe = con.execute("SELECT nome, aggiornato, autore FROM pratiche ORDER BY aggiornato DESC").fetchall()
     out = []
     for nome, agg, aut in righe:
         pref = next((m for m in MODULI_ARCHIVIO if nome.startswith(m + "|")), "credit")
-        if pref == modulo:
+        nome_n = nome.split("|", 1)[1] if pref != "credit" else nome
+        if pref == modulo and e_demo(nome_n) == bool(demo):
             out.append({"nome": nome.split("|", 1)[1] if pref != "credit" else nome, "aggiornato": agg, "autore": aut or ""})
     return out
 
@@ -212,7 +221,7 @@ def ultimi_aggiornamenti(path=None):
     out = {}
     for nome, agg, aut in righe:
         pref = next((m for m in MODULI_ARCHIVIO if nome.startswith(m + "|")), "credit")
-        if pref in ("cfg", "al", "pz"):
+        if pref in ("cfg", "al", "pz") or e_demo(nome.split("|", 1)[1] if pref != "credit" else nome):
             continue
         out.setdefault(pref, (agg, aut or "", nome.split("|", 1)[1] if pref != "credit" else nome))
     return out

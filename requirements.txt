@@ -4,7 +4,8 @@ numpy
 matplotlib
 openpyxl
 xlrd
-fpdf2>=2.7
+fpdf2>=2.7.4
+python-pptx
 python-docx
 google-genai
 Pillow

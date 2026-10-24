@@ -9,7 +9,7 @@ import unicodedata
 SINONIMI = {
     "credit": "rating banca bilancio merito creditizio basilea fido comitato", "bp": "business plan piano industriale mutuo investimento capannone",
     "cf": "cash flow liquidita cassa previsione cantieri", "pv": "preventivo computo metrico offerta costi margine voci",
-    "rc": "registro commerciale pratiche pipeline offerte sopralluogo amministratore commerciale contratto stato", "pz": "prezziario listino prezzi camera commercio voci costi materiali", "sc": "fatture incassi pagamenti scadenze clienti fornitori solleciti cassa xml",
+    "of": "offerta preventivo computo parcelle qte quadro economico finanziamento mutuo agos millesimi rata detrazione recupero fiscale condominio condomino", "rc": "registro commerciale pratiche pipeline offerte sopralluogo amministratore commerciale contratto stato", "pz": "prezziario listino prezzi camera commercio voci costi materiali", "sc": "fatture incassi pagamenti scadenze clienti fornitori solleciti cassa xml",
     "bk": "banca estratto conto movimenti riconciliazione bonifici", "oa": "ordini acquisto approvazioni fornitori materiali",
     "ga": "gare appalti offerte bandi", "sl": "sal avanzamento lavori contabilita commesse fatturazione", "gt": "cronoprogramma gantt fasi ritardi tempi",
     "rp": "rapportino giornale cantiere presenze ore foto firma segnalazioni", "sx": "sicurezza formazione dpi corsi scadenze lavoratori",

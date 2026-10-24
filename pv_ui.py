@@ -94,8 +94,8 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None, utente=""):
                             st.error(f"Risposta non utilizzabile: {e}")
                         except Exception as e:
                             st.error((ai.messaggio_errore(e) + " Puoi inserire le voci a mano.") if ai.errore_temporaneo(e) else f"Errore: {e}")
-                if not active_key:
-                    st.caption("Serve una chiave Gemini e l'accettazione dell'informativa privacy (barra laterale).")
+                import ia_info
+                ia_info.attivazione(active_key, "la proposta delle voci")
                 prop = ss.get("pv_prop")
                 if prop:
                     st.warning("Quantità e costi proposti dall'AI sono STIME: verificali su prezzari ufficiali e sul progetto prima di usarli.")

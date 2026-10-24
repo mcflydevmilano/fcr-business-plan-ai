@@ -156,9 +156,9 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None, utente=""):
                     st.error("Il modello non ha restituito un JSON valido. Riprova.")
                 except Exception as e:
                     st.error((ai.messaggio_errore(e) + " Puoi inserire le ipotesi a mano nei campi qui sotto.") if ai.errore_temporaneo(e) else f"Errore durante la generazione: {e}")
-        if not wizard_on:
-            st.caption("Per usare il wizard serve una chiave Gemini e l'accettazione dell'informativa privacy (barra laterale). "
-                       "Senza AI puoi inserire le ipotesi a mano qui sotto: tutto il resto funziona uguale.")
+        import ia_info
+        ia_info.attivazione(active_key, "il wizard")
+        st.caption("Senza l'IA puoi inserire le ipotesi a mano qui sotto: tutto il resto funziona uguale.")
 
         prop = ss.get("bp_prop")
         if prop:

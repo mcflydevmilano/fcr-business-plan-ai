@@ -107,12 +107,12 @@ def render(utente, utenti_secrets, audit):
             k = st.selectbox("Leggi per intero una riga", range(len(df)), format_func=lambda i: f"{df.iloc[i]['Data e ora (Italia)']} · {df.iloc[i]['Utente']} · {df.iloc[i]['Azione']}", key="adm_f_riga")
             st.info(str(df.iloc[k]["Cosa"]) or "—")
         d1, d2 = st.columns(2)
-        d1.download_button("📥 Scarica il registro (CSV)", df.to_csv(index=False).encode("utf-8-sig"), file_name="registro_attivita.csv", mime="text/csv", use_container_width=True)
+        d1.download_button("📥 Scarica il registro (CSV)", df.to_csv(index=False).encode("utf-8-sig"), file_name="registro_attivita.csv", mime="text/csv", width="stretch")
         import io
         buf = io.BytesIO()
         df.to_excel(buf, index=False, sheet_name="Registro")
         d2.download_button("📥 Scarica il registro (Excel)", buf.getvalue(), file_name="registro_attivita.xlsx",
-                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", width="stretch")
         st.caption("Il registro non si può modificare dall'app. È nel database (Neon): resta anche dopo i riavvii. Le modifiche fatte nelle tabelle ma non salvate non compaiono finché qualcuno non preme Salva.")
 
     with t3:

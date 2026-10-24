@@ -179,7 +179,7 @@ def render(utente="", strumento=""):
             with st.form("as_form", clear_on_submit=True, border=False):
                 tipo = st.selectbox("Di cosa si tratta?", TIPI, key="as_tipo")
                 testo = st.text_area("Scrivi il messaggio", key="as_testo", height=110, placeholder="Es. Nel Rapportino non riesco a salvare / Manca il cantiere X nell'elenco…")
-                inv = st.form_submit_button("📨 Invia", type="primary", use_container_width=True)
+                inv = st.form_submit_button("📨 Invia", type="primary", width="stretch")
             if inv:
                 if not testo.strip():
                     st.warning("Scrivi prima il messaggio.")
@@ -192,4 +192,4 @@ def render(utente="", strumento=""):
                     except Exception as e:
                         st.error(f"Invio non riuscito: {e}")
             if dm:
-                st.link_button("Apri la chat Slack", dm, use_container_width=True)
+                st.link_button("Apri la chat Slack", dm, width="stretch")

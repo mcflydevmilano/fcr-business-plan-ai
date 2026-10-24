@@ -150,6 +150,15 @@ CARDS = {'credit': {'icona': '📊',
                  'Storico di ogni decisione con nome e ora'],
         'tag': ['Approvazioni', 'Tracciabilità', 'PDF + Excel'],
         'bottone': 'Ordini e approvazioni'},
+ 'of': {'icona': '🧾',
+        'titolo': 'Offerta e finanziamenti',
+        'desc': 'Dal computo all\'offerta: parcelle D.Lgs. 36/2023, quadro economico, finanziamento per millesimi e richieste di finanziamento.',
+        'voci': ['Computo A/B importato dal tuo Excel, con sconti',
+                 'Parcelle D.Lgs. 36/2023 e quadro tecnico economico',
+                 'Rata, recupero fiscale e impatto reale per ogni unità',
+                 'Offerta in PowerPoint e PDF, richieste Condominio e AGOS'],
+        'tag': ['Offerta', 'QTE', 'Finanziamenti'],
+        'bottone': 'Offerta e finanziamenti'},
  'rc': {'icona': '🗂️',
         'titolo': 'Registro commerciale',
         'desc': 'Tutte le pratiche dalla prima richiesta al contratto: stato, valore, probabilità di successo e prossimo intervento.',
@@ -210,7 +219,7 @@ GRUPPI = [
     ("Parte finanziaria", "Dott. Claudio Arosio",
      ["credit", "bp", "cf", "sc", "bk"]),
     ("Offerte e commesse", "Dalla gara al preventivo, fino all'avanzamento lavori",
-     ["rc", "ga", "pv", "pz", "sl", "gt"]),
+     ["rc", "of", "ga", "pv", "pz", "sl", "gt"]),
     ("Cantiere e risorse", "Rapportini, sicurezza, mezzi e persone",
      ["rp", "sx", "mz", "og"]),
     ("Fornitori, acquisti e scadenze", "Contatti, ordini approvati, documenti dei fornitori e calendario unico",
@@ -253,8 +262,14 @@ PERCORSI = [
 ]
 
 
+def _ia_spiegata():
+    import ia_info
+    with st.expander("🤖 L'intelligenza artificiale: cosa fa, cosa no, come si usa", expanded=False):
+        ia_info.spiegazione()
+
+
 def _da_dove_comincio(vai_a, consentiti=None):
-    with st.expander("🚀 Da dove comincio? Scegli chi sei", expanded=False):
+    with st.expander("🚀 Da dove comincio? Scegli chi sei", expanded=True):
         st.caption("Ogni strumento ha in alto il riquadro «🧭 Come si usa»: ti dice cosa fare, passo per passo. Gli esempi che vedi sono finti: li togli con «Svuota l'esempio».")
         percorsi = [(t, x, [(s, e) for s, e in b if consentiti is None or s in consentiti]) for t, x, b in PERCORSI]
         percorsi = [p for p in percorsi if p[2]]
@@ -267,7 +282,7 @@ def _da_dove_comincio(vai_a, consentiti=None):
                 st.markdown(f"**{titolo}**")
                 st.caption(testo)
                 for s, etichetta in bottoni:
-                    if st.button(etichetta, key=f"start_{s}", use_container_width=True):
+                    if st.button(etichetta, key=f"start_{s}", width="stretch"):
                         vai_a(s)
 
 
@@ -290,7 +305,7 @@ def _freschezza(righe):
             st.markdown(f"{ico[r['stato']]} **{r['nome']}** — {quando}{chi}  <span style='color:#94a3b8'>(si aggiorna ogni {r['soglia']} gg)</span>", unsafe_allow_html=True)
 
 
-DATI_RICERCA = ["rc", "ru", "fo", "sc", "sl", "ga", "sx", "mz", "og", "rp", "gt", "lg", "bk", "oa", "pe", "pv", "cf", "bp"]
+DATI_RICERCA = ["rc", "of", "ru", "fo", "sc", "sl", "ga", "sx", "mz", "og", "rp", "gt", "lg", "bk", "oa", "pe", "pv", "cf", "bp"]
 
 
 @st.cache_data(ttl=30, show_spinner=False)
@@ -401,6 +416,7 @@ def render(vai_a, consentiti=None, freschezza_righe=None):
     if _ricerca(vai_a, consentiti):
         return
     _da_dove_comincio(vai_a, consentiti)
+    _ia_spiegata()
     _freschezza(freschezza_righe or [])
     for n, (titolo, sotto, sigle) in enumerate(GRUPPI):
         sigle = [s for s in sigle if consentiti is None or s in consentiti]

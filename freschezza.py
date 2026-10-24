@@ -5,9 +5,9 @@ ma mente: qui si vede subito cosa e' fermo e di chi e' la mano che l'ha toccato 
 import datetime as dt
 
 # giorni oltre i quali i dati si considerano «da aggiornare» (giallo); oltre il doppio: rosso
-SOGLIE_GG = {"rp": 3, "sc": 7, "bk": 7, "oa": 7, "gt": 7, "sl": 15, "ga": 15, "rc": 7, "lg": 15, "fo": 30, "sx": 30, "mz": 30, "og": 30, "ru": 90}
+SOGLIE_GG = {"rp": 3, "sc": 7, "bk": 7, "oa": 7, "gt": 7, "sl": 15, "ga": 15, "rc": 7, "of": 15, "lg": 15, "fo": 30, "sx": 30, "mz": 30, "og": 30, "ru": 90}
 NOMI = {"rp": "Rapportini", "sc": "Scadenzario", "bk": "Riconciliazione bancaria", "oa": "Ordini e approvazioni", "gt": "Cronoprogramma", "sl": "SAL e contabilità lavori", "ga": "Gare e offerte",
-        "lg": "Studio legale", "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "og": "Organico", "ru": "Rubrica e cantieri", "rc": "Registro commerciale"}
+        "lg": "Studio legale", "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "og": "Organico", "ru": "Rubrica e cantieri", "rc": "Registro commerciale", "of": "Offerta e finanziamenti"}
 
 
 def _data(ts):

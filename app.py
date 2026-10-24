@@ -61,6 +61,8 @@ import pz
 import pz_ui
 import rc
 import rc_ui
+import of_ui
+import ia_info
 import pwa
 import pv_ui
 import theme
@@ -121,14 +123,14 @@ def show_df(df):
     try:
         st.dataframe(df, width="stretch", hide_index=True)
     except Exception:
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width="stretch", hide_index=True)
 
 
 def show_editor(df, **kw):
     try:
         return st.data_editor(df, width="stretch", **kw)
     except Exception:
-        return st.data_editor(df, use_container_width=True, **kw)
+        return st.data_editor(df, width="stretch", **kw)
 
 
 def show_fig(fig):
@@ -429,7 +431,7 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",)}
 
 
 pwa.inietta()
@@ -547,6 +549,8 @@ if MODULO == "credit":
         ui_util.conflitto_salvataggio("credit", ss["utente"]["username"], audit)
         try:
             elenco = storage.elenca_pratiche()
+            if storage.elenca_pratiche(demo=True) and st.checkbox("Mostra anche i dati dimostrativi", key="sv_demo_credit"):
+                elenco = storage.elenca_pratiche(demo=True) + elenco
         except Exception as e:
             elenco = []
             st.error(f"Database non disponibile: {e}")
@@ -575,19 +579,18 @@ if MODULO == "credit":
 
 
 with st.sidebar:
-    user_api_key = st.text_input("Gemini API Key personale (opzionale)", value="", type="password")
+    user_api_key = st.text_input("Chiave personale dell'IA (facoltativa)", value="", type="password",
+                                 help="Di solito non serve: l'azienda ha già una chiave. Scrivila solo se te ne hanno data una tua.")
     with st.expander("🔒 Privacy e trattamento dei dati"):
         for _t, _x in core.PRIVACY_PUNTI:
             st.markdown(f"**{_t}**  \n{_x}")
     st.checkbox("Ho letto l'informativa privacy e ho titolo a trattare i dati caricati", key="privacy_ok")
     _chiave = user_api_key.strip() or SERVER_API_KEY
     active_key = _chiave if ss.get("privacy_ok") else ""
-    if active_key:
-        st.info("Motore AI attivo per estrazione dati e relazione.")
-    elif _chiave:
-        st.warning("Accetta l'informativa privacy per attivare le funzioni AI. Calcoli, grafici ed Excel restano disponibili.")
-    else:
-        st.warning("Nessuna chiave API: le funzioni AI non sono disponibili (grafici, Excel e calcoli si').")
+    ss["_ia_chiave"] = bool(_chiave)
+    ia_info.barra_laterale(active_key, bool(_chiave))
+    with st.expander("🤖 Cos'è l'IA e come si usa"):
+        ia_info.spiegazione()
 
 # ----------------------------------------------------------------------------
 # HUB E ROUTING TRA I DUE MODULI
@@ -634,7 +637,7 @@ if MODULO == "sl":
     sl_ui.render(FCR_URI, audit, ss["utente"]["username"])
     st.stop()
 
-for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og", og_ui), ("rp", rp_ui), ("gt", gt_ui), ("ru", ru_ui), ("lg", lg_ui), ("bk", bk_ui), ("oa", oa_ui), ("pz", pz_ui), ("rc", rc_ui)):
+for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og", og_ui), ("rp", rp_ui), ("gt", gt_ui), ("ru", ru_ui), ("lg", lg_ui), ("bk", bk_ui), ("oa", oa_ui), ("pz", pz_ui), ("rc", rc_ui), ("of", of_ui)):
     if MODULO == _m:
         _ui.render(FCR_URI, audit, ss["utente"]["username"])
         st.stop()
@@ -707,7 +710,7 @@ with tab_dati:
                 except Exception as e:
                     st.error(f"Errore durante la lettura del file XBRL: {e}")
             elif not active_key:
-                st.error("Per usare l'AI inserisci la chiave API Gemini e accetta l'informativa privacy nella sidebar.")
+                ia_info.attivazione(active_key, "l'estrazione automatica dal PDF o dall'Excel")
             else:
                 name = uploaded.name.lower()
                 with st.spinner("Elaborazione dati contabili in corso..."):
