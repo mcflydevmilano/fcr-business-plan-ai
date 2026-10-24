@@ -13,7 +13,6 @@ import os
 import versione
 
 _CSS_RAW = """
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700&display=swap');
 
 @property --n { syntax: '<integer>'; initial-value: 0; inherits: false; }
 
@@ -453,11 +452,75 @@ def _css_versione():
             'padding: 34px 16px 96px 16px; letter-spacing: .01em; }')
 
 
-CSS = "<style>" + _CSS_RAW + EXTRA + SIDEBAR_CSS + _css_versione() + "</style>"
+def _icona_uri():
+    """Emblema Aetheris (PNG trasparente, ~4 KB) per la rotella di caricamento."""
+    for nome in ("aetheris_icona.png",):
+        p = os.path.join(os.path.dirname(os.path.abspath(__file__)), nome)
+        if os.path.exists(p):
+            try:
+                with open(p, "rb") as f:
+                    return "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
+            except OSError:
+                pass
+    return ""
+
+
+def _css_caricamento():
+    """Rotella di caricamento: l'emblema Aetheris gira al centro dello schermo mentre la suite lavora.
+    Compare solo se l'attesa supera ~0,35 s (i clic rapidi non lampeggiano) e non blocca i clic. Sostituisce l'omino «Running» di Streamlit."""
+    uri = _icona_uri()
+    forma = (f'background: url("{uri}") center / contain no-repeat;' if uri else
+             'border: 5px solid #cbd5e1; border-top-color: #1e40af; border-radius: 50%; box-sizing: border-box;')
+    return ('[data-testid="stStatusWidget"] { display: none !important; }'
+            '@keyframes ldSpin { to { transform: rotate(360deg); } }'
+            '@keyframes ldShow { to { opacity: 1; } }'
+            '.stApp[data-test-script-state="running"]::before { content: ""; position: fixed; inset: 0; z-index: 999990; pointer-events: none; opacity: 0;'
+            ' background: rgba(248,250,252,.58); backdrop-filter: blur(1.5px); animation: ldShow .25s ease .35s forwards; }'
+            '.stApp[data-test-script-state="running"]::after { content: ""; position: fixed; left: 50%; top: 50%; width: 88px; height: 88px; margin: -44px 0 0 -44px;'
+            ' z-index: 999991; pointer-events: none; opacity: 0; ' + forma + ' filter: drop-shadow(0 6px 14px rgba(30,64,175,.28));'
+            ' animation: ldShow .25s ease .35s forwards, ldSpin 1.5s linear .35s infinite; }'
+            '@media (prefers-reduced-motion: reduce) { .stApp[data-test-script-state="running"]::before, .stApp[data-test-script-state="running"]::after { opacity: 1 !important; } }')
+
+
+LOGIN_CSS = """<style>
+.stApp { background:
+  linear-gradient(rgba(127,176,255,.13) 1px, transparent 1px) 0 0 / 96px 96px, linear-gradient(90deg, rgba(127,176,255,.13) 1px, transparent 1px) 0 0 / 96px 96px,
+  linear-gradient(rgba(127,176,255,.06) 1px, transparent 1px) 0 0 / 24px 24px, linear-gradient(90deg, rgba(127,176,255,.06) 1px, transparent 1px) 0 0 / 24px 24px,
+  radial-gradient(900px 520px at 85% -10%, rgba(249,115,22,.22), transparent 62%), radial-gradient(1100px 600px at 10% -10%, #1a4aa0 0%, #0b2a5b 55%, #07183a 100%) !important; }
+[data-testid="stHeader"] { background: transparent; }
+[data-testid="stHeader"] * { color: #cfe0ff !important; }
+.block-container { padding-top: 2.4rem; max-width: 560px; }
+.lg-top { text-align: center; animation: fadeUp .6s ease both; }
+.lg-badge { display: inline-flex; align-items: center; justify-content: center; width: 124px; height: 124px; border-radius: 50%; background: #fff; margin-bottom: 14px;
+  box-shadow: 0 0 0 7px rgba(255,255,255,.14), 0 0 0 15px rgba(255,255,255,.07), 0 18px 44px rgba(2,6,23,.5); animation: float 6s ease-in-out infinite; }
+.lg-badge img { width: 96px; height: auto; display: block; }
+.lg-title { font-family: 'Barlow Condensed', 'Inter', sans-serif; font-size: 2.45rem; font-weight: 700; letter-spacing: .09em; line-height: 1.05; color: #fff; margin: 4px 0 0 0; }
+.lg-tri { height: 3px; width: 132px; margin: 12px auto 12px auto; border-radius: 3px; background: linear-gradient(90deg, #009246 0 33.3%, #f1f5f9 33.3% 66.6%, #ce2b37 66.6% 100%); }
+.lg-sub { color: #bcd3ff; font-size: .98rem; margin-bottom: 22px; }
+.st-key-login_card { background: #fff; border-radius: 24px; padding: 26px 30px 22px 30px; box-shadow: 0 30px 70px rgba(2,6,23,.5), 0 0 0 1px rgba(255,255,255,.4); animation: fadeUp .7s .1s ease both; }
+.lg-aeth { display: block; margin: 0 auto 6px auto; width: 150px; max-width: 60%; height: auto; }
+.lg-hello { text-align: center; font-size: 1.25rem; font-weight: 800; color: var(--navy); margin-top: 6px; }
+.lg-hint { text-align: center; font-size: .86rem; color: var(--mut); margin: 2px 0 14px 0; }
+.st-key-login_card [data-testid="stForm"] { border: 0; padding: 0; }
+.st-key-login_card label p { font-weight: 600; color: var(--navy); font-size: .88rem; }
+.st-key-login_card input { height: 2.7rem; font-size: 1rem; }
+.st-key-login_card [data-testid="stFormSubmitButton"] > button { height: 3rem; font-size: 1.02rem; margin-top: 6px; border-radius: 12px;
+  background: linear-gradient(135deg, #1e3fae, #2563eb) !important; box-shadow: 0 10px 24px rgba(30,64,175,.4); }
+.lg-foot { text-align: center; font-size: .75rem; color: var(--mut); margin-top: 10px; }
+.lg-prop { text-align: center; margin-top: 18px; font-size: .74rem; color: rgba(207,224,255,.75); line-height: 1.5; animation: fadeUp .8s .2s ease both; }
+[data-testid="stMain"]::after, section.main::after { display: none !important; }
+@media (max-width: 640px) { .lg-title { font-size: 1.9rem; } .st-key-login_card { padding: 20px 18px 16px 18px; border-radius: 20px; } .lg-badge { width: 104px; height: 104px; } .lg-badge img { width: 80px; } }
+</style>"""
+
+
+# I caratteri di Google stanno in un blocco a parte: se la rete e' lenta non fanno aspettare il resto dello stile (testo subito leggibile, font al volo)
+_FONT = "<style>" + "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700&display=swap');" + "</style>"
+
+CSS = _FONT + "<style>" + _CSS_RAW + EXTRA + SIDEBAR_CSS + _css_versione() + _css_caricamento() + "</style>"
 
 
 @functools.lru_cache(maxsize=8)
-def logo_uri(path, larghezza=260, senza_sfondo=False):
+def logo_uri(path, larghezza=260, senza_sfondo=False, ritaglia=False):
     """Logo ridimensionato e codificato in data-URI (leggero da reinviare ad ogni rerun).
     senza_sfondo=True rende trasparente lo sfondo chiaro di un logo scuro (niente riquadro bianco/grigio attorno);
     altrimenti i JPG restano JPG (piu' leggeri) e i PNG restano PNG (trasparenza conservata)."""
@@ -472,6 +535,11 @@ def logo_uri(path, larghezza=260, senza_sfondo=False):
                 im = im.resize((larghezza, round(im.height * larghezza / im.width)), Image.LANCZOS)
             if senza_sfondo:
                 im = _togli_sfondo_chiaro(im)
+                if ritaglia:                                    # toglie i margini vuoti attorno al logo
+                    bb = im.getchannel("A").point(lambda v: 255 if v > 40 else 0).getbbox()
+                    if bb:
+                        p = 6
+                        im = im.crop((max(bb[0] - p, 0), max(bb[1] - p, 0), min(bb[2] + p, im.width), min(bb[3] + p, im.height)))
             buf = io.BytesIO()
             if jpg:
                 im.save(buf, format="JPEG", quality=90, optimize=True)
@@ -512,13 +580,24 @@ def hero(uri, titolo, sottotitolo):
             f'<div class="hero-sub">{_e(sottotitolo)}</div><div class="tricolor"></div></div></div>')
 
 
-def login_header(uri_fcr, uri_aeth):
-    """Intestazione della schermata di login: logo FCR, logo Aetheris grande e titoli."""
-    fcr = f'<img class="login-fcr" src="{uri_fcr}" alt="FCR"/>' if uri_fcr else ""
-    aeth = f'<img class="login-logo" src="{uri_aeth}" alt="Aetheris Labs"/>' if uri_aeth else ""
-    return (f'<div class="login-wrap">{fcr}{aeth}<div class="login-title">FCR GENERAL CONTRACTOR</div>'
-            f'<div class="login-sub">Aetheris Labs - Area Riservata Protetta</div>'
-            f'<div class="login-prop">{_e(versione.NOME)} v{_e(versione.VERSIONE)} · Software di proprietà di {_e(versione.PROPRIETARIO)}<br>{_e(versione.COPYRIGHT)}</div></div>')
+def login_header(uri_fcr, uri_aeth=None):
+    """Parte alta della schermata di accesso (sullo sfondo blu): emblema FCR, titolo e occhiello."""
+    fcr = f'<div class="lg-badge"><img src="{uri_fcr}" alt="FCR"/></div>' if uri_fcr else ""
+    return (f'<div class="lg-top">{fcr}<div class="lg-title">FCR GENERAL CONTRACTOR</div><div class="lg-tri"></div>'
+            f'<div class="lg-sub">Suite operativa per offerte, cantieri, fornitori e finanza</div></div>')
+
+
+def login_card_testa(uri_aeth):
+    """Intestazione dentro la scheda bianca: logo Aetheris Labs e invito ad accedere."""
+    aeth = f'<img class="lg-aeth" src="{uri_aeth}" alt="Aetheris Labs"/>' if uri_aeth else ""
+    return (f'{aeth}<div class="lg-hello">Accedi alla suite</div>'
+            f'<div class="lg-hint">Area riservata protetta · inserisci le tue credenziali</div>')
+
+
+def login_piede(ore=None):
+    resta = f"Resti collegato per {int(ore)} ore su questo dispositivo, finché non premi «Esci». " if ore else ""
+    return (f'<div class="lg-prop">{resta}<br>{_e(versione.NOME)} v{_e(versione.VERSIONE)} · Software di proprietà di {_e(versione.PROPRIETARIO)}'
+            f'<br>{_e(versione.COPYRIGHT)}</div>')
 
 
 def sidebar_brand(uri_aeth):

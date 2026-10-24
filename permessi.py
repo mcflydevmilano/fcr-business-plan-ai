@@ -56,7 +56,7 @@ def normalizza(cfg):
 
 def carica_config(path=None):
     try:
-        raw = storage.carica_pratica(NOME_PRATICA, path, modulo="cfg")
+        raw = storage.cache_lettura("permessi_cfg", lambda: storage.carica_pratica(NOME_PRATICA, path, modulo="cfg"), path, ttl=20)
     except Exception:
         raw = None
     return normalizza(raw)

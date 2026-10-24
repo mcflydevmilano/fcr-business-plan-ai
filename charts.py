@@ -2,7 +2,10 @@
 charts.py - Grafici (matplotlib) usati sia nell'app (tema scuro) sia nei report PDF/Word (tema chiaro).
 Ogni funzione restituisce una Figure; usa fig_png() per ottenere i byte PNG.
 """
+import functools
+import hashlib
 import io
+import json
 import math
 
 import matplotlib
@@ -64,14 +67,54 @@ def _k(ax):
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: fmt_num(v / 1000) + "k"))
 
 
+_PNG_CACHE = {}            # (chiave del grafico, dpi) -> byte PNG
+_PNG_CACHE_MAX = 150
+
+
+def _nativo(x):
+    """True se x e' fatto solo di tipi semplici (cosi' il suo contenuto identifica il grafico senza ambiguita')."""
+    if x is None or isinstance(x, (str, int, float, bool)):
+        return True
+    if isinstance(x, (list, tuple)):
+        return all(_nativo(i) for i in x)
+    if isinstance(x, dict):
+        return all(isinstance(k, (str, int, float, bool)) and _nativo(v) for k, v in x.items())
+    return False
+
+
+def _memo(fn):
+    """Marca la figura con una chiave ricavata da tutti i parametri: se gli stessi dati sono gia' stati disegnati, fig_png riusa il PNG
+    senza ridisegnare (il disegno e' la parte lenta e a ogni clic dell'app venivano rifatti tutti i grafici)."""
+    @functools.wraps(fn)
+    def w(*a, **k):
+        fig = fn(*a, **k)
+        try:
+            if _nativo(a) and _nativo(k):
+                fig._chiave_png = fn.__name__ + ":" + hashlib.sha1(json.dumps([a, k], sort_keys=True, default=str).encode()).hexdigest()
+        except Exception:
+            pass
+        return fig
+    return w
+
+
 def fig_png(fig, dpi=160):
+    chiave = getattr(fig, "_chiave_png", None)
+    if chiave and (chiave, dpi) in _PNG_CACHE:
+        plt.close(fig)
+        return _PNG_CACHE[(chiave, dpi)]
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close(fig)
-    return buf.getvalue()
+    dati = buf.getvalue()
+    if chiave:
+        if len(_PNG_CACHE) >= _PNG_CACHE_MAX:
+            _PNG_CACHE.clear()
+        _PNG_CACHE[(chiave, dpi)] = dati
+    return dati
 
 
 # ----------------------------------------------------------------------------
+@_memo
 def fig_pfn_ebitda(piani, soglie=None, covenant_max=None, tema="light", anno_base=None, base_val=None):
     """Andamento PFN/EBITDA. `piani`: {nome: lista righe del piano}. Mostra le soglie verde/giallo."""
     s = soglie or SOGLIE_DEFAULT
@@ -98,6 +141,7 @@ def fig_pfn_ebitda(piani, soglie=None, covenant_max=None, tema="light", anno_bas
     return fig
 
 
+@_memo
 def fig_dscr(piano, soglie=None, covenant_min=None, tema="light"):
     s = soglie or SOGLIE_DEFAULT
     fig, (ax,) = _nuova(tema)
@@ -123,6 +167,7 @@ def fig_dscr(piano, soglie=None, covenant_min=None, tema="light"):
     return fig
 
 
+@_memo
 def fig_confronto(risultati, soglie=None, tema="light"):
     """Confronto scenari: PFN/EBITDA a fine piano e punteggio di scoring. `risultati`: {nome: esegui_scenario()}"""
     s = soglie or SOGLIE_DEFAULT
@@ -150,6 +195,7 @@ def fig_confronto(risultati, soglie=None, tema="light"):
     return fig
 
 
+@_memo
 def fig_cascata(piano, pfn0, tema="light"):
     """Cascata: dalla PFN iniziale alla PFN finale, cumulando le componenti del free cash flow."""
     t = _t(tema)
@@ -192,6 +238,7 @@ def fig_cascata(piano, pfn0, tema="light"):
     return fig
 
 
+@_memo
 def fig_storico(storico, dati, piano, tema="light"):
     """Ricavi ed EBITDA: storico, anno base e proiezione."""
     t = _t(tema)
@@ -214,6 +261,7 @@ def fig_storico(storico, dati, piano, tema="light"):
     return fig
 
 
+@_memo
 def fig_commesse(per_cliente, tema="light", top=8):
     t = _t(tema)
     fig, (ax,) = _nuova(tema, w=7.2, h=3.4)
@@ -232,6 +280,7 @@ def fig_commesse(per_cliente, tema="light", top=8):
 # ----------------------------------------------------------------------------
 # Business Plan Studio
 # ----------------------------------------------------------------------------
+@_memo
 def fig_bp_economico(anni, tema="light"):
     """Ricavi, EBITDA e utile netto per anno (barre affiancate)."""
     fig, (ax,) = _nuova(tema)
@@ -254,6 +303,7 @@ def fig_bp_economico(anni, tema="light"):
     return fig
 
 
+@_memo
 def fig_bp_finanza(anni, cassa0=0.0, tema="light"):
     """Cassa di fine anno (verde/rosso) e PFN (linea)."""
     fig, (ax,) = _nuova(tema)
@@ -274,6 +324,7 @@ def fig_bp_finanza(anni, cassa0=0.0, tema="light"):
     return fig
 
 
+@_memo
 def fig_bp_mutuo(mutuo, tema="light"):
     """Piano di ammortamento: quota capitale + interessi per anno e debito residuo."""
     fig, (ax,) = _nuova(tema)
@@ -301,6 +352,7 @@ def fig_bp_mutuo(mutuo, tema="light"):
     return fig
 
 
+@_memo
 def fig_bp_scenari(risultati, tema="light"):
     """Confronto tra scenari: cassa di fine anno per ciascuno (linee) e DSCR minimo nel titolo delle legende."""
     fig, (ax,) = _nuova(tema)
@@ -319,6 +371,7 @@ def fig_bp_scenari(risultati, tema="light"):
     return fig
 
 
+@_memo
 def fig_tornado(righe, etichetta_metrica, tema="light", max_righe=8):
     """Grafico 'tornado': scostamento della metrica rispetto alla base per ogni variabile."""
     fig, (ax,) = _nuova(tema, h=3.8)
@@ -344,6 +397,7 @@ def fig_tornado(righe, etichetta_metrica, tema="light", max_righe=8):
 # ----------------------------------------------------------------------------
 # CASH FLOW DI CANTIERE E PREVENTIVO
 # ----------------------------------------------------------------------------
+@_memo
 def fig_cf_mensile(mesi, fido=None, tema="light"):
     """Incassi (barre verdi, in alto), pagamenti e costi generali (barre rosse, in basso) e cassa finale (linea)."""
     fig, (ax,) = _nuova(tema, w=7.6, h=4.2)
@@ -363,6 +417,7 @@ def fig_cf_mensile(mesi, fido=None, tema="light"):
     return fig
 
 
+@_memo
 def fig_cf_stress(risultati, fido=None, tema="light"):
     """Cassa di fine mese nei diversi casi di stress."""
     fig, (ax,) = _nuova(tema, w=7.6, h=4.8)
@@ -381,6 +436,7 @@ def fig_cf_stress(risultati, fido=None, tema="light"):
     return fig
 
 
+@_memo
 def fig_cf_crediti(mesi, tema="light"):
     """Crediti netti verso clienti e debiti verso fornitori nel tempo (esposizione del capitale circolante)."""
     fig, (ax,) = _nuova(tema, w=7.6, h=3.2)
@@ -397,6 +453,7 @@ def fig_cf_crediti(mesi, tema="light"):
     return fig
 
 
+@_memo
 def fig_pv_composizione(k, tema="light"):
     """Da dove nasce il prezzo: costi diretti, spese generali, utile, oneri di sicurezza (e sconto concesso)."""
     fig, (ax,) = _nuova(tema, w=7.6, h=2.4)
@@ -426,6 +483,7 @@ def _k_x(ax):
     ax.grid(axis="x", color="#cbd5e1", alpha=0.5, linewidth=0.6)
 
 
+@_memo
 def fig_pv_categorie(categorie, tema="light"):
     """Costo e prezzo per categoria di lavorazione."""
     fig, (ax,) = _nuova(tema, w=7.6, h=3.2)
@@ -443,6 +501,7 @@ def fig_pv_categorie(categorie, tema="light"):
     return fig
 
 
+@_memo
 def fig_pv_sensibilita(righe, tema="light"):
     """Margine al variare dei costi diretti, a prezzo invariato."""
     fig, (ax,) = _nuova(tema, w=7.6, h=3.0)
@@ -464,6 +523,7 @@ def fig_pv_sensibilita(righe, tema="light"):
 # ----------------------------------------------------------------------------
 # SCADENZARIO E CRUSCOTTO
 # ----------------------------------------------------------------------------
+@_memo
 def fig_sc_settimane(sett, fido=None, tema="light"):
     """Incassi e pagamenti previsti per settimana (barre) e cassa a fine settimana (linea)."""
     fig, (ax,) = _nuova(tema, w=7.6, h=4.0)
@@ -483,6 +543,7 @@ def fig_sc_settimane(sett, fido=None, tema="light"):
     return fig
 
 
+@_memo
 def fig_sc_fasce(fasce, tema="light"):
     """Anzianita' dello scaduto: crediti (attive) e debiti (passive) per fascia di ritardo."""
     fig, (ax,) = _nuova(tema, w=7.2, h=3.2)
@@ -503,6 +564,7 @@ def fig_sc_fasce(fasce, tema="light"):
 _STATO_COL = {"ok": VERDE, "warn": GIALLO, "bad": ROSSO}
 
 
+@_memo
 def fig_sl_margini(commesse, tema="light"):
     """Margine preventivato (grigio) e margine finale previsto (colorato per stato) per ogni commessa."""
     n = max(1, len(commesse))
@@ -524,6 +586,7 @@ def fig_sl_margini(commesse, tema="light"):
     return fig
 
 
+@_memo
 def fig_sl_commessa(d, tema="light"):
     """Per una commessa: costi preventivati, valore maturato (EV), costi sostenuti e costi a finire attesi."""
     fig, (ax,) = _nuova(tema, w=6.6, h=3.0)
@@ -542,6 +605,7 @@ def fig_sl_commessa(d, tema="light"):
 # ----------------------------------------------------------------------------
 # GRAFICI DEI MODULI OPERATIVI (gare, scadenze, mezzi, organico)
 # ----------------------------------------------------------------------------
+@_memo
 def fig_scadenze(conteggi, titolo="Stato delle scadenze", tema="light"):
     fig, (ax,) = _nuova(tema, w=6.4, h=2.4)
     t = _t(tema)
@@ -558,6 +622,7 @@ def fig_scadenze(conteggi, titolo="Stato delle scadenze", tema="light"):
     return fig
 
 
+@_memo
 def fig_ga_gare(det, target, tema="light"):
     n = max(1, len(det))
     fig, (ax,) = _nuova(tema, w=7.2, h=max(2.4, 0.5 * n + 1.3))
@@ -576,6 +641,7 @@ def fig_ga_gare(det, target, tema="light"):
     return fig
 
 
+@_memo
 def fig_og_carico(mesi, tema="light"):
     fig, (ax,) = _nuova(tema, w=7.2, h=3.0)
     t = _t(tema)
@@ -591,6 +657,7 @@ def fig_og_carico(mesi, tema="light"):
     return fig
 
 
+@_memo
 def fig_mz_costi(det, tema="light"):
     n = max(1, len(det))
     fig, (ax,) = _nuova(tema, w=7.2, h=max(2.4, 0.5 * n + 1.3))
@@ -608,6 +675,7 @@ def fig_mz_costi(det, tema="light"):
     return fig
 
 
+@_memo
 def fig_rp_ore(cantieri, tema="light"):
     """Ore lavorate per cantiere nella finestra di osservazione (barre orizzontali, colore = rapportini regolari o in ritardo)."""
     cantieri = [c for c in cantieri if c["Ore"] > 0] or cantieri
@@ -628,6 +696,7 @@ def fig_rp_ore(cantieri, tema="light"):
 GT_COL = {"ok": "#2563eb", "warn": "#f59e0b", "bad": "#ef4444", "done": "#22c55e", "wait": "#94a3b8"}
 
 
+@_memo
 def fig_gt(out, tema="light", solo_commesse=False, commessa=None):
     """Diagramma di Gantt: barra chiara = durata prevista, barra piena = avanzamento reale, tratteggio rosso = ritardo stimato, linea = oggi."""
     import datetime as _dt

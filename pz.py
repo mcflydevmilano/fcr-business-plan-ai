@@ -162,7 +162,7 @@ def spacchetta(testo):
 def carica_indice(path=None):
     """{id: meta} dei prezziari caricati."""
     try:
-        return dict((storage.carica_pratica(NOME_INDICE, path, modulo="pz") or {}).get("prezziari", {}))
+        return dict((storage.cache_lettura("pz_indice", lambda: storage.carica_pratica(NOME_INDICE, path, modulo="pz"), path, ttl=20) or {}).get("prezziari", {}))
     except Exception:
         return {}
 

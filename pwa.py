@@ -4,6 +4,7 @@ Il manifesto e le icone sono generati al volo: non servono file aggiuntivi sul s
 Su Android (Chrome) compare anche il pulsante «Installa»; su iPhone si usa Condividi -> Aggiungi alla schermata Home.
 """
 import base64
+import functools
 import io
 import os
 
@@ -71,6 +72,7 @@ def icona_scheda():
         return "📊"
 
 
+@functools.lru_cache(maxsize=1)
 def _icone():
     """Icone PNG in base64: logo FCR centrato su fondo blu, nei tre formati richiesti."""
     from PIL import Image

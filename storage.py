@@ -6,9 +6,11 @@ si usa PostgreSQL e i dati sopravvivono ai riavvii. Altrimenti si usa un file SQ
 con filesystem effimero (Streamlit Community Cloud) quel file si perde ad ogni riavvio.
 """
 import contextlib
+import copy
 import json
 import os
 import sqlite3
+import threading
 import time
 
 DB_PATH = os.environ.get("FCR_DB_PATH", "fcr_pratiche.db")
@@ -68,53 +70,167 @@ def _schema_pg(con):
         con.execute(ddl)
 
 
+# Connessioni PostgreSQL riutilizzate: aprirne una nuova (TCP + TLS + accesso) a ogni lettura costava 0,2-0,5 s ciascuna su Neon,
+# e una schermata ne faceva anche decine. Ora restano aperte e si riusano; se sono ferme da un po' si controlla che siano ancora vive.
+_POOL = []                       # [(connessione, url, ultimo_uso)]
+_POOL_LOCK = threading.Lock()
+_POOL_MAX = 4
+_POOL_PING_DOPO = 10             # secondi di inattivita' dopo i quali si verifica la connessione prima di riusarla
+
+
+def _chiudi_pg(con):
+    try:
+        con.close()
+    except Exception:
+        pass
+
+
+def _prendi_pg(url):
+    import psycopg
+    while True:
+        with _POOL_LOCK:
+            voce = _POOL.pop() if _POOL else None
+        if voce is None:
+            break
+        con, u, t = voce
+        if u != url or con.closed or getattr(con, "broken", False):
+            _chiudi_pg(con)
+            continue
+        if time.monotonic() - t > _POOL_PING_DOPO:
+            try:
+                con.execute("SELECT 1")
+                con.commit()
+            except Exception:
+                _chiudi_pg(con)
+                continue
+        return con
+    # prepare_threshold=None: niente istruzioni preparate lato server (non funzionano dietro il pooler di Neon)
+    return psycopg.connect(url, connect_timeout=15, prepare_threshold=None)
+
+
+def _restituisci_pg(con, url):
+    if con.closed or getattr(con, "broken", False):
+        _chiudi_pg(con)
+        return
+    with _POOL_LOCK:
+        if len(_POOL) < _POOL_MAX:
+            _POOL.append((con, url, time.monotonic()))
+            return
+    _chiudi_pg(con)
+
+
+def chiudi_connessioni():
+    """Chiude le connessioni PostgreSQL tenute aperte (test, cambio di database)."""
+    with _POOL_LOCK:
+        voci, _POOL[:] = list(_POOL), []
+    for con, _u, _t in voci:
+        _chiudi_pg(con)
+
+
+_SQLITE_PRONTO = set()
+
+
+def _schema_sqlite(con):
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS pratiche ("
+        "nome TEXT PRIMARY KEY, creato TEXT, aggiornato TEXT, payload TEXT)"
+    )
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS report_log ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, pratica TEXT, report_id TEXT, creato TEXT, "
+        "modello TEXT, hash_dati TEXT, dettagli TEXT)"
+    )
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS utenti ("
+        "username TEXT PRIMARY KEY, hash TEXT NOT NULL, ruolo TEXT NOT NULL DEFAULT 'utente', "
+        "attivo INTEGER NOT NULL DEFAULT 1, creato TEXT, ultimo_accesso TEXT, creato_da TEXT)"
+    )
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS pratiche_storico ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, salvato TEXT, autore TEXT, payload TEXT)"
+    )
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS audit_log ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, utente TEXT, azione TEXT, dettaglio TEXT)"
+    )
+    cols = [r[1] for r in con.execute("PRAGMA table_info(pratiche)")]
+    if "autore" not in cols:
+        con.execute("ALTER TABLE pratiche ADD COLUMN autore TEXT")
+
+
 @contextlib.contextmanager
 def _db(path=None):
     url = None if path else _url_db()
     if url:
-        import psycopg
-        con = _ConPG(psycopg.connect(url, connect_timeout=15))
+        raw = _prendi_pg(url)
+        con = _ConPG(raw)
         try:
             if url not in _PG_PRONTO:
                 _schema_pg(con)
-                con.commit()
+                raw.commit()
                 _PG_PRONTO.add(url)
             yield con
-            con.commit()
+            raw.commit()
+        except BaseException:
+            try:
+                raw.rollback()
+            except Exception:
+                pass
+            raise
         finally:
-            con.close()
+            _restituisci_pg(raw, url)
         return
-    con = sqlite3.connect(path or DB_PATH)
+    percorso = path or DB_PATH
+    con = sqlite3.connect(percorso)
     try:
-        con.execute(
-            "CREATE TABLE IF NOT EXISTS pratiche ("
-            "nome TEXT PRIMARY KEY, creato TEXT, aggiornato TEXT, payload TEXT)"
-        )
-        con.execute(
-            "CREATE TABLE IF NOT EXISTS report_log ("
-            "id INTEGER PRIMARY KEY AUTOINCREMENT, pratica TEXT, report_id TEXT, creato TEXT, "
-            "modello TEXT, hash_dati TEXT, dettagli TEXT)"
-        )
-        con.execute(
-            "CREATE TABLE IF NOT EXISTS utenti ("
-            "username TEXT PRIMARY KEY, hash TEXT NOT NULL, ruolo TEXT NOT NULL DEFAULT 'utente', "
-            "attivo INTEGER NOT NULL DEFAULT 1, creato TEXT, ultimo_accesso TEXT, creato_da TEXT)"
-        )
-        con.execute(
-            "CREATE TABLE IF NOT EXISTS pratiche_storico ("
-            "id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, salvato TEXT, autore TEXT, payload TEXT)"
-        )
-        con.execute(
-            "CREATE TABLE IF NOT EXISTS audit_log ("
-            "id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, utente TEXT, azione TEXT, dettaglio TEXT)"
-        )
-        cols = [r[1] for r in con.execute("PRAGMA table_info(pratiche)")]
-        if "autore" not in cols:
-            con.execute("ALTER TABLE pratiche ADD COLUMN autore TEXT")
+        if percorso not in _SQLITE_PRONTO or not os.path.exists(percorso):      # lo schema si crea una volta per file, non a ogni lettura
+            _schema_sqlite(con)
+            con.commit()
+            _SQLITE_PRONTO.add(percorso)
         yield con
         con.commit()
     finally:
         con.close()
+
+
+# Cache brevi delle letture che si ripetono a ogni clic (elenco dei salvataggi, permessi, indice prezziari): si svuota a ogni scrittura.
+_CACHE = {}
+_CACHE_LOCK = threading.Lock()
+CACHE_TTL = 10
+
+
+def _identita_db(path=None):
+    """Chiave del database in uso; per SQLite include data e dimensione del file, cosi' ogni modifica (anche esterna) invalida la cache."""
+    url = None if path else _url_db()
+    if url:
+        return ("pg", url)
+    p = path or DB_PATH
+    try:
+        stt = os.stat(p)
+        return ("sqlite", p, stt.st_mtime_ns, stt.st_size)
+    except OSError:
+        return ("sqlite", p, 0, 0)
+
+
+def svuota_cache():
+    with _CACHE_LOCK:
+        _CACHE.clear()
+
+
+def cache_lettura(chiave, fn, path=None, ttl=None):
+    """Restituisce fn() ricordandolo per qualche secondo. fn non deve dipendere da nulla che non sia nel database."""
+    k = (chiave, _identita_db(path))
+    adesso = time.monotonic()
+    with _CACHE_LOCK:
+        voce = _CACHE.get(k)
+    if voce and voce[0] > adesso:
+        return copy.deepcopy(voce[1])                    # copia: chi la riceve puo' modificarla senza sporcare la cache
+    val = fn()
+    with _CACHE_LOCK:
+        if len(_CACHE) > 200:
+            _CACHE.clear()
+        _CACHE[k] = (adesso + (CACHE_TTL if ttl is None else ttl), copy.deepcopy(val))
+    return val
 
 
 MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl", "ga", "fo", "sx", "mz", "og", "rp", "gt", "cfg", "ru", "lg", "bk", "oa", "al", "pe", "pz", "rc", "of")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
@@ -172,6 +288,7 @@ def salva_pratica(nome, payload, path=None, autore="", modulo="credit", atteso=N
                 "INSERT INTO pratiche (nome, creato, aggiornato, payload, autore) VALUES (?,?,?,?,?)",
                 (nome, adesso, adesso, testo, autore),
             )
+    svuota_cache()
     _registra_modifiche(nome, modulo, vecchio_testo, payload, autore, path)
     return adesso
 
@@ -201,10 +318,17 @@ def e_demo(nome):
     return str(nome or "").startswith(PREFISSO_DEMO)
 
 
+def _righe_pratiche(path=None):
+    """(nome, aggiornato, autore) di tutti i salvataggi, dal piu' recente: una sola lettura ricordata per qualche secondo."""
+    def leggi():
+        with _db(path) as con:
+            return con.execute("SELECT nome, aggiornato, autore FROM pratiche ORDER BY aggiornato DESC").fetchall()
+    return cache_lettura("righe_pratiche", leggi, path)
+
+
 def elenca_pratiche(path=None, modulo="credit", demo=False):
     """Salvataggi di un modulo, dal piu' recente. `demo=False` (default) esclude quelli dimostrativi, `demo=True` restituisce solo quelli."""
-    with _db(path) as con:
-        righe = con.execute("SELECT nome, aggiornato, autore FROM pratiche ORDER BY aggiornato DESC").fetchall()
+    righe = _righe_pratiche(path)
     out = []
     for nome, agg, aut in righe:
         pref = next((m for m in MODULI_ARCHIVIO if nome.startswith(m + "|")), "credit")
@@ -216,8 +340,7 @@ def elenca_pratiche(path=None, modulo="credit", demo=False):
 
 def ultimi_aggiornamenti(path=None):
     """{modulo: (aggiornato, autore, nome)} dell'ultimo salvataggio di ogni strumento. Serve a capire quali dati sono fermi da troppo."""
-    with _db(path) as con:
-        righe = con.execute("SELECT nome, aggiornato, autore FROM pratiche ORDER BY aggiornato DESC").fetchall()
+    righe = _righe_pratiche(path)
     out = {}
     for nome, agg, aut in righe:
         pref = next((m for m in MODULI_ARCHIVIO if nome.startswith(m + "|")), "credit")
@@ -237,6 +360,7 @@ def elimina_pratica(nome, path=None, modulo="credit"):
     with _db(path) as con:
         con.execute("DELETE FROM pratiche WHERE nome=?", (_chiave(nome, modulo),))
         con.execute("DELETE FROM pratiche_storico WHERE nome=?", (_chiave(nome, modulo),))
+    svuota_cache()
 
 
 def storico_pratica(nome, path=None, modulo="credit"):

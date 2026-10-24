@@ -196,3 +196,9 @@ Nuovo strumento (sigla `of`, gruppo «Offerte e commesse») che segue la catena 
 - **Mercato**: annunci «così com'è» / «efficientato» → €/m² e differenza.
 - **Continuità finanziaria**: richieste al Condominio e ai condomini (AGOS, fino al 50% dei lavori privati) con stato, esito, documenti e copertura dell'appalto.
 - **Offerta**: PowerPoint e PDF generati dallo stesso schema (`of_report.py`), più Excel dei calcoli. Il PDF usa i font in `fonts/`; il PPTX richiede `python-pptx` (aggiunto a `requirements.txt`).
+
+## Accesso, rotella di caricamento e velocità (3.6.0)
+- **Nuovo accesso**: sfondo blu «tavola di progetto», emblema FCR, scheda bianca con il logo Aetheris Labs; funziona anche da telefono. Il browser può salvare nome utente e password.
+- **Rotella di caricamento**: l'emblema Aetheris gira al centro dello schermo quando la suite sta lavorando (compare solo se l'attesa supera circa un terzo di secondo, non blocca i clic; sostituisce l'omino «Running» di Streamlit). File `aetheris_icona.png`.
+- **Velocità**: le connessioni al database (Neon) restano aperte e si riusano invece di riaprirne una a ogni lettura (il Cruscotto ne apriva fino a 53 per ogni clic, ora 0-1); le liste dei salvataggi, i permessi e l'indice dei prezziari si ricordano per pochi secondi e si aggiornano a ogni salvataggio; i grafici con gli stessi dati non si ridisegnano; google-genai si carica solo quando si usa l'IA; i caratteri di Google non rallentano più lo stile.
+- L'orologio della barra laterale usa `st.iframe` (il vecchio componente è deprecato).

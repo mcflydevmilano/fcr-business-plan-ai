@@ -62,7 +62,7 @@ def meteo(lat, lon):
            "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max"
            "&timezone=Europe%%2FRome&forecast_days=1" % (lat, lon))
     try:
-        with urllib.request.urlopen(url, timeout=4) as r:
+        with urllib.request.urlopen(url, timeout=2.5) as r:
             return interpreta(json.loads(r.read().decode("utf-8")))
     except Exception:
         return None
@@ -84,7 +84,10 @@ t();setInterval(t,1000);
 
 def render_sidebar():
     """Da chiamare dentro `with st.sidebar:`."""
-    components.html(OROLOGIO, height=62)
+    if hasattr(st, "iframe"):                       # st.components.v1.html e' deprecato e verra' tolto da Streamlit
+        st.iframe(OROLOGIO, height=62)
+    else:
+        components.html(OROLOGIO, height=62)
     if os.environ.get("PYTEST_CURRENT_TEST"):         # nei test niente rete
         return
     citta, lat, lon = _config()

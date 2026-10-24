@@ -21,7 +21,6 @@ import os
 
 import pandas as pd
 import streamlit as st
-from google.genai import types
 
 import admin_ui
 import ai
@@ -79,6 +78,7 @@ MAX_EXCEL_ROWS = 300
 LOGO_PATH = exports.LOGO_PATH
 FCR_URI = theme.logo_uri(core.LOGO_FCR_PATH, 260)
 AETH_URI = theme.logo_uri(core.LOGO_PATH, 560, senza_sfondo=True)
+AETH_LOGIN_URI = theme.logo_uri(core.LOGO_PATH, 560, senza_sfondo=True, ritaglia=True)
 
 ETICHETTE = {
     "ricavi": "Ricavi delle vendite (EUR)",
@@ -208,13 +208,13 @@ def check_login():
     _addio = ss.pop("_addio", None)
     if _addio:
         assistenza.bolla_saluto(assistenza.frase_addio(_addio), 9, con_foto=True)
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    _, col2, _ = st.columns([1, 1.2, 1])
-    with col2:
-        st.markdown(theme.login_header(FCR_URI, AETH_URI), unsafe_allow_html=True)
+    st.markdown(theme.LOGIN_CSS, unsafe_allow_html=True)
+    st.markdown(theme.login_header(FCR_URI), unsafe_allow_html=True)
+    with st.container(key="login_card"):
+        st.markdown(theme.login_card_testa(AETH_LOGIN_URI), unsafe_allow_html=True)
         with st.form("login_form"):
-            nome = st.text_input("Nome utente", key="login_user")
-            pw = st.text_input("Password", type="password", key="login_pw")
+            nome = st.text_input("Nome utente", key="login_user", placeholder="il tuo nome utente", autocomplete="username")
+            pw = st.text_input("Password", type="password", key="login_pw", placeholder="la tua password", autocomplete="current-password")
             invia = st.form_submit_button("Accedi", type="primary", width="stretch")
         if invia:
             utente, errore = auth.autentica(nome, pw, UTENTI_SECRETS, APP_PASSWORD)
@@ -226,6 +226,7 @@ def check_login():
             st.error(errore)
         if APP_PASSWORD and not UTENTI_SECRETS:
             st.caption("Modalita' compatibilita': accesso come utente `admin` con la password condivisa.")
+    st.markdown(theme.login_piede(ORE_SESSIONE), unsafe_allow_html=True)
     return False
 
 
@@ -717,7 +718,7 @@ with tab_dati:
                     try:
                         if name.endswith(".pdf"):
                             contents = [PROMPT_ESTRAZIONE,
-                                        types.Part.from_bytes(data=uploaded.getvalue(), mime_type="application/pdf")]
+                                        ai.types.Part.from_bytes(data=uploaded.getvalue(), mime_type="application/pdf")]
                         else:
                             engine = "xlrd" if name.endswith(".xls") else "openpyxl"
                             xls = pd.ExcelFile(uploaded, engine=engine)

@@ -1,9 +1,24 @@
 """ai.py - Chiamate a Gemini (google-genai) con ripiego su un alias in caso di modello non trovato."""
+import importlib
 import re
 import time
 
-from google import genai
-from google.genai import types
+
+class _Pigro:
+    """Carica google-genai solo alla prima chiamata all'IA: all'avvio della suite risparmia mezzo secondo e non serve a chi non usa l'IA."""
+
+    def __init__(self, nome):
+        self._nome = nome
+        self._mod = None
+
+    def __getattr__(self, attr):
+        if self._mod is None:
+            self._mod = importlib.import_module(self._nome)
+        return getattr(self._mod, attr)
+
+
+genai = _Pigro("google.genai")
+types = _Pigro("google.genai.types")
 
 
 # secondi di attesa tra i tentativi quando il servizio e' sovraccarico (503/500/504): 3 tentativi per modello
