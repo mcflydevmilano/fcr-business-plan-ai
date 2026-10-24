@@ -12,7 +12,7 @@ import storage
 import theme
 
 ss = st.session_state
-AGGIORNA_SEC = 8
+AGGIORNA_SEC = 20
 
 INFORMATIVA_BREVE = """
 **Chi vede cosa**
