@@ -41,7 +41,9 @@ def normalizza(cfg):
         persone, email = _lista(r.get("persone")), [e for e in _lista(r.get("email")) if EMAIL_RE.match(e)]
         if canale or persone or email:
             regole.append({"area": area, "da": da, "canale": canale, "persone": persone, "email": email})
-    return {"regole": regole, "auto": bool(cfg.get("auto", True))}
+    rep = cfg.get("report") if isinstance(cfg.get("report"), dict) else {}
+    report = {"attivo": bool(rep.get("attivo")), "email": [e for e in _lista(rep.get("email")) if EMAIL_RE.match(e)]}
+    return {"regole": regole, "auto": bool(cfg.get("auto", True)), "report": report}
 
 
 def carica_cfg(path=None):
@@ -66,8 +68,12 @@ def _carica_stato(path=None):
     return s if isinstance(s, dict) else {}
 
 
-def _salva_stato(inviati, path=None):
-    storage.salva_pratica(NOME_STATO, {"inviati": inviati}, path, autore=AUTORE_CHAT, modulo="cfg")
+def _salva_stato(inviati, path=None, **altro):
+    """Salva lo stato degli invii, tenendo gli altri campi (per esempio la data dell'ultimo rapporto settimanale)."""
+    stato = _carica_stato(path)
+    stato["inviati"] = inviati
+    stato.update(altro)
+    storage.salva_pratica(NOME_STATO, stato, path, autore=AUTORE_CHAT, modulo="cfg")
 
 
 def _chiave(riga):
@@ -112,11 +118,14 @@ def smtp_pronto(env=None):
     return bool(env.get("SMTP_HOST") and env.get("SMTP_USER") and env.get("SMTP_PASSWORD"))
 
 
-def _mail_smtp(destinatari, oggetto, corpo, env=None):
+def _mail_smtp(destinatari, oggetto, corpo, env=None, allegati=()):
     env = env or os.environ
     msg = EmailMessage()
     msg["Subject"], msg["From"], msg["To"] = oggetto, env.get("MAIL_FROM") or env["SMTP_USER"], ", ".join(destinatari)
     msg.set_content(corpo)
+    for nome, dati, mime in allegati:
+        tipo, sotto = mime.split("/", 1)
+        msg.add_attachment(dati, maintype=tipo, subtype=sotto, filename=nome)
     porta = int(env.get("SMTP_PORT", "587") or 587)
     if porta == 465:
         with smtplib.SMTP_SSL(env["SMTP_HOST"], porta, timeout=30) as s:
@@ -187,4 +196,42 @@ def invia(righe, cfg=None, path=None, forza=False, oggi=None, utenti_noti=(), li
     if esito["regole"]:
         _salva_stato(inviati, path)
         storage.svuota_cache()
+    return esito
+
+
+# ----------------------------------------------------------------------------
+# Rapporto settimanale e controllo programmato (si lancia da cron / GitHub Actions: vedi job_avvisi.py)
+# ----------------------------------------------------------------------------
+def rapporto_pdf(righe, generale, azioni, fonti):
+    import dd_report
+    ctx = dd_report.costruisci_ctx_dd(righe, generale, azioni, fonti)
+    return dd_report.genera_pdf_dd(ctx), ctx["report_id"]
+
+
+def invia_rapporto(righe, generale, azioni, fonti, cfg=None, path=None, forza=False, oggi=None):
+    """Manda il PDF del Cruscotto per email a chi e' indicato in «Rapporto settimanale». Una sola volta al giorno (salvo `forza`).
+    Restituisce {'email': n, 'errori': [...], 'saltato': motivo|''}."""
+    cfg = cfg or carica_cfg(path)
+    oggi = oggi or storage._now()[:10]
+    esito = {"email": 0, "errori": [], "saltato": ""}
+    rep = cfg["report"]
+    if not rep["attivo"] or not rep["email"]:
+        esito["saltato"] = "rapporto non attivo o senza indirizzi"
+        return esito
+    if not forza and _carica_stato(path).get("ultimo_rapporto") == oggi:
+        esito["saltato"] = "gia' inviato oggi"
+        return esito
+    try:
+        pdf, rid = rapporto_pdf(righe, generale, azioni, fonti)
+        c = {"ok": 0, "warn": 0, "bad": 0, "nd": 0}
+        for r in righe:
+            c[r["Stato"]] = c.get(r["Stato"], 0) + 1
+        corpo = (f"Rapporto di direzione FCR del {oggi[8:]}/{oggi[5:7]}/{oggi[:4]}\n\n{c['bad']} semafori rossi, {c['warn']} gialli, {c['ok']} in regola.\n"
+                 "Il PDF allegato riporta semafori, azioni da fare e fonti dei dati.\n\nMessaggio automatico della FCR Suite: le simulazioni sono indicative.")
+        MAIL(rep["email"], f"FCR - Rapporto di direzione del {oggi[8:]}/{oggi[5:7]}/{oggi[:4]}", corpo, allegati=[(f"Cruscotto_{rid}.pdf", pdf, "application/pdf")])
+        esito["email"] = len(rep["email"])
+        _salva_stato((_carica_stato(path).get("inviati") or {}), path, ultimo_rapporto=oggi)
+        storage.svuota_cache()
+    except Exception as e:
+        esito["errori"].append(f"Rapporto non inviato ({type(e).__name__}): controlla le impostazioni SMTP nei Secrets.")
     return esito

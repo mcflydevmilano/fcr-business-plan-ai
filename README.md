@@ -219,3 +219,23 @@ Strumento «Chat interna» (gruppo Comunicazione): canali pubblici, gruppi priva
 
 ### Avvisi del Cruscotto (3.7.1)
 Nel Cruscotto, riquadro «🔔 Avvisi per email e chat interna»: per ogni area (Cassa, Margine, Crediti, …) l'amministratore indica da quale gravità avvisare (rosso, o giallo e rosso), il canale della chat, le persone (messaggio diretto dal «Cruscotto» + avviso sul telefono) e gli indirizzi email. Lo stesso problema si manda al massimo una volta al giorno. L'invio automatico parte all'apertura del Cruscotto solo se tutti i dati vengono da salvataggi veri (mai da prove o dati dimostrativi); c'è anche «Invia ora». Email: Secrets `SMTP_HOST`, `SMTP_PORT` (587 o 465), `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` (facoltativo).
+
+## Chat: risposte, reazioni, ricerca e compiti (3.8.0)
+- Risposta a un messaggio (con citazione), modifica dei propri messaggi, reazioni (👍 ❤️ 😂 ✅ 👀), messaggi «importanti» con conferma di lettura (chi ha letto e chi manca).
+- Scheda «Cerca»: per parola, autore, canale o solo allegati; cerca solo dove la persona ha accesso (le chat dirette di altri non si trovano mai, nemmeno dall'amministratore). Il testo cifrato si decifra al momento della ricerca, sugli ultimi 3000 messaggi accessibili.
+- Scheda «Compiti»: dal menu «⋯» di un messaggio si crea un compito per una persona (che deve poter leggere quel canale), con scadenza facoltativa. Lo trovi nella scheda Compiti e nel Calendario; chi lo riceve o lo ha assegnato lo chiude.
+- I pulsanti sui messaggi compaiono sugli ultimi 25, per tenere la pagina veloce.
+
+## La mia giornata (3.8.0)
+In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: crediti, cassa, debiti; commerciale: pratiche e commesse; cantiere: cantieri, sicurezza, mezzi; legale: termini e contratti; presidente/amministratore: Cruscotto) più scadenze dei prossimi 7 giorni, compiti assegnati, messaggi da leggere e strumenti con dati fermi. Legge l'ultimo salvataggio (mai i dati dimostrativi) e mostra solo ciò che la persona può aprire; ogni casella ha il pulsante «Apri».
+
+## Controllo programmato e rapporto settimanale (3.8.0)
+`job_avvisi.py` manda gli avvisi del Cruscotto (email, chat, telefono) senza che nessuno apra la suite e, il lunedì, il rapporto PDF di direzione agli indirizzi indicati nel riquadro «Avvisi» del Cruscotto. Opzioni: `--rapporto` (invia il PDF anche se non è lunedì), `--dry-run` (mostra senza inviare). Si lancia da cron sul vostro server (`30 6 * * 1-5 python job_avvisi.py`) oppure da GitHub Actions con `avvisi.yml` (mettilo in `.github/workflows/` e aggiungi i Repository secrets elencati nel file; `CHAT_KEY` deve essere identica a quella dei Secrets di Streamlit).
+
+## Sicurezza 3.9.0
+
+- **Verifica in due passaggi** (codice a 6 cifre da Google/Microsoft Authenticator): ognuno la attiva dalla barra laterale (🔐), con QR e 8 codici di emergenza monouso. L'amministratore può renderla **obbligatoria per tutti gli admin** e azzerarla a chi perde il telefono (Utenti → 🔐). Il segreto è cifrato con `DUEPASSAGGI_KEY` (o `CHAT_KEY`). Dopo 5 codici sbagliati: blocco 15 minuti.
+- **Scadenza password** per gli utenti creati dal pannello: `PASSWORD_SCADENZA_GG` (predefinito 180, `0` = mai). Avviso 14 giorni prima, poi cambio obbligato. Gli utenti nei Secrets non sono toccati.
+- **Backup cifrato** (`backup_db.py`, workflow `backup.yml`): tutte le tabelle, cifrate con `BACKUP_KEY`, verificate con un ripristino di prova, inviate a `BACKUP_EMAIL`. `python backup_db.py --verifica FILE`, `--ripristina FILE --su X.db`.
+- **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
+- Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.

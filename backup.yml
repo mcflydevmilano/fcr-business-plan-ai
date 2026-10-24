@@ -1,0 +1,28 @@
+# Backup notturno cifrato del database, inviato per email. Da copiare in .github/workflows/backup.yml
+# Segreti da creare in GitHub (Settings -> Secrets and variables -> Actions):
+#   DATABASE_URL, BACKUP_KEY (frase lunga: CONSERVALA ANCHE ALTROVE), BACKUP_EMAIL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD
+# Il file NON viene salvato come artefatto di GitHub (il repository e' pubblico): arriva solo per email.
+name: Backup database
+on:
+  schedule:
+    - cron: "30 2 * * *"
+  workflow_dispatch:
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python backup_db.py
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BACKUP_KEY: ${{ secrets.BACKUP_KEY }}
+          BACKUP_EMAIL: ${{ secrets.BACKUP_EMAIL }}
+          BACKUP_DIR: ${{ runner.temp }}/bk
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}

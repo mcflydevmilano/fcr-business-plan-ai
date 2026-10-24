@@ -163,7 +163,7 @@ def _griglia_semafori(righe, vai_a, apri, audit):
                     vai_a(m)
 
 
-def _avvisi(righe, modo_demo, apri, metriche, audit):
+def _avvisi(righe, modo_demo, apri, metriche, audit, gen=None, azioni=None, fonti=None):
     """Avvisi del Cruscotto per email e chat interna: invio automatico (solo da dati veri e salvati) e impostazione di chi riceve cosa."""
     import avvisi_dd
     import chat
@@ -205,11 +205,15 @@ def _avvisi(righe, modo_demo, apri, metriche, audit):
                 "Persone (nomi utente)": st.column_config.TextColumn(help="Nomi utente separati da virgola: ricevono un messaggio diretto dal «Cruscotto» e l'avviso sul telefono."),
                 "Email": st.column_config.TextColumn(help="Indirizzi separati da virgola.")})
             auto = st.checkbox("Invia automaticamente quando qualcuno apre il Cruscotto (da dati salvati)", value=cfg["auto"], key="avvdd_auto")
+            rep = cfg["report"]
+            rattivo = st.checkbox("Rapporto di direzione in PDF ogni lunedì, per email", value=rep["attivo"], key="avvdd_rep_on",
+                                  help="Lo manda il controllo programmato (job_avvisi.py): serve che sia attivo sul vostro server o su GitHub Actions.")
+            remail = st.text_input("Indirizzi del rapporto (separati da virgola)", ", ".join(rep["email"]), key="avvdd_rep_email", disabled=not rattivo)
             if st.button("💾 Salva le regole", key="avvdd_salva"):
                 inv = {v: k for k, v in avvisi_dd.GRAVITA.items()}
                 regole = [{"area": r["Area"], "da": inv.get(r["Da"], "bad"), "canale": r["Canale chat"] or "", "persone": r["Persone (nomi utente)"] or "", "email": r["Email"] or ""}
                           for r in ed.to_dict("records")]
-                nuova = avvisi_dd.salva_cfg({"regole": regole, "auto": auto}, u.get("username", ""))
+                nuova = avvisi_dd.salva_cfg({"regole": regole, "auto": auto, "report": {"attivo": rattivo, "email": remail}}, u.get("username", ""))
                 audit("avvisi_cruscotto_regole", f"{len(nuova['regole'])} regole")
                 ignote = sorted({p for r in nuova["regole"] for p in r["persone"] if p not in noti})
                 if ignote:
@@ -217,6 +221,11 @@ def _avvisi(righe, modo_demo, apri, metriche, audit):
                 st.success(f"Salvate {len(nuova['regole'])} regole.")
         else:
             st.caption("Le regole le imposta l'amministratore." if cfg["regole"] else "Nessuna regola impostata: le imposta l'amministratore.")
+        if cfg["report"]["attivo"] and cfg["report"]["email"] and u.get("ruolo") in ("admin", "utente") and gen is not None:
+            if st.button("📄 Invia ora il rapporto PDF", key="avvdd_rep_ora", help="Manda subito il PDF di questa schermata a chi e' indicato nel rapporto settimanale."):
+                e = avvisi_dd.invia_rapporto(righe, gen, azioni or [], fonti or {}, cfg, forza=True)
+                audit("avvisi_cruscotto_rapporto", f"email {e['email']}")
+                (st.success(f"Rapporto inviato a {e['email']} indirizzi.") if e["email"] else st.error(" ".join(e["errori"]) or e["saltato"]))
         if cfg["regole"] and u.get("ruolo") in ("admin", "utente"):
             if st.button(f"📨 Invia ora gli avvisi ({n_gr} semafori da guardare)", key="avvdd_ora", disabled=not n_gr,
                          help="Manda subito, anche se sono gia' stati inviati oggi. Se stai guardando dati dimostrativi o non salvati, gli avvisi si basano su quelli."):
@@ -302,7 +311,7 @@ def render(fcr_uri, audit=None, vai_a=None):
     titolo = {"ok": "Tutto sotto controllo", "warn": "Alcuni punti di attenzione", "bad": "Servono interventi", "nd": "Dati insufficienti"}[gen]
     st.markdown(theme.semaforo_generale(gen, titolo, f"{c['ok']} in regola · {c['warn']} da tenere d'occhio · {c['bad']} {'critico' if c['bad'] == 1 else 'critici'} · {c['nd']} senza dati"), unsafe_allow_html=True)
     _griglia_semafori(righe, vai_a, apri, audit)
-    _avvisi(righe, modo_demo, apri, metriche, audit)
+    _avvisi(righe, modo_demo, apri, metriche, audit, gen, azioni, fonti)
     st.caption("🟢 in regola · 🟡 da tenere d'occhio · 🔴 serve un intervento · ⚪ mancano i dati. Sotto, «Cosa fare» dice cosa decidere e «Chi contattare» chi chiamare.")
     st.subheader("Cosa fare")
     if azioni:

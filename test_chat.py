@@ -319,3 +319,120 @@ def test_avatar_usa_la_foto_profilo():
     foto = {"mario": {"jpg": "QUJD"}}
     assert chat_ui._avatar("Mario", foto) == "data:image/jpeg;base64,QUJD"       # nome scritto in modo diverso: stessa persona
     assert chat_ui._avatar("luca", foto) == "🧑‍💼"                               # senza foto: icona
+
+
+# ---- risposte, modifica, reazioni, conferme, ricerca, compiti ----
+def test_risposta_citazione_e_modifica(db, monkeypatch):
+    monkeypatch.setenv("CHAT_KEY", "chiave-di-prova")
+    dm = chat.canale_diretto("mario", "luca", db)
+    a = chat.invia(dm, "mario", "utente", "Hai il computo?", path=db)["id"]
+    b = chat.invia(dm, "luca", "utente", "Si, te lo mando", path=db, risposta_a=a)["id"]
+    m = chat.messaggi(dm, "mario", path=db)[-1]
+    assert m["risposta_a"]["autore"] == "mario" and m["risposta_a"]["testo"] == "Hai il computo?"
+    other = chat.canale_diretto("mario", "zeno", db)
+    with pytest.raises(ValueError):
+        chat.invia(other, "mario", "utente", "x", path=db, risposta_a=a)           # non si risponde a un messaggio di un altro canale
+    with pytest.raises(PermissionError):
+        chat.modifica_messaggio(a, LUCA, "falso", db)
+    chat.modifica_messaggio(a, MARIO, "Hai il computo aggiornato?", db)
+    with storage._db(db) as con:
+        assert con.execute("SELECT testo FROM chat_messaggi WHERE id=?", (a,)).fetchone()[0].startswith("enc:")      # resta cifrato
+    primo = chat.messaggi(dm, "luca", path=db)[0]
+    assert primo["testo"] == "Hai il computo aggiornato?" and primo["modificato"]
+
+
+def test_reazioni_e_conferma_di_lettura(db):
+    cid = chat.crea_canale("Cantiere Roma", "privato", "mario", ["luca", "lea"], path=db)
+    mid = chat.invia(cid, "mario", "utente", "Domani stop lavori", path=db, importante=True)["id"]
+    assert chat.reagisci(mid, "luca", "👍", db) is True
+    assert chat.reagisci(mid, "luca", "👍", db) is False                         # secondo clic toglie
+    chat.reagisci(mid, "lea", "👍", db)
+    with pytest.raises(ValueError):
+        chat.reagisci(mid, "luca", "💣", db)
+    with pytest.raises(PermissionError):
+        chat.reagisci(mid, "admin", "👍", db)                                    # non e' un suo canale
+    chat.conferma_lettura(mid, "luca", db)
+    chat.conferma_lettura(mid, "luca", db)
+    m = chat.messaggi(cid, "mario", path=db)[0]
+    assert m["reazioni"] == {"👍": ["lea"]} and m["confermato_da"] == ["luca"] and m["da_confermare"] == ["lea"]
+
+
+def test_ricerca_rispetta_i_permessi_e_decifra(db, monkeypatch):
+    monkeypatch.setenv("CHAT_KEY", "k")
+    pub = chat.crea_canale("Generale", "pubblico", "admin", path=db)
+    dm = chat.canale_diretto("mario", "luca", db)
+    chat.invia(pub, "mario", "utente", "Preventivo condominio Rossi", path=db)
+    chat.invia(dm, "mario", "utente", "Il preventivo riservato per Bianchi", path=db)
+    chat.invia(dm, "luca", "utente", "", ("computo.pdf", b"%PDF-1.4 x"), path=db)
+    assert len(chat.cerca("mario", "preventivo", path=db)) == 2
+    assert len(chat.cerca("admin", "preventivo", path=db)) == 1                  # l'admin non trova nulla nelle chat dirette
+    assert chat.cerca("admin", "Bianchi", path=db) == []
+    assert [r["allegato_nome"] for r in chat.cerca("luca", solo_allegati=True, path=db)] == ["computo.pdf"]
+    assert chat.cerca("mario", "", path=db) == []
+    assert [r["autore"] for r in chat.cerca("mario", autore="luca", path=db)] == ["luca"]
+
+
+def test_compiti_dalla_chat_e_calendario(db):
+    import calendario
+    cid = chat.crea_canale("Cantiere Roma", "privato", "mario", ["luca"], path=db)
+    mid = chat.invia(cid, "mario", "utente", "Serve il DURC", path=db)["id"]
+    with pytest.raises(PermissionError):
+        chat.crea_compito(mid, MARIO, "Chiedere il DURC", "zeno", "2026-11-05", db)     # zeno non legge il canale
+    with pytest.raises(ValueError):
+        chat.crea_compito(mid, MARIO, "Chiedere il DURC", "luca", "domani", db)
+    tid = chat.crea_compito(mid, MARIO, "Chiedere il DURC", "luca", "2026-11-05", db)
+    assert [t["titolo"] for t in chat.compiti("luca", path=db)] == ["Chiedere il DURC"]
+    assert chat.compiti("mario", path=db) == [] and len(chat.compiti("mario", tutti=True, path=db)) == 1
+    ev = calendario.eventi({"ch": {"compiti": chat.compiti("luca", path=db)}}, "2026-11-01", 60)
+    assert ev[0]["Categoria"] == "Compito" and ev[0]["Data"].isoformat() == "2026-11-05"
+    with pytest.raises(PermissionError):
+        chat.chiudi_compito(tid, {"username": "admin", "ruolo": "admin"}, db)
+    chat.chiudi_compito(tid, LUCA, db)
+    assert chat.compiti("luca", path=db) == []
+
+
+def test_database_vecchio_si_aggiorna(tmp_path, monkeypatch):
+    import sqlite3
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    p = str(tmp_path / "vecchio.db")
+    con = sqlite3.connect(p)
+    con.execute("CREATE TABLE chat_messaggi (id INTEGER PRIMARY KEY AUTOINCREMENT, canale_id INTEGER, autore TEXT, ts TEXT, testo TEXT, cifrato INTEGER DEFAULT 0, "
+                "allegato_nome TEXT, allegato_tipo TEXT, allegato_dati TEXT, link_modulo TEXT, link_etichetta TEXT, eliminato INTEGER DEFAULT 0)")
+    con.commit(); con.close()
+    chat._PRONTO.clear()
+    storage.svuota_cache()
+    cid = chat.crea_canale("Generale", "pubblico", "admin", path=p)
+    chat.invia(cid, "mario", "utente", "dopo l'aggiornamento", path=p, importante=True)
+    assert chat.messaggi(cid, "luca", path=p)[0]["importante"]
+
+
+def test_schermata_conversazione_ricca_senza_errori(tmp_path, monkeypatch):
+    """Messaggio importante, risposta, reazioni e allegato insieme: nessun pulsante con la stessa chiave."""
+    at = _app(tmp_path, monkeypatch, "ricca.db")
+    cid = [c for c in chat.canali_visibili("admin") if c["nome"] == "Generale"][0]["id"]
+    a = chat.invia(cid, "mario", "utente", "Domani riunione", path=None, importante=True)["id"]
+    chat.invia(cid, "luca", "utente", "Ricevuto", risposta_a=a)
+    chat.invia(cid, "admin", "admin", "Ok", importante=True)
+    chat.reagisci(a, "luca", "👍")
+    chat.invia(cid, "mario", "utente", "", ("doc.pdf", b"%PDF-1.4 x"))
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert any(b.label == "✔ Confermo di aver letto" for b in at.button)
+    [b for b in at.button if b.label == "✔ Confermo di aver letto"][0].click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert chat.messaggi(cid, "admin")[0]["confermato_da"] == ["admin"]
+
+
+def test_schermata_cerca_e_compiti(tmp_path, monkeypatch):
+    at = _app(tmp_path, monkeypatch, "cerca.db")
+    cid = [c for c in chat.canali_visibili("admin") if c["nome"] == "Cantieri"][0]["id"]
+    mid = chat.invia(cid, "mario", "utente", "Serve il DURC della ditta Rossi")["id"]
+    chat.crea_compito(mid, {"username": "admin", "ruolo": "admin"}, "Chiedere il DURC", "admin", "2026-12-01")
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    at.text_input(key="chat_cerca_t").set_value("durc").run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert any("Serve il DURC" in m.value for m in at.markdown)
+    assert any("Chiedere il DURC" in m.value for m in at.markdown)               # scheda Compiti
+    [b for b in at.button if b.label == "Fatto"][0].click().run()
+    assert chat.compiti("admin") == []

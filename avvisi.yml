@@ -1,0 +1,33 @@
+name: Avvisi del Cruscotto
+
+# Ogni giorno feriale controlla i semafori e manda gli avvisi (email, chat interna, telefono); il lunedi' manda anche il rapporto PDF di direzione.
+# Metti questo file in .github/workflows/ (come riepilogo.yml). Richiede i "Repository secrets" (Settings > Secrets and variables > Actions):
+# DATABASE_URL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, MAIL_FROM (facoltativo), CHAT_KEY, TELEGRAM_BOT_TOKEN (se usate Telegram), NTFY_URL (facoltativo), APP_URL.
+# Gli orari di GitHub sono in UTC: 06:30 UTC = 08:30 in estate, 07:30 in inverno. Puo' ritardare di qualche minuto.
+on:
+  schedule:
+    - cron: "30 6 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  avvisi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Controlla e invia
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          CHAT_KEY: ${{ secrets.CHAT_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          NTFY_URL: ${{ secrets.NTFY_URL }}
+          APP_URL: ${{ secrets.APP_URL }}
+        run: python job_avvisi.py

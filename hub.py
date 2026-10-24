@@ -422,10 +422,13 @@ def _ricerca(vai_a, consentiti):
     return True
 
 
-def render(vai_a, consentiti=None, freschezza_righe=None, non_letti_chat=0):
+def render(vai_a, consentiti=None, freschezza_righe=None, non_letti_chat=0, giornata=None):
     """consentiti: insieme di sigle visibili a chi guarda (None = tutte). I gruppi rimasti vuoti spariscono."""
     if _ricerca(vai_a, consentiti):
         return
+    if giornata:                                    # (utente, profilo, compiti, audit): le cose urgenti per questa persona
+        import miagiornata
+        miagiornata.render(vai_a, giornata[0], giornata[1], consentiti or [], giornata[2], non_letti_chat, giornata[3])
     if consentiti is None or "ch" in consentiti:
         with st.container(key="hub_chat"):
             c1, c2 = st.columns([4, 1.4], vertical_alignment="center")

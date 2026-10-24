@@ -167,3 +167,48 @@ def reimposta_password(username, nuova, da="", path=None):
     storage.aggiorna_utente(username, path, hash=hash_password(nuova))
     # azzera i tentativi falliti: usa un evento che li sblocca
     storage.log_evento(da, "password_reimpostata", username, path)
+
+
+# ----------------------------------------------------------------------------
+# Codice a due passaggi: tentativi sbagliati (non si azzerano con il «login» della password) e scadenza password
+# ----------------------------------------------------------------------------
+def bloccato_2fa(username, path=None):
+    import time
+    da = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(time.time() - FINESTRA_BLOCCO_S))
+    with storage._db(path) as con:
+        n = con.execute("SELECT COUNT(*) FROM audit_log WHERE utente=? AND azione='2fa_fallito' AND ts>=?", (username, da)).fetchone()[0]
+    return n >= MAX_TENTATIVI
+
+
+def password_cambiata_il(username, path=None):
+    """Data/ora (UTC, 'AAAA-MM-GG hh:mm:ss') dell'ultima impostazione della password per gli utenti creati dal pannello; None se non nota."""
+    with storage._db(path) as con:
+        r = con.execute("SELECT MAX(ts) FROM audit_log WHERE (azione='password_cambiata' AND utente=?) OR (azione='password_reimpostata' AND dettaglio=?) "
+                        "OR (azione='utente_creato' AND dettaglio LIKE ?)", (username, username, username + " (%")).fetchone()[0]
+    if r:
+        return r
+    rec = storage.utente_db(username, path)
+    return (rec or {}).get("creato") or None
+
+
+def giorni_a_scadenza_password(utente, scadenza_gg, path=None):
+    """Giorni che mancano alla scadenza della password (negativo = scaduta). None se la regola e' spenta o non si applica
+    (utenti definiti nei Secrets, password condivisa)."""
+    import datetime as dt
+    if not scadenza_gg or not utente or utente.get("origine") != "db":
+        return None
+    q = password_cambiata_il(utente["username"], path)
+    if not q:
+        return None
+    try:
+        d = dt.datetime.strptime(str(q)[:19].replace("T", " "), "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None
+    return int(scadenza_gg) - (dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) - d).days
+
+
+def cambia_password_scaduta(username, vecchia, nuova, path=None):
+    """Come cambia_password ma impedisce di riusare la stessa password."""
+    if vecchia == nuova:
+        raise ValueError("La nuova password deve essere diversa da quella attuale.")
+    cambia_password(username, vecchia, nuova, path)

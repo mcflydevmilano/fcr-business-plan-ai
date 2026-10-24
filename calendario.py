@@ -16,8 +16,8 @@ import sx
 from sc import data_da
 
 MODULI_CALENDARIO = ("sc", "ga", "fo", "sx", "mz", "rp", "gt", "lg")
-NOMI_MODULO = {"sc": "Scadenzario", "ga": "Gare e offerte", "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "rp": "Rapportini di cantiere", "gt": "Cronoprogramma", "lg": "Studio legale"}
-CATEGORIE = ["Incasso", "Pagamento", "Gara", "Documento gara", "Documento fornitore", "Formazione / idoneità", "Documento di cantiere", "Mezzo", "Segnalazione", "Fine fase", "Termine legale", "Contratto"]
+NOMI_MODULO = {"sc": "Scadenzario", "ga": "Gare e offerte", "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "rp": "Rapportini di cantiere", "gt": "Cronoprogramma", "lg": "Studio legale", "ch": "Compiti dalla chat"}
+CATEGORIE = ["Incasso", "Pagamento", "Gara", "Documento gara", "Documento fornitore", "Formazione / idoneità", "Documento di cantiere", "Mezzo", "Segnalazione", "Fine fase", "Termine legale", "Contratto", "Compito"]
 
 
 def _stato(giorni, preavviso):
@@ -95,6 +95,11 @@ def eventi(payloads, oggi=None, orizzonte_gg=60, categorie=None):
         for x in lg.normalizza_contratti(p["lg"].get("contratti"))[0]:
             if x["Scadenza"]:
                 ev.append(_ev(data_da(x["Scadenza"]), oggi, "lg", "Contratto", x["Contratto"], x["Controparte"], None, prev))
+    for t in (p.get("ch") or {}).get("compiti") or []:
+        if t.get("scadenza"):
+            d = data_da(t["scadenza"])
+            if d:
+                ev.append(_ev(d, oggi, "ch", "Compito", t["titolo"], f"per {t['assegnato']} · da {t['creato_da']}", None, 3))
     if categorie:
         ev = [e for e in ev if e["Categoria"] in categorie]
     ev = [e for e in ev if e["Giorni"] <= orizzonte_gg]

@@ -90,7 +90,25 @@ def _ddl(pg):
         "CREATE TABLE IF NOT EXISTS chat_letture (canale_id INTEGER, username TEXT, ultimo_id INTEGER DEFAULT 0, PRIMARY KEY (canale_id, username))",
         "CREATE TABLE IF NOT EXISTS chat_avvisi (username TEXT PRIMARY KEY, telegram_chat_id TEXT, telegram_codice TEXT, ntfy_topic TEXT, "
         "modo TEXT DEFAULT 'menzioni', silenzio_da TEXT, silenzio_a TEXT)",
+        "CREATE TABLE IF NOT EXISTS chat_reazioni (messaggio_id INTEGER, username TEXT, emoji TEXT, PRIMARY KEY (messaggio_id, username, emoji))",
+        "CREATE TABLE IF NOT EXISTS chat_conferme (messaggio_id INTEGER, username TEXT, ts TEXT, PRIMARY KEY (messaggio_id, username))",
+        f"CREATE TABLE IF NOT EXISTS chat_compiti (id {pk}, messaggio_id INTEGER, canale_id INTEGER, titolo TEXT, assegnato TEXT, scadenza TEXT, "
+        "stato TEXT DEFAULT 'aperto', creato_da TEXT, creato TEXT, chiuso TEXT)",
     ]
+
+
+COLONNE_NUOVE = (("chat_messaggi", "risposta_a", "INTEGER"), ("chat_messaggi", "modificato", "INTEGER DEFAULT 0"), ("chat_messaggi", "importante", "INTEGER DEFAULT 0"))
+
+
+def _migra(con, pg):
+    """Aggiunge ai database creati con versioni precedenti le colonne nuove."""
+    for tab, col, tipo in COLONNE_NUOVE:
+        if pg:
+            con.execute(f"ALTER TABLE {tab} ADD COLUMN IF NOT EXISTS {col} {tipo}")
+        else:
+            esistenti = {r[1] for r in con.execute(f"PRAGMA table_info({tab})").fetchall()}
+            if col not in esistenti:
+                con.execute(f"ALTER TABLE {tab} ADD COLUMN {col} {tipo}")
 
 
 @contextlib.contextmanager
@@ -100,6 +118,7 @@ def _db(path=None):
         if chiave not in _PRONTO or (chiave[0] == "sqlite" and not os.path.exists(chiave[1])):
             for ddl in _ddl(isinstance(con, storage._ConPG)):
                 con.execute(ddl)
+            _migra(con, isinstance(con, storage._ConPG))
             _PRONTO.add(chiave)
         yield con
 
@@ -342,7 +361,7 @@ def menzioni(testo, utenti_noti):
     return {noti[m.lower()] for m in re.findall(r"@([A-Za-z0-9_.\-]+)", testo or "") if m.lower() in noti}
 
 
-def invia(cid, autore, ruolo, testo="", allegato=None, link=None, path=None):
+def invia(cid, autore, ruolo, testo="", allegato=None, link=None, path=None, risposta_a=None, importante=False):
     """Scrive un messaggio. `allegato` = (nome, byte); `link` = (sigla strumento, etichetta). Restituisce {id, canale, tipo}."""
     if ruolo not in ("admin", "utente"):
         raise PermissionError("Con il ruolo «lettore» si possono solo leggere i messaggi.")
@@ -358,13 +377,18 @@ def invia(cid, autore, ruolo, testo="", allegato=None, link=None, path=None):
         c = _canale(con, cid)
         if not c or c["archiviato"] or not puo_accedere(con, c, autore):
             raise PermissionError("Non puoi scrivere in questo canale.")
+        if risposta_a is not None:
+            r = con.execute("SELECT canale_id FROM chat_messaggi WHERE id=?", (risposta_a,)).fetchone()
+            if not r or r[0] != cid:
+                raise ValueError("Il messaggio a cui rispondi non e' in questo canale.")
         cifrare = c["tipo"] != "pubblico" and cifratura_attiva()
         t_db = _cifra(testo) if (cifrare and testo) else testo
         d_db = _cifra(all_dati) if (cifrare and all_dati) else all_dati
         mid = _inserisci(con,
-                         "INSERT INTO chat_messaggi (canale_id, autore, ts, testo, cifrato, allegato_nome, allegato_tipo, allegato_dati, link_modulo, link_etichetta, eliminato) "
-                         "VALUES (?,?,?,?,?,?,?,?,?,?,0)",
-                         (cid, autore, _ora(), t_db, 1 if cifrare else 0, all_nome, all_tipo, d_db, (link or (None, None))[0], (link or (None, None))[1]))
+                         "INSERT INTO chat_messaggi (canale_id, autore, ts, testo, cifrato, allegato_nome, allegato_tipo, allegato_dati, link_modulo, link_etichetta, eliminato, risposta_a, importante, modificato) "
+                         "VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?,0)",
+                         (cid, autore, _ora(), t_db, 1 if cifrare else 0, all_nome, all_tipo, d_db, (link or (None, None))[0], (link or (None, None))[1],
+                          risposta_a, 1 if importante else 0))
         _segna(con, cid, autore, mid)
     storage.svuota_cache()
     return {"id": mid, "canale": cid, "tipo": c["tipo"], "nome": c["nome"]}
@@ -375,26 +399,172 @@ def ultimo_id(cid, path=None):
         return con.execute("SELECT MAX(id) FROM chat_messaggi WHERE canale_id=?", (cid,)).fetchone()[0] or 0
 
 
+def _testo_db(testo, cifrato):
+    return _decifra(testo) if cifrato else (testo or "")
+
+
 def messaggi(cid, username, limite=FINESTRA, path=None):
-    """Ultimi messaggi, dal piu' vecchio al piu' recente, gia' decifrati. Solo per chi ha accesso al canale."""
+    """Ultimi messaggi, dal piu' vecchio al piu' recente, gia' decifrati. Solo per chi ha accesso al canale.
+    Ogni messaggio porta anche: reazioni {emoji: [persone]}, conferme [persone], citazione (messaggio a cui risponde)."""
     with _db(path) as con:
         c = _canale(con, cid)
         if not puo_accedere(con, c, username):
             raise PermissionError("Non hai accesso a questo canale.")
         righe = con.execute(
-            "SELECT id, autore, ts, testo, cifrato, allegato_nome, allegato_tipo, allegato_dati, link_modulo, link_etichetta, eliminato "
+            "SELECT id, autore, ts, testo, cifrato, allegato_nome, allegato_tipo, allegato_dati, link_modulo, link_etichetta, eliminato, risposta_a, modificato, importante "
             "FROM chat_messaggi WHERE canale_id=? ORDER BY id DESC LIMIT ?", (cid, int(limite))).fetchall()
+        ids = [r[0] for r in righe]
+        reaz, conf = {}, {}
+        if ids:
+            segn = ",".join("?" * len(ids))
+            for mid, em, u in con.execute(f"SELECT messaggio_id, emoji, username FROM chat_reazioni WHERE messaggio_id IN ({segn}) ORDER BY username", ids).fetchall():
+                reaz.setdefault(mid, {}).setdefault(em, []).append(u)
+            for mid, u in con.execute(f"SELECT messaggio_id, username FROM chat_conferme WHERE messaggio_id IN ({segn}) ORDER BY ts", ids).fetchall():
+                conf.setdefault(mid, []).append(u)
+        citati = {}
+        for r in righe:
+            if r[11] and r[11] not in citati:
+                q = con.execute("SELECT autore, testo, cifrato, eliminato, allegato_nome FROM chat_messaggi WHERE id=?", (r[11],)).fetchone()
+                if q:
+                    t = "(messaggio eliminato)" if q[3] else (_testo_db(q[1], q[2]) or (f"[allegato: {q[4]}]" if q[4] else ""))
+                    citati[r[11]] = {"id": r[11], "autore": q[0], "testo": t[:90] + ("…" if len(t) > 90 else "")}
+        membri_c = [r[0] for r in con.execute("SELECT username FROM chat_membri WHERE canale_id=?", (cid,)).fetchall()] if c["tipo"] != "pubblico" else None
     out = []
-    for mid, aut, ts, testo, cif, an, at, ad, lm, le, el in reversed(righe):
+    for mid, aut, ts, testo, cif, an, at, ad, lm, le, el, ra, mod, imp in reversed(righe):
         dati = None
         if ad and not el:
             try:
                 dati = base64.b64decode(_decifra(ad)) if cif else base64.b64decode(ad)
             except Exception:
                 dati = None
-        out.append({"id": mid, "autore": aut, "ts": ts, "testo": "" if el else (_decifra(testo) if cif else (testo or "")), "eliminato": bool(el),
-                    "allegato_nome": an if not el else None, "allegato_tipo": at, "allegato": dati, "link_modulo": lm, "link_etichetta": le})
+        out.append({"id": mid, "autore": aut, "ts": ts, "testo": "" if el else _testo_db(testo, cif), "eliminato": bool(el),
+                    "allegato_nome": an if not el else None, "allegato_tipo": at, "allegato": dati, "link_modulo": lm, "link_etichetta": le,
+                    "risposta_a": citati.get(ra), "modificato": bool(mod), "importante": bool(imp),
+                    "reazioni": reaz.get(mid, {}) if not el else {}, "confermato_da": conf.get(mid, []),
+                    "da_confermare": [m for m in (membri_c or []) if m != aut and m not in conf.get(mid, [])] if imp and membri_c is not None else None})
     return out
+
+
+EMOJI = ("👍", "❤️", "😂", "✅", "👀")
+
+
+def modifica_messaggio(mid, utente, testo, path=None):
+    """Solo l'autore, sul testo. Se la chat e' cifrata il nuovo testo si cifra come l'originale."""
+    testo = str(testo or "").strip()
+    if not testo or len(testo) > MAX_TESTO:
+        raise ValueError(f"Il testo deve avere da 1 a {MAX_TESTO} caratteri.")
+    with _db(path) as con:
+        r = con.execute("SELECT autore, cifrato, eliminato FROM chat_messaggi WHERE id=?", (mid,)).fetchone()
+        if not r or r[2]:
+            raise ValueError("Messaggio inesistente.")
+        if r[0] != utente["username"]:
+            raise PermissionError("Puoi modificare solo i tuoi messaggi.")
+        con.execute("UPDATE chat_messaggi SET testo=?, modificato=1 WHERE id=?", (_cifra(testo) if r[1] else testo, mid))
+    storage.svuota_cache()
+
+
+def _accesso_messaggio(con, mid, username):
+    r = con.execute("SELECT canale_id, eliminato FROM chat_messaggi WHERE id=?", (mid,)).fetchone()
+    if not r or r[1]:
+        raise ValueError("Messaggio inesistente.")
+    if not puo_accedere(con, _canale(con, r[0]), username):
+        raise PermissionError("Non hai accesso a questo canale.")
+    return r[0]
+
+
+def reagisci(mid, username, emoji, path=None):
+    """Mette o toglie una reazione. Restituisce True se ora c'e'."""
+    if emoji not in EMOJI:
+        raise ValueError("Reazione non valida.")
+    with _db(path) as con:
+        _accesso_messaggio(con, mid, username)
+        if con.execute("SELECT 1 FROM chat_reazioni WHERE messaggio_id=? AND username=? AND emoji=?", (mid, username, emoji)).fetchone():
+            con.execute("DELETE FROM chat_reazioni WHERE messaggio_id=? AND username=? AND emoji=?", (mid, username, emoji))
+            return False
+        con.execute("INSERT INTO chat_reazioni (messaggio_id, username, emoji) VALUES (?,?,?)", (mid, username, emoji))
+        return True
+
+
+def conferma_lettura(mid, username, path=None):
+    with _db(path) as con:
+        _accesso_messaggio(con, mid, username)
+        if not con.execute("SELECT 1 FROM chat_conferme WHERE messaggio_id=? AND username=?", (mid, username)).fetchone():
+            con.execute("INSERT INTO chat_conferme (messaggio_id, username, ts) VALUES (?,?,?)", (mid, username, _ora()))
+
+
+def cerca(username, testo="", autore="", canale_id=None, solo_allegati=False, limite=40, path=None):
+    """Cerca tra i messaggi dei canali a cui la persona ha accesso (mai negli altri). Il testo cifrato si decifra qui, quindi la ricerca
+    guarda gli ultimi 3000 messaggi accessibili. Restituisce [{id, canale_id, canale, autore, ts, testo, allegato_nome}], i piu' recenti per primi."""
+    testo = str(testo or "").strip().lower()
+    autore = str(autore or "").strip().lower()
+    if not testo and not autore and not solo_allegati:
+        return []
+    with _db(path) as con:
+        canali = {c["id"]: c for c in canali_visibili(username, path, False) + canali_visibili(username, path, True)}
+        if canale_id is not None:
+            canali = {k: v for k, v in canali.items() if k == canale_id}
+        if not canali:
+            return []
+        segn = ",".join("?" * len(canali))
+        righe = con.execute(f"SELECT id, canale_id, autore, ts, testo, cifrato, allegato_nome FROM chat_messaggi WHERE eliminato=0 AND canale_id IN ({segn}) "
+                            "ORDER BY id DESC LIMIT 3000", list(canali)).fetchall()
+    out = []
+    for mid, cid, aut, ts, t, cif, an in righe:
+        t = _testo_db(t, cif)
+        if autore and autore not in aut.lower():
+            continue
+        if solo_allegati and not an:
+            continue
+        if testo and testo not in t.lower() and testo not in (an or "").lower():
+            continue
+        out.append({"id": mid, "canale_id": cid, "canale": canali[cid]["etichetta"], "tipo": canali[cid]["tipo"], "autore": aut, "ts": ts, "testo": t, "allegato_nome": an})
+        if len(out) >= limite:
+            break
+    return out
+
+
+# --- Compiti nati da un messaggio ---
+def crea_compito(mid, utente, titolo, assegnato, scadenza="", path=None):
+    """Trasforma un messaggio in un compito per una persona (che deve poter leggere quel canale). Restituisce l'id del compito."""
+    titolo = re.sub(r"\s+", " ", str(titolo or "").strip())[:140]
+    if not titolo:
+        raise ValueError("Scrivi cosa c'e' da fare.")
+    if scadenza:
+        try:
+            time.strptime(str(scadenza), "%Y-%m-%d")
+        except ValueError:
+            raise ValueError("La scadenza va scritta come AAAA-MM-GG.")
+    if not puo_scrivere(utente):
+        raise PermissionError("Con il ruolo «lettore» non si creano compiti.")
+    with _db(path) as con:
+        cid = _accesso_messaggio(con, mid, utente["username"])
+        if not puo_accedere(con, _canale(con, cid), assegnato):
+            raise PermissionError(f"{assegnato} non puo' leggere questo canale: scegli una persona che ne fa parte.")
+        tid = _inserisci(con, "INSERT INTO chat_compiti (messaggio_id, canale_id, titolo, assegnato, scadenza, stato, creato_da, creato) VALUES (?,?,?,?,?,'aperto',?,?)",
+                         (mid, cid, titolo, assegnato, str(scadenza or ""), utente["username"], _ora()))
+    storage.svuota_cache()
+    return tid
+
+
+def compiti(username, tutti=False, path=None):
+    """Compiti aperti assegnati alla persona (o, con tutti=True, anche quelli che ha assegnato lei). Prima i piu' vicini alla scadenza."""
+    with _db(path) as con:
+        cond = "(assegnato=? OR creato_da=?)" if tutti else "assegnato=?"
+        par = (username, username) if tutti else (username,)
+        righe = con.execute(f"SELECT id, messaggio_id, canale_id, titolo, assegnato, scadenza, stato, creato_da, creato FROM chat_compiti WHERE stato='aperto' AND {cond} "
+                            "ORDER BY CASE WHEN scadenza='' THEN 1 ELSE 0 END, scadenza, id", par).fetchall()
+    return [dict(zip(("id", "messaggio_id", "canale_id", "titolo", "assegnato", "scadenza", "stato", "creato_da", "creato"), r)) for r in righe]
+
+
+def chiudi_compito(tid, utente, path=None):
+    with _db(path) as con:
+        r = con.execute("SELECT assegnato, creato_da FROM chat_compiti WHERE id=?", (tid,)).fetchone()
+        if not r:
+            raise ValueError("Compito inesistente.")
+        if utente["username"] not in r:
+            raise PermissionError("Lo chiude chi lo ha ricevuto o chi lo ha assegnato.")
+        con.execute("UPDATE chat_compiti SET stato='fatto', chiuso=? WHERE id=?", (_ora(), tid))
+    storage.svuota_cache()
 
 
 def _segna(con, cid, username, ultimo):

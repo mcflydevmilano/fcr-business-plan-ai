@@ -27,6 +27,7 @@ import streamlit as st
 import admin_ui
 import ai
 import auth
+import due_passaggi
 import charts
 import core
 import exports
@@ -186,6 +187,16 @@ def audit(azione, dettaglio=""):
     storage.log_evento((ss.get("utente") or {}).get("username", ""), azione, dettaglio)
 
 
+def _entra(utente, via):
+    """Accesso riuscito (dopo password ed eventuale codice): apre la sessione e il cookie."""
+    ss["utente"] = utente
+    ss["_benvenuto"] = True                    # fumetto di benvenuto, una volta per accesso
+    ss["_set_cookie"] = sessione.crea(utente, CHIAVE_SESSIONE, UTENTI_SECRETS, APP_PASSWORD, ORE_SESSIONE)
+    if via == "emergenza":
+        ss["_avviso_emergenza"] = due_passaggi.codici_emergenza_rimasti(utente["username"])
+    st.rerun()
+
+
 def check_login():
     if not UTENTI_SECRETS and not APP_PASSWORD:
         st.error("⚠️ Configurazione mancante: aggiungi almeno un utente nei secrets (sezione [users.nome] con hash e ruolo) "
@@ -216,18 +227,43 @@ def check_login():
     st.markdown(theme.login_header(FCR_URI), unsafe_allow_html=True)
     with st.container(key="login_card"):
         st.markdown(theme.login_card_testa(AETH_LOGIN_URI), unsafe_allow_html=True)
-        with st.form("login_form"):
-            nome = st.text_input("Nome utente", key="login_user", placeholder="il tuo nome utente", autocomplete="username")
-            pw = st.text_input("Password", type="password", key="login_pw", placeholder="la tua password", autocomplete="current-password")
-            invia = st.form_submit_button("Accedi", type="primary", width="stretch")
-        if invia:
-            utente, errore = auth.autentica(nome, pw, UTENTI_SECRETS, APP_PASSWORD)
-            if utente:
-                ss["utente"] = utente
-                ss["_benvenuto"] = True                # fumetto di benvenuto, una volta per accesso
-                ss["_set_cookie"] = sessione.crea(utente, CHIAVE_SESSIONE, UTENTI_SECRETS, APP_PASSWORD, ORE_SESSIONE)
+        _att = ss.get("_2fa_attesa")
+        if _att:                                                       # secondo passaggio: codice dell'app o codice di emergenza
+            st.markdown(f"**Verifica in due passaggi** per `{_att['username']}`")
+            st.caption("Apri l'app di autenticazione sul telefono e scrivi il codice a 6 cifre. Se hai perso il telefono usa uno dei codici di emergenza.")
+            with st.form("login_2fa"):
+                _cod = st.text_input("Codice", key="login_2fa_codice", placeholder="123456", autocomplete="one-time-code")
+                _ok = st.form_submit_button("Conferma", type="primary", width="stretch")
+            if st.button("← Torna indietro", key="login_2fa_indietro"):
+                ss.pop("_2fa_attesa", None)
                 st.rerun()
-            st.error(errore)
+            if _ok:
+                if auth.bloccato_2fa(_att["username"]):
+                    st.error("Troppi codici sbagliati: riprova tra 15 minuti o contatta l'amministratore.")
+                else:
+                    _via = due_passaggi.verifica_login(_att["username"], _cod)
+                    if _via:
+                        ss.pop("_2fa_attesa", None)
+                        _entra(_att, _via)
+                    storage.log_evento(_att["username"], "2fa_fallito", "")
+                    st.error("Codice non valido.")
+        else:
+            with st.form("login_form"):
+                nome = st.text_input("Nome utente", key="login_user", placeholder="il tuo nome utente", autocomplete="username")
+                pw = st.text_input("Password", type="password", key="login_pw", placeholder="la tua password", autocomplete="current-password")
+                invia = st.form_submit_button("Accedi", type="primary", width="stretch")
+            if invia:
+                utente, errore = auth.autentica(nome, pw, UTENTI_SECRETS, APP_PASSWORD)
+                if utente:
+                    try:
+                        _serve = due_passaggi.attivo(utente["username"])
+                    except Exception:
+                        _serve = False
+                    if _serve:
+                        ss["_2fa_attesa"] = utente
+                        st.rerun()
+                    _entra(utente, "")
+                st.error(errore)
         if APP_PASSWORD and not UTENTI_SECRETS:
             st.caption("Modalita' compatibilita': accesso come utente `admin` con la password condivisa.")
     st.markdown(theme.login_piede(ORE_SESSIONE), unsafe_allow_html=True)
@@ -236,6 +272,96 @@ def check_login():
 
 if not check_login():
     st.stop()
+
+
+# ----------------------------------------------------------------------------
+# Sicurezza dopo l'accesso: password scaduta e due passaggi obbligatori per gli amministratori
+# ----------------------------------------------------------------------------
+try:
+    PASSWORD_SCADENZA_GG = int(float(get_secret("PASSWORD_SCADENZA_GG", 180)))        # 0 = nessuna scadenza
+except (TypeError, ValueError):
+    PASSWORD_SCADENZA_GG = 180
+
+
+def _pannello_2fa(u, forzato=False):
+    """Attivazione dei due passaggi: QR da inquadrare con l'app, conferma con un codice, codici di emergenza mostrati una volta."""
+    nome = u["username"]
+    if ss.get("_2fa_codici"):
+        st.success("Verifica in due passaggi attiva. Conserva questi codici di emergenza (si usano una volta sola se perdi il telefono): non verranno mostrati di nuovo.")
+        st.code("\n".join(ss["_2fa_codici"]))
+        if st.button("Ho salvato i codici", key="2fa_ok"):
+            ss.pop("_2fa_codici", None)
+            st.rerun()
+        return
+    if due_passaggi.attivo(nome):
+        st.caption(f"Attiva. Codici di emergenza rimasti: {due_passaggi.codici_emergenza_rimasti(nome)}.")
+        if not forzato:
+            with st.form("2fa_off"):
+                c = st.text_input("Per disattivarla scrivi un codice dell'app")
+                if st.form_submit_button("Disattiva"):
+                    if auth.bloccato_2fa(nome):
+                        st.error("Troppi codici sbagliati: riprova tra 15 minuti.")
+                    elif due_passaggi.verifica_login(nome, c):
+                        due_passaggi.disattiva(nome, nome)
+                        st.rerun()
+                    else:
+                        storage.log_evento(nome, "2fa_fallito", "")
+                        st.error("Codice non valido.")
+        return
+    seg = ss.setdefault("_2fa_segreto", due_passaggi.nuovo_segreto())
+    st.markdown("1. Installa sul telefono **Google Authenticator**, **Microsoft Authenticator** o simili.  \n2. Inquadra il QR (o scrivi la chiave a mano).  \n3. Scrivi qui il codice a 6 cifre che appare.")
+    png = due_passaggi.qr_png(due_passaggi.uri(seg, nome))
+    if png:
+        st.image(png, width=190)
+    st.code(due_passaggi.raggruppa(seg), language=None)
+    with st.form("2fa_on"):
+        c = st.text_input("Codice mostrato dall'app")
+        if st.form_submit_button("Attiva", type="primary"):
+            try:
+                ss["_2fa_codici"] = due_passaggi.attiva(nome, seg, c, nome)
+                ss.pop("_2fa_segreto", None)
+                st.rerun()
+            except ValueError as e:
+                st.error(str(e))
+
+
+def _cambio_password_obbligato(u, giorni):
+    st.markdown(theme.LOGIN_CSS, unsafe_allow_html=True)
+    st.warning("🔑 La tua password è scaduta: scegli una nuova password per continuare." if giorni < 0 else "La tua password è scaduta.")
+    with st.form("form_pw_scaduta"):
+        p0 = st.text_input("Password attuale", type="password")
+        p1 = st.text_input("Nuova password", type="password", help=f"Almeno {auth.LUNGHEZZA_MIN_PASSWORD} caratteri, con lettere e numeri; diversa dall'attuale.")
+        if st.form_submit_button("Cambia password", type="primary"):
+            try:
+                auth.cambia_password_scaduta(u["username"], p0, p1)
+                st.rerun()
+            except ValueError as e:
+                st.error(str(e))
+    if st.button("Esci", key="scad_esci"):
+        ss.clear()
+        ss["_cancella_cookie"] = True
+        st.rerun()
+
+
+_gg_pw = auth.giorni_a_scadenza_password(ss["utente"], PASSWORD_SCADENZA_GG)
+if _gg_pw is not None and _gg_pw < 0:
+    _cambio_password_obbligato(ss["utente"], _gg_pw)
+    st.stop()
+try:
+    _forza_2fa = due_passaggi.deve_configurare(ss["utente"])
+except Exception:
+    _forza_2fa = False
+if _forza_2fa:
+    st.markdown(theme.LOGIN_CSS, unsafe_allow_html=True)
+    st.warning("🔐 Per gli amministratori è obbligatoria la verifica in due passaggi: attivala ora per continuare.")
+    _pannello_2fa(ss["utente"], forzato=False)
+    if st.button("Esci", key="f2fa_esci"):
+        ss.clear()
+        ss["_cancella_cookie"] = True
+        st.rerun()
+    st.stop()
+if ss.pop("_avviso_emergenza", None) is not None:
+    st.warning("Hai usato un codice di emergenza: se hai perso il telefono, reimposta la verifica in due passaggi.")
 
 
 # ----------------------------------------------------------------------------
@@ -597,6 +723,10 @@ with st.sidebar:
     st.markdown("<div class='sb-label'>Utilità</div>", unsafe_allow_html=True)
     pwa.pannello()
     pausa.pannello()
+    with st.expander("🔐 Verifica in due passaggi"):
+        _pannello_2fa(_u)
+    if _gg_pw is not None and _gg_pw <= 14:
+        st.warning(f"La password scade tra {_gg_pw} giorni: cambiala da «Account».")
     if _u["origine"] == "db":
         with st.expander("🔑 Account · cambia password"):
             with st.form("form_pw", clear_on_submit=True):
@@ -714,7 +844,11 @@ if MODULO is None:
             _fresc.append(pz.stato_validita(pz.carica_indice()))        # il prezziario scade a una data, non dopo N giorni
     except Exception:
         _fresc = []
-    hub.render(vai_a, CONSENTITI, _fresc, _non_letti_chat() if "ch" in CONSENTITI else 0)
+    try:
+        _compiti_miei = chat.compiti(ss["utente"]["username"]) if "ch" in CONSENTITI else None
+    except Exception:
+        _compiti_miei = None
+    hub.render(vai_a, CONSENTITI, _fresc, _non_letti_chat() if "ch" in CONSENTITI else 0, (ss["utente"], PROFILO, _compiti_miei, audit))
     st.stop()
 
 if MODULO == "bp":

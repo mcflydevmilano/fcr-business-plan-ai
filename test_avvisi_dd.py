@@ -107,3 +107,72 @@ def test_schermata_cruscotto_con_avvisi(tmp_path, monkeypatch):
     at.run()
     assert not at.exception, [e.value for e in at.exception]
     assert any("Avvisi per email e chat interna" in e.label for e in at.expander)
+
+
+# ---- rapporto settimanale e controllo programmato ----
+def _salva_demo_veri(path):
+    import datetime as dt
+    import demo
+    d = demo._leggi()
+    g = (dt.date.today() - dt.date.fromisoformat(d["_base"])).days
+    for m, p in d.items():
+        if m != "_base":
+            storage.salva_pratica("Pratica prova", demo.sposta_date(p, g), path, autore="t", modulo=m)
+    storage.svuota_cache()
+
+
+def test_cfg_rapporto_normalizzata():
+    c = avvisi_dd.normalizza({"report": {"attivo": True, "email": "a@x.it, errata"}})
+    assert c["report"] == {"attivo": True, "email": ["a@x.it"]}
+    assert avvisi_dd.normalizza({})["report"] == {"attivo": False, "email": []}
+
+
+def test_rapporto_pdf_allegato_una_volta_al_giorno(db, monkeypatch):
+    mail = []
+    monkeypatch.setattr(avvisi_dd, "MAIL", lambda dest, ogg, corpo, env=None, allegati=(): mail.append((dest, ogg, corpo, allegati)))
+    _salva_demo_veri(db)
+    import job_avvisi
+    righe, gen, azioni, fonti = job_avvisi.prepara(db)
+    cfg = avvisi_dd.normalizza({"report": {"attivo": True, "email": "dir@fcr.it"}})
+    e = avvisi_dd.invia_rapporto(righe, gen, azioni, fonti, cfg, db, oggi="2026-10-26")
+    assert e["email"] == 1 and not e["errori"]
+    nome, dati, mime = mail[0][3][0]
+    assert nome.startswith("Cruscotto_") and dati[:4] == b"%PDF" and mime == "application/pdf"
+    assert avvisi_dd.invia_rapporto(righe, gen, azioni, fonti, cfg, db, oggi="2026-10-26")["saltato"] == "gia' inviato oggi"
+    assert avvisi_dd.invia_rapporto(righe, gen, azioni, fonti, cfg, db, oggi="2026-10-26", forza=True)["email"] == 1
+    assert avvisi_dd.invia_rapporto(righe, gen, azioni, fonti, avvisi_dd.normalizza({}), db)["saltato"]
+
+
+def test_job_invia_avvisi_e_rapporto_di_lunedi(db, monkeypatch):
+    import datetime as dt
+    import job_avvisi
+    mail = []
+    monkeypatch.setattr(avvisi_dd, "MAIL", lambda dest, ogg, corpo, env=None, allegati=(): mail.append((dest, ogg, bool(allegati))))
+    _salva_demo_veri(db)
+    chat.crea_canali_iniziali("admin", path=db)
+    avvisi_dd.salva_cfg({"regole": [{"area": avvisi_dd.TUTTE, "da": "bad", "canale": "Generale", "email": "a@x.it"}],
+                         "report": {"attivo": True, "email": "dir@fcr.it"}}, "admin", db)
+    storage.svuota_cache()
+    lunedi = dt.date(2026, 10, 26)
+    assert lunedi.weekday() == 0
+    out = job_avvisi.esegui(db, lunedi)
+    assert out["avvisi"]["regole"] == 1 and out["rapporto"]["email"] == 1
+    assert [m[2] for m in mail] == [False, True]                              # prima l'avviso (senza allegato), poi il rapporto con PDF
+    canale = [c for c in chat.canali_visibili("zeno", db) if c["nome"] == "Generale"][0]["id"]
+    assert chat.messaggi(canale, "zeno", path=db)[-1]["autore"] == "Cruscotto"
+    # stesso giorno: niente doppioni; martedi' niente rapporto; --rapporto lo forza
+    assert job_avvisi.esegui(db, lunedi)["avvisi"]["regole"] == 0
+    assert job_avvisi.esegui(db, dt.date(2026, 10, 27))["rapporto"] is None
+    assert job_avvisi.esegui(db, dt.date(2026, 10, 27), forza_rapporto=True)["rapporto"]["email"] == 1
+
+
+def test_job_dry_run_non_invia(db, monkeypatch):
+    import datetime as dt
+    import job_avvisi
+    mail = []
+    monkeypatch.setattr(avvisi_dd, "MAIL", lambda *a, **k: mail.append(1))
+    _salva_demo_veri(db)
+    avvisi_dd.salva_cfg({"regole": [{"area": avvisi_dd.TUTTE, "da": "warn", "email": "a@x.it"}]}, "admin", db)
+    storage.svuota_cache()
+    out = job_avvisi.esegui(db, dt.date(2026, 10, 26), dry_run=True)
+    assert out["avvisi"] and mail == []

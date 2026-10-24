@@ -40,6 +40,14 @@ def _payloads(includi_demo):
         except Exception:
             pass
         fonti[nome] = "nessun dato"
+    try:                                                         # compiti nati dalla chat, assegnati alla persona collegata
+        import chat
+        comp = chat.compiti(ss["utente"]["username"])
+        if comp:
+            pay["ch"] = {"compiti": comp}
+            fonti[calendario.NOMI_MODULO["ch"]] = f"{len(comp)} compiti miei"
+    except Exception:
+        pass
     return pay, fonti
 
 

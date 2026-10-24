@@ -80,14 +80,87 @@ def _avatar(nome, foto):
     return f"data:image/jpeg;base64,{jpg}" if jpg else ("🧑‍💼" if nome else "👤")
 
 
-def _riga_messaggio(m, utente, audit, vai_a, consentiti, nomi_strumenti, foto=None):
+AZIONI_ULTIMI = 25          # solo gli ultimi messaggi hanno i pulsanti (reazioni, rispondi, modifica, compito): tiene veloce la pagina
+
+
+def _persone_canale(cid, utenti_noti):
+    """Persone a cui si puo' assegnare un compito: i membri se il canale e' riservato, altrimenti tutti."""
+    try:
+        m = chat.membri(cid)
+    except Exception:
+        m = []
+    return m or list(utenti_noti)
+
+
+def _azioni(m, utente, audit, sel, utenti_noti):
+    """Reazioni, rispondi, modifica, compito, elimina di un messaggio."""
+    mio = m["autore"] == utente["username"]
+    scrive = chat.puo_scrivere(utente)
+    righe = st.columns(min(len(chat.EMOJI) + 1, 6), gap="small")
+    for k, em in enumerate(chat.EMOJI):
+        gia = m["reazioni"].get(em, [])
+        etichetta = f"{em} {len(gia)}" if gia else em
+        if righe[k].button(etichetta, key=f"chr_{m['id']}_{k}", type="primary" if utente["username"] in gia else "tertiary",
+                           help=(", ".join(gia) or "Reagisci"), disabled=False):
+            try:
+                chat.reagisci(m["id"], utente["username"], em)
+            except (ValueError, PermissionError) as e:
+                st.error(str(e))
+            _rerun()
+    with righe[-1].popover("⋯", help="Rispondi, modifica, crea un compito"):
+        if scrive and st.button("↩ Rispondi", key=f"chq_{m['id']}"):
+            ss["chat_risposta"] = m["id"]
+            _rerun()
+        if mio and st.button("✏️ Modifica", key=f"chm_{m['id']}"):
+            ss["chat_modifica"] = m["id"]
+            _rerun()
+        if scrive:
+            st.markdown("**📌 Crea un compito**")
+            tit = st.text_input("Cosa c'è da fare", (m["testo"] or "")[:80], key=f"cht_{m['id']}")
+            persone = _persone_canale(sel, utenti_noti)
+            chi = st.selectbox("A chi", persone, index=persone.index(utente["username"]) if utente["username"] in persone else 0, key=f"chp_{m['id']}")
+            quando = st.date_input("Entro il (facoltativo)", value=None, key=f"chs_{m['id']}")
+            if st.button("Crea il compito", key=f"chk_{m['id']}"):
+                try:
+                    chat.crea_compito(m["id"], utente, tit, chi, quando.isoformat() if quando else "")
+                    frase = f"📌 Compito per @{chi}: {tit}" + (f" (entro {quando.strftime('%d/%m/%Y')})" if quando else "")
+                    info = chat.invia(sel, utente["username"], utente["ruolo"], frase, risposta_a=m["id"])
+                    notifiche.avvisa(info, utente["username"], frase, utenti_noti)
+                    audit("chat_compito", f"{chi}: {tit[:60]}")
+                    _rerun()
+                except (ValueError, PermissionError) as e:
+                    st.error(str(e))
+        if mio and st.button("🗑 Elimina", key=f"chx_{m['id']}"):
+            chat.elimina_messaggio(m["id"], utente)
+            _rerun()
+
+
+def _riga_messaggio(m, utente, audit, vai_a, consentiti, nomi_strumenti, foto=None, sel=None, utenti_noti=(), con_azioni=False):
     mio = m["autore"] == utente["username"]
     with st.chat_message("user" if mio else "assistant", avatar=_avatar(m["autore"], foto or {})):
-        st.markdown(f"**{html.escape(m['autore'])}** · <span style='color:#64748b;font-size:.8rem'>{_ora_locale(m['ts'])}</span>", unsafe_allow_html=True)
+        st.markdown(f"**{html.escape(m['autore'])}** · <span style='color:#64748b;font-size:.8rem'>{_ora_locale(m['ts'])}</span>"
+                    + (" · <span style='color:#64748b;font-size:.8rem'>modificato</span>" if m["modificato"] else "")
+                    + (" · <span style='color:#b91c1c;font-size:.8rem'>❗ importante</span>" if m["importante"] else ""), unsafe_allow_html=True)
         if m["eliminato"]:
             st.caption("🚫 Messaggio eliminato")
             return
-        if m["testo"]:
+        if m["risposta_a"]:
+            q = m["risposta_a"]
+            st.markdown(f"<div style='border-left:3px solid #94a3b8;padding:.1rem .6rem;color:#475569;font-size:.85rem'>↩ <b>{html.escape(q['autore'])}</b>: {html.escape(q['testo'])}</div>", unsafe_allow_html=True)
+        if ss.get("chat_modifica") == m["id"] and mio:
+            nuovo = st.text_area("Modifica il messaggio", m["testo"], key=f"chmt_{m['id']}", max_chars=chat.MAX_TESTO)
+            a, b = st.columns(2)
+            if a.button("Salva", key=f"chms_{m['id']}", type="primary"):
+                try:
+                    chat.modifica_messaggio(m["id"], utente, nuovo)
+                    ss["chat_modifica"] = None
+                    _rerun()
+                except (ValueError, PermissionError) as e:
+                    st.error(str(e))
+            if b.button("Annulla", key=f"chma_{m['id']}"):
+                ss["chat_modifica"] = None
+                _rerun()
+        elif m["testo"]:
             st.markdown(html.escape(m["testo"]).replace("\n", "  \n"), unsafe_allow_html=True)
         if m["allegato"]:
             if (m["allegato_tipo"] or "").startswith("image/"):
@@ -101,9 +174,18 @@ def _riga_messaggio(m, utente, audit, vai_a, consentiti, nomi_strumenti, foto=No
                     vai_a(sigla)
             else:
                 st.caption(f"↗ {nomi_strumenti.get(sigla, sigla)} (non hai accesso a questo strumento)")
-        if mio and st.button("🗑 Elimina", key=f"chx_{m['id']}", type="tertiary"):
-            chat.elimina_messaggio(m["id"], utente)
-            _rerun()
+        if m["importante"]:
+            conf = m["confermato_da"]
+            if mio:
+                mancano = m["da_confermare"]
+                st.caption("✔ Letto da: " + (", ".join(conf) or "nessuno ancora") + ((" · mancano: " + ", ".join(mancano)) if mancano else ""))
+            elif utente["username"] in conf:
+                st.caption("✔ Hai confermato la lettura")
+            elif st.button("✔ Confermo di aver letto", key=f"chcf_{m['id']}", type="primary"):
+                chat.conferma_lettura(m["id"], utente["username"])
+                _rerun()
+        if con_azioni:
+            _azioni(m, utente, audit, sel, utenti_noti)
 
 
 @st.fragment(run_every=AGGIORNA_SEC)
@@ -174,11 +256,19 @@ def _conversazioni(utente, utenti_noti, audit, vai_a, consentiti, nomi_strumenti
             if not msgs:
                 st.caption("Nessun messaggio: scrivi tu il primo.")
             foto = _foto_utenti()
-            for m in msgs:
-                _riga_messaggio(m, utente, audit, vai_a, consentiti, nomi_strumenti, foto)
+            for k, m in enumerate(msgs):
+                _riga_messaggio(m, utente, audit, vai_a, consentiti, nomi_strumenti, foto, sel, utenti_noti, con_azioni=k >= len(msgs) - AZIONI_ULTIMI)
         if cur and not scrive:
             st.info("Il tuo ruolo è «lettore»: puoi leggere ma non scrivere.")
             return
+        rsp = ss.get("chat_risposta")
+        citato = next((x for x in msgs if x["id"] == rsp), None) if rsp else None
+        if citato:
+            a, b = st.columns([6, 1], vertical_alignment="center")
+            a.info(f"↩ Rispondi a **{citato['autore']}**: {citato['testo'][:80] or '[allegato]'}")
+            if b.button("Annulla", key="chat_risposta_no"):
+                ss["chat_risposta"] = None
+                _rerun()
         with st.form("chat_invio", clear_on_submit=True, border=False):
             testo = st.text_area("Scrivi un messaggio", key="chat_testo", height=80, max_chars=chat.MAX_TESTO, label_visibility="collapsed",
                                  placeholder="Scrivi un messaggio… usa @nome per citare qualcuno")
@@ -190,14 +280,69 @@ def _conversazioni(utente, utenti_noti, audit, vai_a, consentiti, nomi_strumenti
                 strumenti = [s for s in consentiti if s in nomi_strumenti and s != "ch"]
                 sc = st.selectbox("Collega uno strumento (facoltativo)", strumenti, index=None, format_func=lambda s: nomi_strumenti[s],
                                   placeholder="Nessuno", key="chat_link")
+            imp = st.checkbox("❗ Importante: chiedi a chi legge di confermare", key="chat_importante")
             if st.form_submit_button("Invia", type="primary"):
                 try:
                     info = chat.invia(sel, u, utente["ruolo"], testo, (allegato.name, allegato.getvalue()) if allegato else None,
-                                      (sc, "") if sc else None)
+                                      (sc, "") if sc else None, risposta_a=citato["id"] if citato else None, importante=imp)
+                    ss["chat_risposta"] = None
                     notifiche.avvisa(info, u, testo, utenti_noti)
                     _rerun()
                 except (ValueError, PermissionError) as e:
                     st.error(str(e))
+
+
+def _tab_cerca(utente):
+    u = utente["username"]
+    st.caption("Cerca nei canali, nei gruppi e nelle chat dirette a cui hai accesso. Gli altri non si vedono mai.")
+    a, b = st.columns([3, 2])
+    testo = a.text_input("Parola o frase", key="chat_cerca_t")
+    autore = b.text_input("Scritto da (nome utente)", key="chat_cerca_a")
+    c, d = st.columns([3, 2])
+    canali = {x["etichetta"] + ("  (privato)" if x["tipo"] != "pubblico" else ""): x["id"] for x in chat.canali_visibili(u)}
+    scelto = c.selectbox("Dove", ["Ovunque"] + list(canali), key="chat_cerca_c")
+    solo_all = d.checkbox("Solo con allegati (foto, PDF)", key="chat_cerca_all")
+    if not (testo or autore or solo_all):
+        st.info("Scrivi una parola, un nome o spunta «Solo con allegati».")
+        return
+    ris = chat.cerca(u, testo, autore, canali.get(scelto), solo_all)
+    st.write(f"{len(ris)} risultati" + (" (mostro i più recenti)" if len(ris) >= 40 else ""))
+    for r in ris:
+        with st.container(border=True):
+            ico = "🔒" if r["tipo"] != "pubblico" else "#"
+            st.markdown(f"**{ico} {html.escape(r['canale'])}** · {html.escape(r['autore'])} · {_ora_locale(r['ts'])}")
+            st.markdown(html.escape(r["testo"][:300]).replace("\n", "  \n") + (f"  \n📎 {html.escape(r['allegato_nome'])}" if r["allegato_nome"] else ""), unsafe_allow_html=True)
+            if st.button("Apri la conversazione", key=f"chcr_{r['id']}"):
+                ss["chat_cid"] = r["canale_id"]
+                st.success("Fatto: ora apri la scheda «Conversazioni».")
+
+
+def _tab_compiti(utente, vai_a, audit):
+    u = utente["username"]
+    mie = chat.compiti(u)
+    altre = [t for t in chat.compiti(u, tutti=True) if t["assegnato"] != u]
+    oggi = dt.date.today().isoformat()
+    st.markdown("##### Da fare per me")
+    if not mie:
+        st.success("Nessun compito aperto.")
+    for t in mie:
+        scad = f" · entro {t['scadenza'][8:]}/{t['scadenza'][5:7]}/{t['scadenza'][:4]}" if t["scadenza"] else ""
+        ritardo = bool(t["scadenza"]) and t["scadenza"] < oggi
+        a, b = st.columns([5, 1], vertical_alignment="center")
+        a.markdown(("🔴 " if ritardo else "⬜ ") + f"**{html.escape(t['titolo'])}**{scad} · da {html.escape(t['creato_da'])}")
+        if b.button("Fatto", key=f"chfa_{t['id']}"):
+            chat.chiudi_compito(t["id"], utente)
+            audit("chat_compito_chiuso", t["titolo"][:60])
+            st.rerun()
+    if altre:
+        st.markdown("##### Che ho assegnato io")
+        for t in altre:
+            scad = f" · entro {t['scadenza'][8:]}/{t['scadenza'][5:7]}/{t['scadenza'][:4]}" if t["scadenza"] else ""
+            a, b = st.columns([5, 1], vertical_alignment="center")
+            a.markdown(f"⬜ **{html.escape(t['titolo'])}** · per {html.escape(t['assegnato'])}{scad}")
+            if b.button("Chiudi", key=f"chfb_{t['id']}"):
+                chat.chiudi_compito(t["id"], utente)
+                st.rerun()
 
 
 def _tab_avvisi(utente, utenti_noti):
@@ -280,7 +425,7 @@ def _tab_gestione(utente, utenti_noti, audit):
     st.markdown("##### Canali esistenti")
     for c in chat.tutti_i_canali_gestibili():
         cols = st.columns([3, 1.2, 1.2])
-        icona = "#" if c["tipo"] == "pubblico" else "🔒"
+        icona = "📢" if c["tipo"] == "pubblico" else "🔒"
         cols[0].markdown(f"{icona} **{html.escape(c['nome'])}**" + ("  _(archiviato)_" if c["archiviato"] else "") +
                          ("" if c["tipo"] == "pubblico" else "  · privato: contenuto non visibile"))
         if cols[1].button("Ripristina" if c["archiviato"] else "Archivia", key=f"chat_ar_{c['id']}"):
@@ -328,14 +473,19 @@ def render(fcr_uri, audit=None, utente=None, utenti_secrets=None, consentiti=Non
         chat.crea_canali_iniziali(utente["username"])             # alla prima apertura prepara i canali consigliati
     except Exception:
         pass
-    nomi = ["💬 Conversazioni", "📱 Avvisi sul telefono"] + (["⚙️ Gestione"] if gest else []) + ["🔒 Privacy"]
+    n_comp = len(chat.compiti(utente["username"]))
+    nomi = ["💬 Conversazioni", "🔎 Cerca", f"✅ Compiti ({n_comp})" if n_comp else "✅ Compiti", "📱 Avvisi sul telefono"] + (["⚙️ Gestione"] if gest else []) + ["🔒 Privacy"]
     tabs = st.tabs(nomi)
     with tabs[0]:
         _conversazioni(utente, noti, audit, vai_a, consentiti, nomi_strumenti)
     with tabs[1]:
+        _tab_cerca(utente)
+    with tabs[2]:
+        _tab_compiti(utente, vai_a, audit)
+    with tabs[3]:
         _tab_avvisi(utente, noti)
     if gest:
-        with tabs[2]:
+        with tabs[4]:
             _tab_gestione(utente, noti, audit)
     with tabs[-1]:
         st.markdown(INFORMATIVA_BREVE)

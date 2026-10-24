@@ -11,5 +11,7 @@ google-genai
 Pillow
 psycopg[binary]>=3.1
 cryptography
+segno
+
 # solo per i test (facoltativo):
 pytest

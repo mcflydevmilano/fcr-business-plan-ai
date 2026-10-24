@@ -60,6 +60,21 @@ def render(utente, utenti_secrets, audit):
                 st.rerun()
         else:
             st.caption("Nessun utente creato dal pannello.")
+        with st.expander("🔐 Verifica in due passaggi"):
+            import due_passaggi
+            _ob = st.checkbox("Obbligatoria per tutti gli amministratori", value=due_passaggi.obbligatorio_admin(), key="adm_2fa_ob",
+                              help="Al prossimo accesso chi non l'ha ancora attivata deve configurarla prima di proseguire.")
+            if _ob != due_passaggi.obbligatorio_admin():
+                due_passaggi.imposta_obbligatorio_admin(_ob, utente["username"])
+                audit("2fa_obbligo", "attivo" if _ob else "spento")
+                st.rerun()
+            _nomi = sorted({u["username"] for u in utenti} | set(utenti_secrets or {}))
+            if _nomi:
+                _x = st.selectbox("Persona che ha perso il telefono", _nomi, key="adm_2fa_sel")
+                st.caption("Attiva" if due_passaggi.attivo(_x) else "Non attiva")
+                if due_passaggi.attivo(_x) and st.button("Azzera i due passaggi di questa persona", key="adm_2fa_reset"):
+                    due_passaggi.disattiva(_x, utente["username"])
+                    st.rerun()
         tmp = st.session_state.get("adm_tmp")
         if tmp:
             st.success(f"Password temporanea per **{tmp[0]}**: `{tmp[1]}` — comunicala all'utente: non verra' mostrata di nuovo "

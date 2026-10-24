@@ -1,0 +1,21 @@
+# Controllo automatico a ogni caricamento su GitHub: compila tutto con Python 3.11 e 3.12 e lancia i test.
+# Se qualcosa non va, vedrete la X rossa in GitHub (scheda Actions) PRIMA di fare Reboot. Da copiare in .github/workflows/controlli.yml
+name: Controlli
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  controlli:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -r requirements.txt
+      - run: python -m compileall -q .
+      - run: python -m pytest -q -x
