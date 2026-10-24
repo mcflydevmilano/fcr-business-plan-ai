@@ -119,7 +119,7 @@ def _conversazioni(utente, utenti_noti, audit, vai_a, consentiti, nomi_strumenti
             st.markdown(f"<div class='sb-label' style='margin-top:.4rem'>{titolo}</div>", unsafe_allow_html=True)
             for c in elenco:
                 badge = f"  🔴 {c['non_letti']}" if c["non_letti"] else ""
-                pre = "# " if tipo == "pubblico" else ("🔒 " if tipo == "privato" else "")
+                pre = ("▶ " if c["id"] == sel else "") + ("# " if tipo == "pubblico" else ("🔒 " if tipo == "privato" else ""))
                 if st.button(f"{pre}{c['etichetta']}{badge}", key=f"chc_{c['id']}", width="stretch", type="primary" if c["id"] == sel else "secondary"):
                     ss["chat_cid"] = c["id"]
                     _rerun()
@@ -256,6 +256,11 @@ def _tab_gestione(utente, utenti_noti, audit):
             st.rerun()
         except ValueError as e:
             st.error(str(e))
+    if st.button("Aggiungi i canali consigliati che mancano", key="chat_nc_base", help="Generale, Cantieri, Commerciale e gare, Amministrazione, Acquisti, Sicurezza, Mezzi, Legale, Assistenza, Idee."):
+        n = chat.crea_canali_iniziali(utente["username"], solo_se_vuoto=False)
+        audit("chat_canali_iniziali", f"{n} canali")
+        st.success(f"Creati {n} canali." if n else "Ci sono già tutti.")
+        st.rerun()
     st.markdown("##### Canali esistenti")
     for c in chat.tutti_i_canali_gestibili():
         cols = st.columns([3, 1.2, 1.2])
@@ -303,6 +308,10 @@ def render(fcr_uri, audit=None, utente=None, utenti_secrets=None, consentiti=Non
     guida.mostra("ch")
     noti = _utenti_noti(utenti_secrets)
     gest = chat.e_gestore(utente)
+    try:
+        chat.crea_canali_iniziali(utente["username"])             # alla prima apertura prepara i canali consigliati
+    except Exception:
+        pass
     nomi = ["💬 Conversazioni", "📱 Avvisi sul telefono"] + (["⚙️ Gestione"] if gest else []) + ["🔒 Privacy"]
     tabs = st.tabs(nomi)
     with tabs[0]:

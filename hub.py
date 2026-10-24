@@ -422,10 +422,17 @@ def _ricerca(vai_a, consentiti):
     return True
 
 
-def render(vai_a, consentiti=None, freschezza_righe=None):
+def render(vai_a, consentiti=None, freschezza_righe=None, non_letti_chat=0):
     """consentiti: insieme di sigle visibili a chi guarda (None = tutte). I gruppi rimasti vuoti spariscono."""
     if _ricerca(vai_a, consentiti):
         return
+    if consentiti is None or "ch" in consentiti:
+        with st.container(key="hub_chat"):
+            c1, c2 = st.columns([4, 1.4], vertical_alignment="center")
+            c1.markdown("**💬 Chat interna** · canali, chat dirette con i colleghi e avvisi sul telefono" +
+                        (f"  \n🔴 **{non_letti_chat} messaggi da leggere**" if non_letti_chat else ""))
+            if c2.button("Apri la chat", key="hub_chat_apri", type="primary", width="stretch"):
+                vai_a("ch")
     _da_dove_comincio(vai_a, consentiti)
     _ia_spiegata()
     _freschezza(freschezza_righe or [])

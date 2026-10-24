@@ -276,9 +276,10 @@ def _app(tmp_path, monkeypatch, nome="ui.db"):
 def test_schermata_chat_si_apre_e_si_scrive(tmp_path, monkeypatch):
     at = _app(tmp_path, monkeypatch)
     assert not at.exception, [e.value for e in at.exception]
-    cid = chat.crea_canale("Generale", "pubblico", "admin")
+    cid = [c for c in chat.canali_visibili("admin") if c["nome"] == "Generale"][0]["id"]      # creato da solo alla prima apertura
     at.run()
-    assert any("Generale" in b.label for b in at.button)
+    assert any("Generale" in b.label for b in at.button) and any("Cantieri" in b.label for b in at.button)
+    [b for b in at.button if "Generale" in b.label][0].click().run()
     at.text_area(key="chat_testo").set_value("Buongiorno a tutti")
     [b for b in at.button if b.label == "Invia"][0].click().run()
     assert not at.exception, [e.value for e in at.exception]
@@ -301,3 +302,13 @@ def test_badge_non_letti_nella_barra_laterale(tmp_path, monkeypatch):
     at.session_state["active_module"] = None
     at.run()
     assert any(b.label.startswith("💬  Chat interna") and "🔴 1" in b.label for b in at.button)
+
+
+def test_canali_iniziali_una_sola_volta(db):
+    n = chat.crea_canali_iniziali("admin", path=db)
+    assert n == len(chat.CANALI_INIZIALI) >= 8
+    assert chat.crea_canali_iniziali("admin", path=db) == 0                     # non si ricreano
+    cid = [c for c in chat.canali_visibili("mario", db) if c["nome"] == "Sicurezza"][0]["id"]
+    chat.archivia_canale(cid, True, db)
+    assert chat.crea_canali_iniziali("admin", path=db) == 0                     # un canale archiviato non ricompare
+    assert chat.crea_canali_iniziali("admin", solo_se_vuoto=False, path=db) == 0  # il nome esiste ancora: nessun doppione

@@ -171,6 +171,36 @@ def crea_canale(nome, tipo, creato_da, membri=(), descrizione="", path=None):
     return cid
 
 
+CANALI_INIZIALI = [
+    ("Generale", "Avvisi e comunicazioni a tutta l'azienda"),
+    ("Cantieri", "Avanzamento lavori, problemi e richieste dai cantieri"),
+    ("Commerciale e gare", "Offerte, sopralluoghi, gare e pratiche con i clienti"),
+    ("Amministrazione e fatture", "Fatture, pagamenti, incassi e scadenze"),
+    ("Acquisti e fornitori", "Ordini, preventivi e documenti dei fornitori"),
+    ("Sicurezza", "Sicurezza nei cantieri, DPI, formazione e segnalazioni"),
+    ("Mezzi e logistica", "Parco mezzi, noli, consegne e manutenzioni"),
+    ("Legale e contratti", "Contratti, riserve e passaggi allo studio legale"),
+    ("Assistenza suite", "Domande e segnalazioni sull'uso della FCR Suite"),
+    ("Idee e suggerimenti", "Proposte per migliorare il lavoro e la suite"),
+]
+
+
+def crea_canali_iniziali(creato_da="sistema", solo_se_vuoto=True, path=None):
+    """Crea i canali pubblici consigliati. Con solo_se_vuoto (predefinito) lo fa una volta sola, quando non esiste ancora nessun canale pubblico
+    (anche archiviato), cosi' un canale tolto dopo non ricompare. Restituisce quanti ne ha creati."""
+    with _db(path) as con:
+        if solo_se_vuoto and con.execute("SELECT 1 FROM chat_canali WHERE tipo='pubblico'").fetchone():
+            return 0
+    n = 0
+    for nome, desc in CANALI_INIZIALI:
+        try:
+            crea_canale(nome, "pubblico", creato_da, descrizione=desc, path=path)
+            n += 1
+        except ValueError:
+            pass
+    return n
+
+
 def canale_diretto(a, b, path=None):
     """Chat diretta tra due persone: la crea se non esiste e restituisce il suo id."""
     a, b = str(a).strip(), str(b).strip()
@@ -232,7 +262,7 @@ def canali_visibili(username, path=None, archiviati=False):
             c = {"id": cid, "nome": nome, "tipo": tipo, "descrizione": desc or "", "non_letti": nl or 0, "ultimo_id": ultimo or 0}
             c["etichetta"] = etichetta(c, username)
             out.append(c)
-    out.sort(key=lambda c: ({"pubblico": 0, "privato": 1, "diretto": 2}[c["tipo"]], c["etichetta"].lower()))
+    out.sort(key=lambda c: ({"pubblico": 0, "privato": 1, "diretto": 2}[c["tipo"]], c["nome"] != "Generale", c["etichetta"].lower()))
     return out
 
 

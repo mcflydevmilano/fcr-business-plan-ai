@@ -539,9 +539,14 @@ def _nav_strumenti():
                     st.rerun()
             elif st.button("🏠 Torna all'Hub Principale", key="nav_hub", width="stretch"):
                 vai_a(None)
+        if "ch" in CONSENTITI:
+            _nl = _non_letti_chat()
+            if st.button("💬  Chat interna" + (f"   🔴 {_nl}" if _nl else ""), key="nav_ch", width="stretch",
+                         type="primary" if MODULO == "ch" else "secondary"):
+                vai_a("ch")
         st.markdown("<div class='sb-label'>Strumenti</div>", unsafe_allow_html=True)
         for titolo, _sotto, sigle in hub.GRUPPI:
-            sigle = [x for x in sigle if x in CONSENTITI]
+            sigle = [x for x in sigle if x in CONSENTITI and x != "ch"]
             if not sigle:
                 continue
             with st.expander(f"{hub.ICONE_GRUPPO.get(titolo, '📁')}  {titolo}", expanded=MODULO in sigle):
@@ -709,7 +714,7 @@ if MODULO is None:
             _fresc.append(pz.stato_validita(pz.carica_indice()))        # il prezziario scade a una data, non dopo N giorni
     except Exception:
         _fresc = []
-    hub.render(vai_a, CONSENTITI, _fresc)
+    hub.render(vai_a, CONSENTITI, _fresc, _non_letti_chat() if "ch" in CONSENTITI else 0)
     st.stop()
 
 if MODULO == "bp":
