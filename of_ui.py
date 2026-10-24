@@ -23,6 +23,8 @@ DF = {"of_voci": of.COL_VOCI, "of_sconti": of.COL_SCONTI, "of_unita": of.COL_UNI
 NUM = {"of_voci": ("Quantita", "Prezzo"), "of_sconti": ("Importo",), "of_unita": ("Millesimi", "Mq"), "of_annunci": ("Mq", "Prezzo"), "of_ric": ("Lavori", "Richiesto", "Deliberato"), "of_cat": ("quota",)}
 
 
+COSI_COM_E = "Così com'è"
+
 def _df(chiave, righe=None):
     d = pd.DataFrame(righe or [], columns=DF[chiave])
     for c in NUM.get(chiave, ()):
@@ -381,7 +383,7 @@ def _scheda_mercato(ctx):
     m = ctx["mercato"]
     if m["ante"] and m["post"]:
         st.markdown(theme.stat_strip([
-            {"label": "Così com'è", "value": f"{m['ante']:,.0f} €/m²".replace(",", "."), "sub": f"{m['n']['Così com\'è']} annunci" if m["da_annunci"] else "valore indicato", "tono": "warn"},
+            {"label": "Così com'è", "value": f"{m['ante']:,.0f} €/m²".replace(",", "."), "sub": f"{m['n'][COSI_COM_E]} annunci" if m["da_annunci"] else "valore indicato", "tono": "warn"},
             {"label": "Efficientato", "value": f"{m['post']:,.0f} €/m²".replace(",", "."), "sub": f"{m['n']['Efficientato']} annunci" if m["da_annunci"] else "valore indicato", "tono": "ok"},
             {"label": "Differenza", "value": f"{m['delta']:,.0f} €/m²".replace(",", "."), "sub": f"{m['delta'] / m['ante'] * 100:.1f}%", "tono": "info"},
             {"label": f"Su {ss['of_mq']} m²", "value": _euro(m["delta"] * ss["of_mq"]), "sub": "valore potenziale", "tono": "info"}]), unsafe_allow_html=True)
