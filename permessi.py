@@ -6,23 +6,23 @@ Il ruolo (admin / utente / lettore) decide invece se si puo' MODIFICARE: sono du
 """
 import storage
 
-TUTTI = ["credit", "bp", "cf", "sc", "bk", "oa", "ga", "pv", "sl", "gt", "rp", "sx", "mz", "og", "fo", "ru", "pe", "lg", "ca", "dd", "pz", "rc", "of"]
+TUTTI = ["credit", "bp", "cf", "sc", "bk", "oa", "ga", "pv", "sl", "gt", "rp", "sx", "mz", "og", "fo", "ru", "pe", "lg", "ca", "dd", "pz", "rc", "of", "ch"]
 NOMI = {"credit": "Credit Risk & Rating", "bp": "Business Plan", "cf": "Cash Flow di cantiere", "sc": "Scadenzario", "bk": "Riconciliazione bancaria",
         "oa": "Ordini e approvazioni", "ga": "Gare e offerte", "pv": "Computo e Preventivo", "sl": "SAL e contabilità lavori", "gt": "Cronoprogramma",
         "rp": "Rapportini", "sx": "Sicurezza", "mz": "Parco mezzi", "og": "Organico", "fo": "Fornitori", "ru": "Rubrica e cantieri", "pe": "Persone e ruoli",
-        "lg": "Studio legale", "ca": "Calendario", "dd": "Cruscotto di direzione", "pz": "Prezziario", "rc": "Registro commerciale", "of": "Offerta e finanziamenti"}
+        "lg": "Studio legale", "ca": "Calendario", "dd": "Cruscotto di direzione", "pz": "Prezziario", "rc": "Registro commerciale", "of": "Offerta e finanziamenti", "ch": "Chat interna"}
 RISERVATI = {"dd"}            # strumenti che nessun profilo (tranne presidente e admin) riceve per impostazione predefinita
 
 PROFILI_BASE = {
     "presidente": list(TUTTI),
     "direzione": [s for s in TUTTI if s not in RISERVATI],
-    "amministrazione": ["credit", "bp", "cf", "sc", "bk", "oa", "pv", "pz", "fo", "ru", "pe", "ca"],
-    "commerciale": ["rc", "of", "ga", "pv", "pz", "sl", "gt", "ru", "ca"],
-    "cantiere": ["rp", "sx", "mz", "og", "gt", "fo", "ru", "oa", "pz", "ca"],
-    "legale": ["lg", "ru", "sc", "fo", "ca"],
+    "amministrazione": ["credit", "bp", "cf", "sc", "bk", "oa", "pv", "pz", "fo", "ru", "pe", "ca", "ch"],
+    "commerciale": ["rc", "of", "ga", "pv", "pz", "sl", "gt", "ru", "ca", "ch"],
+    "cantiere": ["rp", "sx", "mz", "og", "gt", "fo", "ru", "oa", "pz", "ca", "ch"],
+    "legale": ["lg", "ru", "sc", "fo", "ca", "ch"],
 }
 PROFILO_PREDEFINITO = "direzione"
-NUOVI_STRUMENTI = ["pz", "rc", "of"]      # aggiunti dopo i primi salvataggi dei permessi: ai profili gia' salvati si danno secondo le regole base
+NUOVI_STRUMENTI = ["pz", "rc", "of", "ch"]      # aggiunti dopo i primi salvataggi dei permessi: ai profili gia' salvati si danno secondo le regole base
 NOME_PRATICA = "permessi"
 
 

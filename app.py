@@ -50,6 +50,8 @@ import bk_ui
 import oa_ui
 import ca_ui
 import hub
+import chat_ui
+import chat
 import guida
 import assistenza
 import ora_meteo
@@ -481,7 +483,7 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",), "ch": ("chat_",)}
 
 
 pwa.inietta()
@@ -519,6 +521,14 @@ def vai_a(modulo):
     st.rerun()
 
 
+def _non_letti_chat():
+    """Messaggi non letti della chat per la persona collegata (0 se la chat non e' disponibile)."""
+    try:
+        return chat.non_letti_totale(ss["utente"]["username"])
+    except Exception:
+        return 0
+
+
 def _nav_strumenti():
     """Elenco degli strumenti consentiti, raggruppati come nell'Hub: si apre dalla barra laterale in un clic."""
     with st.container(key="sb_nav"):
@@ -537,7 +547,8 @@ def _nav_strumenti():
             with st.expander(f"{hub.ICONE_GRUPPO.get(titolo, '📁')}  {titolo}", expanded=MODULO in sigle):
                 for x in sigle:
                     c = hub.CARDS[x]
-                    if st.button(f"{c['icona']}  {c['bottone']}", key=f"nav_{x}", width="stretch",
+                    _nl = _non_letti_chat() if x == "ch" else 0
+                    if st.button(f"{c['icona']}  {c['bottone']}" + (f"   🔴 {_nl}" if _nl else ""), key=f"nav_{x}", width="stretch",
                                  type="primary" if x == MODULO else "secondary"):
                         vai_a(x)
 
@@ -728,6 +739,10 @@ if MODULO == "pe":
 
 if MODULO == "ca":
     ca_ui.render(FCR_URI, audit, CONSENTITI)
+    st.stop()
+
+if MODULO == "ch":
+    chat_ui.render(FCR_URI, audit, ss["utente"], UTENTI_SECRETS, CONSENTITI, vai_a, permessi.NOMI)
     st.stop()
 
 if MODULO == "dd":

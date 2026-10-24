@@ -119,6 +119,12 @@ PASSI = {
         ("Scarica il dossier", "Nella scheda «3. Dossier» premi il pulsante per PDF ed Excel.", "dossier"),
         ("Salva", "Apri «💾 Salva e riapri il cronoprogramma» in alto e premi Salva.", "salvato"),
     ], "I legami valgono dentro lo stesso cantiere e il nome della fase va scritto uguale. I giorni di fermo e le date «Non prima del» le scrivi tu: il programma non sa da solo che piove o che il camion è in ritardo."),
+    "ch": ("Scrivere ai colleghi senza uscire dalla suite: canali, gruppi privati e chat dirette.", [
+        ("Scegli dove scrivere", "A sinistra trovi i canali pubblici, i gruppi privati e le chat dirette: un pallino rosso indica i messaggi da leggere.", None),
+        ("Apri una chat diretta", "Premi «Nuova chat diretta», scegli la persona e scrivi: la leggete solo voi due.", None),
+        ("Allega e collega", "Puoi allegare una foto o un PDF e collegare lo strumento di cui parli: chi legge lo apre con un clic.", None),
+        ("Attiva gli avvisi", "Nella scheda «Avvisi sul telefono» collega Telegram o ntfy: l'avviso dice solo chi ha scritto.", None),
+    ], "Canali pubblici: li vedono tutti. Gruppi privati e chat dirette: solo i membri, nemmeno gli amministratori."),
     "of": ("Preparare un'offerta completa: computo, parcelle, quadro economico, finanziamento per millesimi e richieste di finanziamento.", [
         ("Descrivi la pratica", "Nella scheda «1. Pratica» scrivi condominio, indirizzo, unità e i testi dell'intervento (o prendi i dati dal Registro commerciale).", None),
         ("Carica il computo", "Nella scheda «2. Computo» importa il file del collega: l'app legge le voci dei capitoli, le ipotesi A/B e gli sconti.", None),

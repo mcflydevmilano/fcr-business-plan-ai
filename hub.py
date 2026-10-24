@@ -212,7 +212,16 @@ CARDS = {'credit': {'icona': '📊',
                  'Riepilogo email ogni mattina',
                  'Legge i dati dei moduli, anche salvati'],
         'tag': ['Scadenze', 'Telefono', 'Email'],
-        'bottone': 'Calendario scadenze'}}
+        'bottone': 'Calendario scadenze'},
+ 'ch': {'icona': '💬',
+        'titolo': 'Chat interna',
+        'desc': 'Canali per i temi comuni e chat dirette tra colleghi, con avvisi sul telefono.',
+        'voci': ['Canali pubblici e gruppi privati',
+                 'Chat dirette: le leggete solo voi due',
+                 'Foto, PDF e collegamento diretto agli strumenti',
+                 'Avvisi su Telegram o ntfy, senza il testo del messaggio'],
+        'tag': ['Canali', 'Chat dirette', 'Telefono'],
+        'bottone': 'Chat interna'}}
 
 # (titolo sezione, sottotitolo, [sigle])  -  ogni gruppo ha un numero pari di schede, tranne l'ultimo (a tutta larghezza)
 GRUPPI = [
@@ -228,11 +237,13 @@ GRUPPI = [
      ["lg"]),
     ("Direzione e persone", "La sintesi di tutta l'azienda e chi ci lavora",
      ["pe", "dd"]),
+    ("Comunicazione", "Parlarsi senza uscire dalla suite",
+     ["ch"]),
 ]
 
 
 ICONE_GRUPPO = {"Parte finanziaria": "💰", "Offerte e commesse": "🏗️", "Cantiere e risorse": "👷",
-                "Fornitori, acquisti e scadenze": "📦", "Studio legale": "⚖️", "Direzione e persone": "📊"}
+                "Fornitori, acquisti e scadenze": "📦", "Studio legale": "⚖️", "Direzione e persone": "📊", "Comunicazione": "💬"}
 
 
 def numero(sigla):

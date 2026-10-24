@@ -207,3 +207,12 @@ Nuovo strumento (sigla `of`, gruppo «Offerte e commesse») che segue la catena 
 - Ogni casella del Cruscotto ha sotto un pulsante: «Vai al problema →» (rosse e arancioni), «Compila i dati →» (senza dati), «Apri →» (verdi). Apre lo strumento da cui arriva il dato, con il salvataggio che il Cruscotto sta usando già caricato, e in cima compaiono «← Torna al Cruscotto» e la riga con il semaforo da cui si arriva.
 - Corretto un errore che compariva tornando in uno strumento (per esempio il Cruscotto) dopo averne visitato un altro: i pulsanti non vengono più ripristinati come se fossero valori.
 - Cambiando strumento la pagina riparte dall'alto.
+
+## Chat interna (3.7.0)
+Strumento «Chat interna» (gruppo Comunicazione): canali pubblici, gruppi privati e chat dirette, contatore dei non letti, foto e PDF, collegamento a uno strumento, avvisi sul telefono.
+- **Riservatezza**: gruppi privati e chat dirette li leggono solo i membri, nessun amministratore (nemmeno esportando). Con il segreto `CHAT_KEY` testo e allegati di queste chat sono cifrati nel database. **Conserva la chiave: se la perdi, quei messaggi non si leggono più.**
+- **Gestione**: gli amministratori e le persone da loro scelte creano/archiviano/esportano i canali pubblici; ogni operazione lascia traccia nel registro attività (mai il testo).
+- **Avvisi**: Telegram (`TELEGRAM_BOT_TOKEN`, bot creato con @BotFather) e/o ntfy (`NTFY_URL`, anche server proprio). `APP_URL` = indirizzo della suite, usato nei link. L'avviso non contiene mai il testo.
+- **Allegati**: foto ridotte a 1600 px (JPEG), originale max 12 MB; PDF max 8 MB; salvati nel database (nessun file su disco: si trasferisce con il database sul vostro hosting).
+- **Conservazione**: pulsante «Cancella i messaggi più vecchi di N mesi» in Gestione (proposta 24 mesi).
+- Nuovi secrets facoltativi: `CHAT_KEY`, `TELEGRAM_BOT_TOKEN`, `NTFY_URL`, `APP_URL`. Nuova dipendenza: `cryptography`.
