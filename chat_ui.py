@@ -7,6 +7,7 @@ import streamlit as st
 import chat
 import guida
 import notifiche
+import profilo
 import storage
 import theme
 
@@ -65,9 +66,23 @@ def _utenti_noti(utenti_secrets=None):
     return sorted(noti, key=str.lower)
 
 
-def _riga_messaggio(m, utente, audit, vai_a, consentiti, nomi_strumenti):
+def _foto_utenti():
+    """Foto profilo di tutti (la stessa della barra laterale), lette una volta ogni tanto."""
+    try:
+        return storage.cache_lettura("chat_foto", lambda: dict(profilo._tutte() or {}), None, 20)
+    except Exception:
+        return {}
+
+
+def _avatar(nome, foto):
+    rec = foto.get(str(nome).strip().lower())
+    jpg = rec.get("jpg") if isinstance(rec, dict) else None
+    return f"data:image/jpeg;base64,{jpg}" if jpg else ("🧑‍💼" if nome else "👤")
+
+
+def _riga_messaggio(m, utente, audit, vai_a, consentiti, nomi_strumenti, foto=None):
     mio = m["autore"] == utente["username"]
-    with st.chat_message("user" if mio else "assistant", avatar="🧑‍💼" if mio else "👤"):
+    with st.chat_message("user" if mio else "assistant", avatar=_avatar(m["autore"], foto or {})):
         st.markdown(f"**{html.escape(m['autore'])}** · <span style='color:#64748b;font-size:.8rem'>{_ora_locale(m['ts'])}</span>", unsafe_allow_html=True)
         if m["eliminato"]:
             st.caption("🚫 Messaggio eliminato")
@@ -158,8 +173,9 @@ def _conversazioni(utente, utenti_noti, audit, vai_a, consentiti, nomi_strumenti
         with st.container(height=470, border=True):
             if not msgs:
                 st.caption("Nessun messaggio: scrivi tu il primo.")
+            foto = _foto_utenti()
             for m in msgs:
-                _riga_messaggio(m, utente, audit, vai_a, consentiti, nomi_strumenti)
+                _riga_messaggio(m, utente, audit, vai_a, consentiti, nomi_strumenti, foto)
         if cur and not scrive:
             st.info("Il tuo ruolo è «lettore»: puoi leggere ma non scrivere.")
             return

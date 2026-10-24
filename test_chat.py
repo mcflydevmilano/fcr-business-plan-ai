@@ -312,3 +312,10 @@ def test_canali_iniziali_una_sola_volta(db):
     chat.archivia_canale(cid, True, db)
     assert chat.crea_canali_iniziali("admin", path=db) == 0                     # un canale archiviato non ricompare
     assert chat.crea_canali_iniziali("admin", solo_se_vuoto=False, path=db) == 0  # il nome esiste ancora: nessun doppione
+
+
+def test_avatar_usa_la_foto_profilo():
+    import chat_ui
+    foto = {"mario": {"jpg": "QUJD"}}
+    assert chat_ui._avatar("Mario", foto) == "data:image/jpeg;base64,QUJD"       # nome scritto in modo diverso: stessa persona
+    assert chat_ui._avatar("luca", foto) == "🧑‍💼"                               # senza foto: icona
