@@ -516,7 +516,7 @@ LOGIN_CSS = """<style>
 # I caratteri di Google stanno in un blocco a parte: se la rete e' lenta non fanno aspettare il resto dello stile (testo subito leggibile, font al volo)
 _FONT = "<style>" + "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700&display=swap');" + "</style>"
 
-CSS = _FONT + "<style>" + _CSS_RAW + EXTRA + SIDEBAR_CSS + _css_versione() + _css_caricamento() + "</style>"
+CSS = _FONT + "\n\n<style>" + _CSS_RAW + EXTRA + SIDEBAR_CSS + _css_versione() + _css_caricamento() + "</style>"
 
 
 @functools.lru_cache(maxsize=8)

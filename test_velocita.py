@@ -148,3 +148,21 @@ def test_accesso_nuovo(monkeypatch):
     tutto = " ".join(m.value for m in at.markdown)
     assert "FCR GENERAL CONTRACTOR" in tutto and "Accedi alla suite" in tutto and "lg-badge" in tutto and "Aetheris" in tutto
     assert at.text_input(key="login_user").placeholder
+
+
+def test_blocchi_style_separati_da_riga_vuota():
+    """Due <style> sulla stessa riga: Streamlit mostrerebbe il secondo come testo."""
+    assert "</style>\n\n<style>" in theme.CSS
+
+
+def test_sintassi_compatibile_con_python_311():
+    """Streamlit Cloud puo' usare Python 3.11: niente f-string con barre rovesciate o apici uguali dentro le graffe."""
+    import glob
+    import shutil
+    import subprocess
+    py = shutil.which("python3.11")
+    if not py:
+        pytest.skip("python3.11 non disponibile")
+    for f in glob.glob("*.py"):
+        r = subprocess.run([py, "-c", "import sys;compile(open(sys.argv[1],encoding='utf-8').read(), sys.argv[1], 'exec')", f], capture_output=True, text=True)
+        assert r.returncode == 0, f"{f}: {r.stderr[-300:]}"
