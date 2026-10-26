@@ -188,8 +188,7 @@ def _riga_messaggio(m, utente, audit, vai_a, consentiti, nomi_strumenti, foto=No
             _azioni(m, utente, audit, sel, utenti_noti)
 
 
-@st.fragment(run_every=AGGIORNA_SEC)
-def _conversazioni(utente, utenti_noti, audit, vai_a, consentiti, nomi_strumenti):
+def _conversazioni_corpo(utente, utenti_noti, audit, vai_a, consentiti, nomi_strumenti):
     u = utente["username"]
     scrive = chat.puo_scrivere(utente)
     canali = chat.canali_visibili(u)
@@ -460,6 +459,10 @@ def _tab_gestione(utente, utenti_noti, audit):
         st.write(f"- Indirizzo della suite negli avvisi (APP_URL): **{notifiche.app_url() or 'non impostato'}**")
 
 
+_conv_manuale = st.fragment(_conversazioni_corpo)                         # si aggiorna solo quando si interagisce o si preme «Aggiorna»
+_conv_auto = st.fragment(run_every=AGGIORNA_SEC)(_conversazioni_corpo)    # in più si aggiorna da solo ogni 20 secondi (a scelta)
+
+
 def render(fcr_uri, audit=None, utente=None, utenti_secrets=None, consentiti=None, vai_a=None, nomi_strumenti=None):
     audit = audit or (lambda *a, **k: None)
     consentiti = set(consentiti or [])
@@ -477,7 +480,11 @@ def render(fcr_uri, audit=None, utente=None, utenti_secrets=None, consentiti=Non
     nomi = ["💬 Conversazioni", "🔎 Cerca", f"✅ Compiti ({n_comp})" if n_comp else "✅ Compiti", "📱 Avvisi sul telefono"] + (["⚙️ Gestione"] if gest else []) + ["🔒 Privacy"]
     tabs = st.tabs(nomi)
     with tabs[0]:
-        _conversazioni(utente, noti, audit, vai_a, consentiti, nomi_strumenti)
+        ca, cb, _ = st.columns([1, 2, 3])
+        ca.button("🔄 Aggiorna", key="chat_aggiorna", width="stretch", help="Mostra i messaggi nuovi")
+        ss.setdefault("chat_auto", False)
+        cb.toggle("Aggiorna da sola ogni 20 s", key="chat_auto", help="Di solito non serve: premi «Aggiorna» quando vuoi vedere i messaggi nuovi.")
+        (_conv_auto if ss["chat_auto"] else _conv_manuale)(utente, noti, audit, vai_a, consentiti, nomi_strumenti)
     with tabs[1]:
         _tab_cerca(utente)
     with tabs[2]:

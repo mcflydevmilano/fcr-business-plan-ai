@@ -436,3 +436,14 @@ def test_schermata_cerca_e_compiti(tmp_path, monkeypatch):
     assert any("Chiedere il DURC" in m.value for m in at.markdown)               # scheda Compiti
     [b for b in at.button if b.label == "Fatto"][0].click().run()
     assert chat.compiti("admin") == []
+
+
+def test_aggiornamento_manuale_e_automatico_a_scelta(tmp_path, monkeypatch):
+    at = _app(tmp_path, monkeypatch, "agg.db")
+    assert not at.exception, [e.value for e in at.exception]
+    assert any(b.label.endswith("Aggiorna") for b in at.button)
+    assert at.session_state["chat_auto"] is False                      # di default non si ricarica da sola
+    at.toggle(key="chat_auto").set_value(True).run()
+    assert not at.exception, [e.value for e in at.exception]
+    [b for b in at.button if b.label.endswith("Aggiorna")][0].click().run()
+    assert not at.exception, [e.value for e in at.exception]
