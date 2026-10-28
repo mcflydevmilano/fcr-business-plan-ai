@@ -7,12 +7,12 @@ Esempi:  «Fasi: +2 righe (Villa Lago · Strutture; …), 1 riga rimossa, 3 modi
 import json
 
 ETICHETTE = {
-    "fasi": "Fasi", "fermi": "Giorni di fermo", "rapp": "Rapportini", "segn": "Segnalazioni", "docs": "Documenti", "commesse": "Commesse", "sal": "SAL emessi", "costi": "Costi",
+    "fasi": "Fasi", "fermi": "Giorni di fermo", "rapp": "Rapportini", "segn": "Segnalazioni", "con": "Contratti", "per": "Persone", "ore": "Ore lavorate", "ord": "Ordini", "mov": "Movimenti di magazzino", "ver": "Verbali", "azi": "Azioni", "docs": "Documenti", "commesse": "Commesse", "sal": "SAL emessi", "costi": "Costi",
     "gare": "Gare", "doc": "Documenti", "contr": "Contratti", "off": "Offerte", "pers": "Persone", "docc": "Documenti di cantiere", "mezzi": "Mezzi", "uso": "Utilizzo mezzi",
     "scad": "Scadenze mezzi", "ris": "Risorse", "ass": "Assegnazioni", "cantieri": "Cantieri", "voci": "Voci di computo", "params": "Parametri", "df": "Tabella",
 }
 NOMI_MODULO = {"credit": "Credit Risk", "bp": "Business Plan", "cf": "Cash Flow", "pv": "Computo e Preventivo", "sc": "Scadenzario", "sl": "SAL e contabilità lavori", "ga": "Gare e offerte",
-               "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "og": "Organico", "rp": "Rapportini", "gt": "Cronoprogramma", "cfg": "Permessi", "ru": "Rubrica e cantieri", "lg": "Studio legale", "bk": "Riconciliazione bancaria", "oa": "Ordini e approvazioni", "pe": "Persone e ruoli", "pz": "Prezziario", "rc": "Registro commerciale", "of": "Offerta e finanziamenti"}
+               "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "og": "Organico", "rp": "Rapportini", "gt": "Cronoprogramma", "cfg": "Permessi", "ru": "Rubrica e cantieri", "lg": "Studio legale", "bk": "Riconciliazione bancaria", "oa": "Ordini e approvazioni", "pe": "Persone e ruoli", "pz": "Prezziario", "rc": "Registro commerciale", "of": "Offerta e finanziamenti", "sa": "Subappalti", "pr": "Presenze e ore", "mt": "Materiali e magazzino", "vr": "Verbali e riunioni", "ad": "Archivio documenti"}
 MAX_ESEMPI = 2
 
 

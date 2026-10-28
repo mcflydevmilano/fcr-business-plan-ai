@@ -52,6 +52,7 @@ import oa_ui
 import ca_ui
 import hub
 import chat_ui
+import nuovi_ui
 import chat
 import guida
 import assistenza
@@ -622,7 +623,7 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",), "ch": ("chat_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",), "ch": ("chat_",), "mc": ("mc_",), "sa": ("sa_",), "pr": ("pr_",), "mt": ("mt_",), "vr": ("vr_",), "ad": ("ad_",)}
 
 
 pwa.inietta()
@@ -818,6 +819,11 @@ if MODULO == "credit":
 
 
 with st.sidebar:
+    try:
+        import utilita
+        utilita.render_sidebar(CONSENTITI)
+    except Exception:
+        pass
     user_api_key = st.text_input("Chiave personale dell'IA (facoltativa)", value="", type="password",
                                  help="Di solito non serve: l'azienda ha già una chiave. Scrivila solo se te ne hanno data una tua.")
     with st.expander("🔒 Privacy e trattamento dei dati"):
@@ -880,7 +886,7 @@ if MODULO == "sl":
     sl_ui.render(FCR_URI, audit, ss["utente"]["username"])
     st.stop()
 
-for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og", og_ui), ("rp", rp_ui), ("gt", gt_ui), ("ru", ru_ui), ("lg", lg_ui), ("bk", bk_ui), ("oa", oa_ui), ("pz", pz_ui), ("rc", rc_ui), ("of", of_ui)):
+for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og", og_ui), ("rp", rp_ui), ("gt", gt_ui), ("ru", ru_ui), ("lg", lg_ui), ("bk", bk_ui), ("oa", oa_ui), ("pz", pz_ui), ("rc", rc_ui), ("of", of_ui), ("mc", nuovi_ui.mc_ui), ("sa", nuovi_ui.sa_ui), ("pr", nuovi_ui.pr_ui), ("mt", nuovi_ui.mt_ui), ("vr", nuovi_ui.vr_ui), ("ad", nuovi_ui.ad_ui)):
     if MODULO == _m:
         _ui.render(FCR_URI, audit, ss["utente"]["username"])
         st.stop()

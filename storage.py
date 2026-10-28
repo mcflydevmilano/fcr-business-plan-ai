@@ -233,7 +233,7 @@ def cache_lettura(chiave, fn, path=None, ttl=None):
     return val
 
 
-MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl", "ga", "fo", "sx", "mz", "og", "rp", "gt", "cfg", "ru", "lg", "bk", "oa", "al", "pe", "pz", "rc", "of")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
+MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl", "ga", "fo", "sx", "mz", "og", "rp", "gt", "cfg", "ru", "lg", "bk", "oa", "al", "pe", "pz", "rc", "of", "sa", "pr", "mt", "vr", "ad")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
 
 
 MAX_VERSIONI = 20          # versioni precedenti conservate per ogni salvataggio

@@ -7,6 +7,7 @@ import unicodedata
 
 # argomenti collegati a ogni strumento: chi cerca «fattura» deve trovare lo Scadenzario anche se il nome non lo dice
 SINONIMI = {
+    "mc": "margini margine commessa costi ricavi utile redditivita sal subappalti", "sa": "subappalti subappaltatori durc polizze ritenute sal pagamenti", "pr": "presenze ore straordinari manodopera timbrature costo orario", "mt": "materiali magazzino ordini consegne giacenze cantiere", "vr": "verbali riunioni decisioni azioni responsabili compiti", "ad": "archivio documenti link cartelle drive sharepoint commessa scadenze",
     "credit": "rating banca bilancio merito creditizio basilea fido comitato", "bp": "business plan piano industriale mutuo investimento capannone",
     "cf": "cash flow liquidita cassa previsione cantieri", "pv": "preventivo computo metrico offerta costi margine voci",
     "ch": "chat messaggi canali conversazione colleghi telegram notifiche avvisi slack gruppo privato", "of": "offerta preventivo computo parcelle qte quadro economico finanziamento mutuo agos millesimi rata detrazione recupero fiscale condominio condomino", "rc": "registro commerciale pratiche pipeline offerte sopralluogo amministratore commerciale contratto stato", "pz": "prezziario listino prezzi camera commercio voci costi materiali", "sc": "fatture incassi pagamenti scadenze clienti fornitori solleciti cassa xml",

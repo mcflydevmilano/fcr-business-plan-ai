@@ -239,3 +239,8 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Backup cifrato** (`backup_db.py`, workflow `backup.yml`): tutte le tabelle, cifrate con `BACKUP_KEY`, verificate con un ripristino di prova, inviate a `BACKUP_EMAIL`. `python backup_db.py --verifica FILE`, `--ripristina FILE --su X.db`.
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
+
+## Novità 3.10.0
+- Sei nuovi strumenti: Margini per commessa, Subappalti, Presenze e ore, Materiali e magazzino, Verbali e riunioni, Archivio documenti per commessa (totale 30).
+- Campanella «Avvisi» e «Esporta tutto in Excel» nella barra laterale.
+- Il Registro modifiche è nell'Amministrazione → Registro attività.
