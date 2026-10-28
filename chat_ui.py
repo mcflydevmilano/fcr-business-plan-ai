@@ -316,10 +316,11 @@ def _tab_cerca(utente):
                 st.success("Fatto: ora apri la scheda «Conversazioni».")
 
 
-def _tab_compiti(utente, vai_a, audit):
+def _tab_compiti(utente, vai_a, audit, tutti=None):
     u = utente["username"]
-    mie = chat.compiti(u)
-    altre = [t for t in chat.compiti(u, tutti=True) if t["assegnato"] != u]
+    tutti = tutti if tutti is not None else chat.compiti(u, tutti=True)        # una sola lettura: i miei compiti sono un sottoinsieme
+    mie = [t for t in tutti if t["assegnato"] == u]
+    altre = [t for t in tutti if t["assegnato"] != u]
     oggi = dt.date.today().isoformat()
     st.markdown("##### Da fare per me")
     if not mie:
@@ -435,8 +436,13 @@ def _tab_gestione(utente, utenti_noti, audit):
             audit("chat_canale_archiviato" if not c["archiviato"] else "chat_canale_ripristinato", c["nome"])
             st.rerun()
         if c["tipo"] == "pubblico":
-            cols[2].download_button("Esporta", chat.esporta_canale(c["id"], utente), file_name=f"canale_{c['nome']}.txt", key=f"chat_ex_{c['id']}",
-                                    on_click=lambda n=c["nome"]: audit("chat_canale_esportato", n))
+            _kx = f"chat_exd_{c['id']}"
+            if ss.get(_kx) is not None:                      # il testo si legge dal database solo quando lo chiedi, non a ogni clic
+                cols[2].download_button("Scarica", ss[_kx], file_name=f"canale_{c['nome']}.txt", key=f"chat_ex_{c['id']}",
+                                        on_click=lambda n=c["nome"]: audit("chat_canale_esportato", n))
+            elif cols[2].button("Esporta", key=f"chat_exp_{c['id']}"):
+                ss[_kx] = chat.esporta_canale(c["id"], utente)
+                st.rerun()
     if admin:
         st.divider()
         st.markdown("##### Chi può gestire i canali")
@@ -475,11 +481,14 @@ def render(fcr_uri, audit=None, utente=None, utenti_secrets=None, consentiti=Non
     guida.mostra("ch")
     noti = _utenti_noti(utenti_secrets)
     gest = chat.e_gestore(utente)
-    try:
-        chat.crea_canali_iniziali(utente["username"])             # alla prima apertura prepara i canali consigliati
-    except Exception:
-        pass
-    n_comp = len(chat.compiti(utente["username"]))
+    if not ss.get("_chat_canali_ok"):                             # una volta per accesso, non a ogni clic
+        try:
+            chat.crea_canali_iniziali(utente["username"])         # alla prima apertura prepara i canali consigliati
+        except Exception:
+            pass
+        ss["_chat_canali_ok"] = True
+    tutti_compiti = chat.compiti(utente["username"], tutti=True)
+    n_comp = len([t for t in tutti_compiti if t["assegnato"] == utente["username"]])
     nomi = ["💬 Conversazioni", "🔎 Cerca", f"✅ Compiti ({n_comp})" if n_comp else "✅ Compiti", "📱 Avvisi sul telefono"] + (["⚙️ Gestione"] if gest else []) + ["🔒 Privacy"]
     tabs = st.tabs(nomi)
     with tabs[0]:
@@ -491,7 +500,7 @@ def render(fcr_uri, audit=None, utente=None, utenti_secrets=None, consentiti=Non
     with tabs[1]:
         _tab_cerca(utente)
     with tabs[2]:
-        _tab_compiti(utente, vai_a, audit)
+        _tab_compiti(utente, vai_a, audit, tutti_compiti)
     with tabs[3]:
         _tab_avvisi(utente, noti)
     if gest:

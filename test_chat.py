@@ -447,3 +447,16 @@ def test_aggiornamento_manuale_e_automatico_a_scelta(tmp_path, monkeypatch):
     assert not at.exception, [e.value for e in at.exception]
     [b for b in at.button if b.label.endswith("Aggiorna")][0].click().run()
     assert not at.exception, [e.value for e in at.exception]
+
+
+def test_gestione_non_legge_i_canali_a_ogni_clic(tmp_path, monkeypatch):
+    """L'esportazione dei canali si prepara solo quando si preme «Esporta» (prima erano 10 letture del database a ogni clic)."""
+    at = _app(tmp_path, monkeypatch, "lazy.db")
+    chiamate = []
+    orig = chat.esporta_canale
+    monkeypatch.setattr(chat, "esporta_canale", lambda *a, **k: chiamate.append(1) or orig(*a, **k))
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert chiamate == []
+    [b for b in at.button if b.label == "Esporta"][0].click().run()
+    assert len(chiamate) == 1 and any(d.label == "Scarica" for d in at.get("download_button")) if hasattr(at, "get") else True

@@ -462,6 +462,10 @@ SIDEBAR_CSS = """
 [class*="st-key-sb_nav"] .st-key-nav_ch .stButton > button:hover { background: linear-gradient(135deg, #047857, #059669) !important; }
 [class*="st-key-sb_nav"] .st-key-nav_dd .stButton > button { background: #fffbeb !important; border: 1px solid #fcd34d !important; border-left: 4px solid #f59e0b !important; }
 [class*="st-key-sb_nav"] .st-key-nav_dd .stButton > button p { color: #92400e !important; }
+/* i pulsanti della chat nella parte principale (banner e scheda dell'Hub) sono verdi come nella barra laterale */
+.st-key-hub_chat_apri button, .st-key-hub_ch button { background: linear-gradient(135deg, #059669, #10b981) !important; border: 0 !important; box-shadow: 0 6px 14px rgba(5,150,105,.35) !important; }
+.st-key-hub_chat_apri button p, .st-key-hub_ch button p { color: #fff !important; }
+.st-key-hub_chat_apri button:hover, .st-key-hub_ch button:hover { background: linear-gradient(135deg, #047857, #059669) !important; }
 /* canali della chat: quello aperto e' pieno, gli altri sono chiari */
 [class*="st-key-chc_"] button[data-testid="stBaseButton-secondary"] { background: #f0fdf4 !important; border: 1px solid #86efac !important; box-shadow: none !important; justify-content: flex-start !important; }
 [class*="st-key-chc_"] button[data-testid="stBaseButton-secondary"] p { color: #166534 !important; font-weight: 600; text-align: left; width: 100%; }

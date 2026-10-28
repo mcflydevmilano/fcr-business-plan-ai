@@ -293,7 +293,7 @@ def _pannello_2fa(u, forzato=False):
             ss.pop("_2fa_codici", None)
             st.rerun()
         return
-    if due_passaggi.attivo(nome):
+    if _2fa_info()[0]:
         st.caption(f"Attiva. Codici di emergenza rimasti: {due_passaggi.codici_emergenza_rimasti(nome)}.")
         if not forzato:
             with st.form("2fa_off"):
@@ -303,6 +303,7 @@ def _pannello_2fa(u, forzato=False):
                         st.error("Troppi codici sbagliati: riprova tra 15 minuti.")
                     elif due_passaggi.verifica_login(nome, c):
                         due_passaggi.disattiva(nome, nome)
+                        ss.pop("_2fa_cache", None)
                         st.rerun()
                     else:
                         storage.log_evento(nome, "2fa_fallito", "")
@@ -320,6 +321,7 @@ def _pannello_2fa(u, forzato=False):
             try:
                 ss["_2fa_codici"] = due_passaggi.attiva(nome, seg, c, nome)
                 ss.pop("_2fa_segreto", None)
+                ss.pop("_2fa_cache", None)
                 st.rerun()
             except ValueError as e:
                 st.error(str(e))
@@ -347,10 +349,21 @@ _gg_pw = auth.giorni_a_scadenza_password(ss["utente"], PASSWORD_SCADENZA_GG)
 if _gg_pw is not None and _gg_pw < 0:
     _cambio_password_obbligato(ss["utente"], _gg_pw)
     st.stop()
-try:
-    _forza_2fa = due_passaggi.deve_configurare(ss["utente"])
-except Exception:
-    _forza_2fa = False
+def _2fa_info():
+    """(2FA attiva per me, obbligatoria per gli admin): letti dal database al massimo ogni 60 secondi, non a ogni clic."""
+    import time as _t
+    c = ss.get("_2fa_cache")
+    if not c or c[0] != ss["utente"]["username"] or _t.time() - c[1] > 60:
+        try:
+            c = (ss["utente"]["username"], _t.time(), due_passaggi.attivo(ss["utente"]["username"]), due_passaggi.obbligatorio_admin())
+        except Exception:
+            c = (ss["utente"]["username"], _t.time(), False, False)
+        ss["_2fa_cache"] = c
+    return c[2], c[3]
+
+
+_2fa_mia, _2fa_obbl = _2fa_info()
+_forza_2fa = bool(ss["utente"].get("ruolo") == "admin" and _2fa_obbl and not _2fa_mia)
 if _forza_2fa:
     st.markdown(theme.LOGIN_CSS, unsafe_allow_html=True)
     st.warning("🔐 Per gli amministratori è obbligatoria la verifica in due passaggi: attivala ora per continuare.")
