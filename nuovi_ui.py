@@ -229,7 +229,7 @@ def _es_pr():
 def _cfg_pr():
     a, b = pr.ETICHETTE_PERSONE, pr.ETICHETTE_ORE
     return ({"Persona": _t(a["Persona"], width="medium"), "Qualifica": _t(a["Qualifica"]), "Costo_orario": _n(a["Costo_orario"], min_value=0.0, step=1.0, format="%.1f")},
-            {"Persona": _t(b["Persona"], width="medium"), "Data": _t(b["Data"], help="AAAA-MM-GG o GG/MM/AAAA"), "Commessa": _t(b["Commessa"]), "Ore": _n(b["Ore"], min_value=0.0, max_value=24.0, step=0.5, format="%.1f")})
+            {"Persona": _t(b["Persona"], width="medium"), "Data": _t(b["Data"], help="AAAA-MM-GG o GG/MM/AAAA"), "Commessa": _t(b["Commessa"]), "Ore": _n(b["Ore"], min_value=0.0, max_value=1000.0, step=0.5, format="%.1f")})
 
 
 def _leggi_pr():
@@ -261,6 +261,41 @@ def _rapido_pr(utente, audit):
                 st.rerun()
 
 
+def _importa_rapportini_pr(utente, audit):
+    """Porta le ore totali dei rapportini giornalieri tra le ore lavorate, come «Squadra». Riimportare sostituisce solo quelle righe."""
+    with st.expander("📥 Importa le ore dai rapportini giornalieri", expanded=False):
+        st.caption("Ogni rapportino porta le ore totali del cantiere (non i nomi): vengono registrate come «" + pr.SQUADRA + "», con il costo orario medio delle persone "
+                   "(modificabile nella tabella Persone) e senza straordinario. Riimportare aggiorna solo queste righe.")
+        if st.button("Importa ora", key="pr_imp_rp", disabled=sola_lettura()):
+            rapp = []
+            if "rp_rapp" in ss and not ss.get("rp_demo") and len(ss["rp_rapp"]):
+                rapp = __import__("rp").normalizza_rapp(ss["rp_rapp"].to_dict("records"))[0]
+            else:
+                try:
+                    rapp = ((storage.carica_pratica("Rapportini", modulo="rp") or {}).get("rapp")) or []
+                except Exception:
+                    rapp = []
+            nuove = pr.da_rapportini(rapp)
+            if not nuove:
+                st.warning("Nessun rapportino con ore trovato (salva prima i rapportini, o toglili dalla modalità esempio).")
+                return
+            per = ss["pr_per"]
+            if not len(per) or not (per["Persona"].astype(str) == pr.SQUADRA).any():
+                costo = pr.costo_orario_squadra(pr.normalizza_persone(per.to_dict("records"))[0])
+                sostituisci_tabella("pr_per", pd.concat([per, pd.DataFrame([{"Persona": pr.SQUADRA, "Qualifica": "Ore dai rapportini", "Costo_orario": costo}], columns=pr.COLONNE_PERSONE)], ignore_index=True))
+            att = ss["pr_ore"]
+            att = att[att["Persona"].astype(str) != pr.SQUADRA] if len(att) else att
+            sostituisci_tabella("pr_ore", pd.concat([att, pd.DataFrame(nuove, columns=pr.COLONNE_ORE)], ignore_index=True) if len(att) else pd.DataFrame(nuove, columns=pr.COLONNE_ORE))
+            audit("pr_import_rapportini", str(len(nuove)))
+            st.success(f"Importate {len(nuove)} registrazioni. Salva con «Salva e riapri».")
+            st.rerun()
+
+
+def _rapido_e_import_pr(utente, audit):
+    _rapido_pr(utente, audit)
+    _importa_rapportini_pr(utente, audit)
+
+
 def _ris_pr(o):
     c1, c2 = st.columns(2)
     c1.markdown("**Per persona**")
@@ -289,7 +324,7 @@ SPEC_PR = {
                         {"label": "Straordinario", "value": fmt_num(o["kpi"]["straordinario"]), "sub": "ore", "tono": "warn" if o["kpi"]["straordinario"] > 0 else "ok"},
                         {"label": "Costo manodopera", "value": EUR(o["kpi"]["costo"]), "sub": f"{o['kpi']['n_commesse']} commesse", "tono": "info"},
                         {"label": "Anomalie", "value": str(o["kpi"]["n_anomalie"]), "sub": "giornate troppo lunghe", "tono": "bad" if o["kpi"]["n_anomalie"] else "ok"}],
-    "risultati": _ris_pr, "rapido": _rapido_pr, "fogli": lambda o: {"Registrazioni": o["righe"], "Persone": o["persone"], "Commesse": o["commesse"], "Mesi": o["mesi"]},
+    "risultati": _ris_pr, "rapido": _rapido_e_import_pr, "fogli": lambda o: {"Registrazioni": o["righe"], "Persone": o["persone"], "Commesse": o["commesse"], "Mesi": o["mesi"]},
 }
 SPEC_PR["collegamenti"] = lambda out, dati, utente, audit: _coll_sal("pr", lambda o, d: pr.per_sl_costi(o), lambda r: str(r.get("Fornitore")) == "Manodopera interna",
                                                                     "Porta il costo della manodopera (un totale per commessa e per mese) tra i costi di **SAL e contabilità lavori**. "

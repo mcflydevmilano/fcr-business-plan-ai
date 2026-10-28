@@ -205,3 +205,28 @@ def test_utilita_avvisi_ed_excel(tmp_path, monkeypatch):
     assert x.sheet_names[0] == "Indice" and n >= 1 and "mt_ordini" in x.sheet_names
     dati2, n2 = utilita.excel_tutto(["sc"])                   # chi non vede lo strumento non ne esporta i dati
     assert n2 == 0
+
+
+def test_presenze_importa_ore_dai_rapportini(tmp_path, monkeypatch):
+    import pr
+    righe = pr.da_rapportini([{"Data": g(-1), "Cantiere": "Villa Lago", "Ore": 40, "Presenti": 5}, {"Data": "x", "Cantiere": "A", "Ore": 8}, {"Data": g(-2), "Cantiere": "B", "Ore": 0}])
+    assert len(righe) == 1 and righe[0]["Persona"] == pr.SQUADRA and righe[0]["Ore"] == 40
+    persone = [{"Persona": "Mario", "Qualifica": "", "Costo_orario": 30.0}, {"Persona": "Luca", "Qualifica": "", "Costo_orario": 20.0}]
+    c = pr.costo_orario_squadra(persone)
+    assert c == 25.0
+    p, _ = pr.normalizza_persone([*persone, {"Persona": pr.SQUADRA, "Costo_orario": c}])
+    o, av = pr.normalizza_ore(righe + [{"Persona": "Mario", "Data": g(-1), "Commessa": "Villa Lago", "Ore": 40}], {x["Persona"] for x in p})
+    assert len(o) == 1 and any("ore non valide" in a for a in av)            # 40 h valide solo per la squadra
+    out = pr.calcola_pr(p, o)
+    assert out["kpi"]["straordinario"] == 0 and out["kpi"]["n_anomalie"] == 0 and out["kpi"]["costo"] == 40 * 25.0
+
+
+def test_presenze_pulsante_importa_rapportini(tmp_path, monkeypatch):
+    import storage
+    at = _app(tmp_path, monkeypatch, "pr")
+    storage.salva_pratica("Rapportini", {"rapp": [{"Id": "1", "Data": g(-1), "Cantiere": "Villa Lago", "Ore": 40, "Presenti": 5}]}, modulo="rp")
+    at.session_state["rp_demo"] = False
+    at.button(key="pr_imp_rp").click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert (at.session_state["pr_ore"]["Persona"] == "Squadra (da rapportini)").sum() == 1
+    assert (at.session_state["pr_per"]["Persona"] == "Squadra (da rapportini)").sum() == 1

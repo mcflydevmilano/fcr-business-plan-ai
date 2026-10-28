@@ -13,6 +13,8 @@ COLONNE_PERSONE = ["Persona", "Qualifica", "Costo_orario"]
 ETICHETTE_PERSONE = {"Persona": "Persona", "Qualifica": "Qualifica", "Costo_orario": "Costo orario aziendale (€/h)"}
 COLONNE_ORE = ["Persona", "Data", "Commessa", "Ore"]
 ETICHETTE_ORE = {"Persona": "Persona", "Data": "Data", "Commessa": "Commessa", "Ore": "Ore lavorate"}
+SQUADRA = "Squadra (da rapportini)"      # le ore totali dei rapportini non hanno nomi: sono tutte ordinarie e possono superare le 24 h
+MAX_ORE_SQUADRA = 1000.0
 
 
 def _s(v):
@@ -43,7 +45,7 @@ def normalizza_ore(righe, nomi):
         if not any(_s(r.get(c)) for c in COLONNE_ORE):
             continue
         n, d, ore = _s(r.get("Persona")), data_da(r.get("Data")), to_float(r.get("Ore"), 0.0)
-        if n.lower() not in nl or d is None or ore <= 0 or ore > 24:
+        if n.lower() not in nl or d is None or ore <= 0 or ore > (MAX_ORE_SQUADRA if n == SQUADRA else 24):
             avvisi.append(f"Riga {i} delle ore: " + ("persona non presente" if n.lower() not in nl else "data non valida" if d is None else "ore non valide") + ", riga ignorata.")
             continue
         out.append({"Persona": nl[n.lower()], "Data": d.isoformat(), "Commessa": _s(r.get("Commessa")) or "(senza commessa)", "Ore": ore})
@@ -62,7 +64,10 @@ def calcola_pr(persone, ore, p=None):
         prima = giorno.get(k, 0.0)
         ord_ = max(0.0, min(r["Ore"], og - prima))
         stra = r["Ore"] - ord_
-        giorno[k] = prima + r["Ore"]
+        if r["Persona"] == SQUADRA:                                  # ore di squadra: nessuno straordinario e nessun controllo sulla giornata
+            ord_, stra = r["Ore"], 0.0
+        else:
+            giorno[k] = prima + r["Ore"]
         c = costo[r["Persona"]]
         righe.append({**r, "Ordinarie": ord_, "Straordinario": stra, "Costo": ord_ * c + stra * c * (1 + mag / 100.0)})
     for (n, d), t in sorted(giorno.items()):
@@ -101,3 +106,19 @@ def per_sl_costi(out):
         r[k] = r.get(k, 0.0) + x["Costo"]
     return [{"Commessa": c, "Data": m + "-28", "Fornitore": "Manodopera interna", "Descrizione": f"Ore di cantiere {m}", "Categoria": "Manodopera", "Importo": round(v, 2), "Pagato": round(v, 2)}
             for (c, m), v in sorted(r.items())]
+
+
+def da_rapportini(rapp, persone_costi=None):
+    """Righe «Ore» (persona = Squadra) dai rapportini giornalieri, una per rapportino. Ore dei rapportini = totale di tutti i presenti."""
+    out = []
+    for r in rapp or []:
+        d, ore = data_da(r.get("Data")), to_float(r.get("Ore"), 0.0)
+        if d is None or ore <= 0:
+            continue
+        out.append({"Persona": SQUADRA, "Data": d.isoformat(), "Commessa": _s(r.get("Cantiere")) or "(senza commessa)", "Ore": ore})
+    return out
+
+
+def costo_orario_squadra(persone):
+    c = [p["Costo_orario"] for p in persone if p["Persona"] != SQUADRA and p["Costo_orario"] > 0]
+    return round(sum(c) / len(c), 2) if c else 25.0
