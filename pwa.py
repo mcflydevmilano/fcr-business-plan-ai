@@ -60,7 +60,7 @@ export default function(component) {
 
 @st.cache_resource(show_spinner=False)
 def icona_scheda():
-    """Immagine per la linguetta del browser: logo FCR su fondo bianco (il PNG originale e' trasparente e sparisce)."""
+    """Immagine per la linguetta del browser: logo FCR su fondo bianco."""
     from PIL import Image
     try:
         logo = Image.open(core.LOGO_FCR_PATH).convert("RGBA")
@@ -74,15 +74,17 @@ def icona_scheda():
 
 @functools.lru_cache(maxsize=1)
 def _icone():
-    """Icone PNG in base64: logo FCR centrato su fondo blu, nei tre formati richiesti."""
+    """Icone PNG in base64: logo FCR centrato su fondo bianco, nei tre formati richiesti."""
     from PIL import Image
     out = {}
     logo = None
     try:
-        if core.LOGO_FCR_PATH and os.path.exists(core.LOGO_FCR_PATH):
-            logo = Image.open(core.LOGO_FCR_PATH).convert("RGBA")
+        if logo is None and core.LOGO_FCR_PATH and os.path.exists(core.LOGO_FCR_PATH):
+            logo = Image.open(core.LOGO_FCR_PATH)
     except Exception:
         logo = None
+    if logo is not None:
+        logo = logo.convert("RGBA")
     for n in (180, 192, 512):
         base = Image.new("RGBA", (n, n), (255, 255, 255, 255))
         if logo is not None:
