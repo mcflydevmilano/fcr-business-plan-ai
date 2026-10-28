@@ -1,6 +1,6 @@
 """
 pwa.py - Rende la suite installabile sul telefono (icona nella schermata Home, schermo intero) e mostra le istruzioni.
-Il manifesto e le icone sono generati al volo: non servono file aggiuntivi sul server.
+Manifesto e icone stanno nella cartella static/ (servita con enableStaticServing in .streamlit/config.toml); se non fosse servita, ripiega su icone generate al volo.
 Su Android (Chrome) compare anche il pulsante «Installa»; su iPhone si usa Condividi -> Aggiungi alla schermata Home.
 """
 import base64
@@ -23,10 +23,19 @@ export default function(component) {
   const man = { name: 'FCR General Contractor - Suite', short_name: 'FCR Suite', description: 'Strumenti di gestione di FCR General Contractor', lang: 'it',
     start_url: location.origin + '/', scope: location.origin + '/', display: 'standalone', background_color: '#f8fafc', theme_color: '#0b4f9c',
     icons: [{ src: icona(192), sizes: '192x192', type: 'image/png', purpose: 'any' }, { src: icona(512), sizes: '512x512', type: 'image/png', purpose: 'any' }] };
-  const url = URL.createObjectURL(new Blob([JSON.stringify(man)], { type: 'application/manifest+json' }));
-  rimpiazza('link[rel="manifest"]', link('manifest', url));
-  rimpiazza('link[rel="icon"], link[rel="shortcut icon"]', link('icon', icona(192), { type: 'image/png' }));
-  rimpiazza('link[rel="apple-touch-icon"]', link('apple-touch-icon', icona(180)));
+  const base = location.origin + location.pathname.replace(/\/[^\/]*$/, '').replace(/\/$/, '') + '/app/static/';
+  const daFile = () => {                                   // file veri serviti dal server: e' il modo che Chrome e l'iPhone accettano per installare
+    rimpiazza('link[rel="manifest"]', link('manifest', base + 'manifest.json'));
+    rimpiazza('link[rel="icon"], link[rel="shortcut icon"]', link('icon', base + 'favicon.png', { type: 'image/png' }));
+    rimpiazza('link[rel="apple-touch-icon"]', link('apple-touch-icon', base + 'icon-180.png'));
+  };
+  const alVolo = () => {                                   // se la cartella static non e' servita, ripiega sulle icone incorporate
+    const url = URL.createObjectURL(new Blob([JSON.stringify(man)], { type: 'application/manifest+json' }));
+    rimpiazza('link[rel="manifest"]', link('manifest', url));
+    rimpiazza('link[rel="icon"], link[rel="shortcut icon"]', link('icon', icona(192), { type: 'image/png' }));
+    rimpiazza('link[rel="apple-touch-icon"]', link('apple-touch-icon', icona(180)));
+  };
+  fetch(base + 'manifest.json', { method: 'GET', cache: 'no-store' }).then(r => (r.ok && /json/.test(r.headers.get('content-type') || '')) ? daFile() : alVolo()).catch(alVolo);
   rimpiazza('meta[name="theme-color"]', meta('theme-color', '#0b4f9c'));
   rimpiazza('meta[name="apple-mobile-web-app-capable"]', meta('apple-mobile-web-app-capable', 'yes'));
   rimpiazza('meta[name="mobile-web-app-capable"]', meta('mobile-web-app-capable', 'yes'));
