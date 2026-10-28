@@ -450,6 +450,24 @@ SIDEBAR_CSS = """
 .st-key-sb_hubbtn button[data-testid="stBaseButton-primary"] { background: linear-gradient(135deg, #1e3fae, #2563eb) !important; border: 0 !important; box-shadow: 0 6px 14px rgba(30,64,175,.3) !important; }
 .st-key-sb_hubbtn button[data-testid="stBaseButton-primary"] p { color: #fff !important; }
 .st-key-sb_utente .stButton > button { border-radius: 10px; font-size: .82rem; padding: .3rem .5rem; min-height: 0; }
+/* Pulsanti ben visibili: gli strumenti della barra laterale hanno uno sfondo e un bordo, la chat e' verde, il Cruscotto ambra */
+.st-key-sb_nav .stButton > button { background: #eff6ff !important; border: 1px solid #bfdbfe !important; border-left: 4px solid #3b82f6 !important; }
+.st-key-sb_nav .stButton > button p { color: #1e3a8a !important; font-weight: 700; }
+.st-key-sb_nav .stButton > button:hover { background: #dbeafe !important; }
+.st-key-sb_nav [data-testid="stExpander"] details { background: #f8fafc; border: 1px solid #cbd5e1; }
+.st-key-sb_nav [data-testid="stExpander"] summary { background: #e2e8f0; border-radius: 12px; color: #0f172a; }
+.st-key-sb_nav button[data-testid="stBaseButton-primary"] { border: 1px solid #1e3fae !important; border-left: 4px solid #93c5fd !important; }
+[class*="st-key-sb_nav"] .st-key-nav_ch .stButton > button { background: linear-gradient(135deg, #059669, #10b981) !important; border: 0 !important; box-shadow: 0 6px 14px rgba(5,150,105,.35) !important; }
+[class*="st-key-sb_nav"] .st-key-nav_ch .stButton > button p { color: #fff !important; font-size: .95rem; }
+[class*="st-key-sb_nav"] .st-key-nav_ch .stButton > button:hover { background: linear-gradient(135deg, #047857, #059669) !important; }
+[class*="st-key-sb_nav"] .st-key-nav_dd .stButton > button { background: #fffbeb !important; border: 1px solid #fcd34d !important; border-left: 4px solid #f59e0b !important; }
+[class*="st-key-sb_nav"] .st-key-nav_dd .stButton > button p { color: #92400e !important; }
+/* canali della chat: quello aperto e' pieno, gli altri sono chiari */
+[class*="st-key-chc_"] button[data-testid="stBaseButton-secondary"] { background: #f0fdf4 !important; border: 1px solid #86efac !important; box-shadow: none !important; justify-content: flex-start !important; }
+[class*="st-key-chc_"] button[data-testid="stBaseButton-secondary"] p { color: #166534 !important; font-weight: 600; text-align: left; width: 100%; }
+[class*="st-key-chc_"] button[data-testid="stBaseButton-secondary"]:hover { background: #dcfce7 !important; }
+[class*="st-key-chc_"] button[data-testid="stBaseButton-primary"] { background: linear-gradient(135deg, #059669, #10b981) !important; justify-content: flex-start !important; }
+[class*="st-key-chc_"] button p { text-align: left; width: 100%; }
 @media (prefers-reduced-motion: reduce) { .sb-brand { animation: none; } }
 """
 

@@ -383,6 +383,9 @@ def _tab_avvisi(utente, utenti_noti):
                 else:
                     st.warning("Non vedo ancora il tuo Start: attendi qualche secondo e riprova.")
     st.markdown("##### 🔔 App ntfy (alternativa, anche su server aziendale)")
+    st.markdown("**Scarica l'app:** [📱 iPhone (App Store)](https://apps.apple.com/us/app/ntfy/id1625396347) · "
+                "[🤖 Android (Google Play)](https://play.google.com/store/apps/details?id=io.heckel.ntfy) · "
+                "[Android senza Google (F-Droid)](https://f-droid.org/en/packages/io.heckel.ntfy/)")
     if p["ntfy_topic"]:
         st.success("ntfy attivo.")
         st.markdown(f"Installa l'app **ntfy** (iPhone/Android), scegli **Iscriviti a un argomento**, server `{notifiche.ntfy_url()}`, argomento:")
