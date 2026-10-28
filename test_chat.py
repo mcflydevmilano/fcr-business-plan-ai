@@ -442,8 +442,8 @@ def test_aggiornamento_manuale_e_automatico_a_scelta(tmp_path, monkeypatch):
     at = _app(tmp_path, monkeypatch, "agg.db")
     assert not at.exception, [e.value for e in at.exception]
     assert any(b.label.endswith("Aggiorna") for b in at.button)
-    assert at.session_state["chat_auto"] is False                      # di default non si ricarica da sola
-    at.toggle(key="chat_auto").set_value(True).run()
+    assert at.session_state["chat_auto"] is True and __import__("chat_ui").AGGIORNA_SEC == 120      # ogni 2 minuti, spegnibile
+    at.toggle(key="chat_auto").set_value(False).run()
     assert not at.exception, [e.value for e in at.exception]
     [b for b in at.button if b.label.endswith("Aggiorna")][0].click().run()
     assert not at.exception, [e.value for e in at.exception]
