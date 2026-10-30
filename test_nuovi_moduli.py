@@ -163,7 +163,7 @@ def test_lg_invio_email_con_allegato(monkeypatch):
         def __init__(self, *a, **k): pass
         def __enter__(self): return self
         def __exit__(self, *a): return False
-        def starttls(self): pass
+        def starttls(self, **k): pass
         def login(self, u, p): pass
         def send_message(self, m): inviati.append(m)
     monkeypatch.setattr(lg.smtplib, "SMTP", _S)

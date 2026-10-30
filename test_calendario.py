@@ -61,7 +61,7 @@ def test_riepilogo_testo_e_invio(monkeypatch):
         def __exit__(self, *a):
             return False
 
-        def starttls(self):
+        def starttls(self, **k):
             pass
 
         def login(self, u, p):

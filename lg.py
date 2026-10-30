@@ -200,16 +200,8 @@ def invia_studio(oggetto, corpo, allegati=(), env=None):
         raise RuntimeError("Nessun canale configurato: servono STUDIO_LEGALE_EMAIL (con SMTP_HOST, SMTP_USER, SMTP_PASSWORD) oppure STUDIO_LEGALE_SLACK_WEBHOOK_URL nei Secrets.")
     usati = []
     if can["email"]:
-        msg = EmailMessage()
-        msg["Subject"], msg["From"], msg["To"] = oggetto, env.get("MAIL_FROM") or env["SMTP_USER"], ", ".join(destinatari(env))
-        msg.set_content(corpo)
-        for nome, dati, mime in allegati:
-            tipo, sotto = mime.split("/", 1)
-            msg.add_attachment(dati, maintype=tipo, subtype=sotto, filename=nome)
-        with smtplib.SMTP(env["SMTP_HOST"], int(env.get("SMTP_PORT", "587") or 587), timeout=30) as s:
-            s.starttls()
-            s.login(env["SMTP_USER"], env["SMTP_PASSWORD"])
-            s.send_message(msg)
+        import posta
+        posta.invia(destinatari(env), oggetto, corpo, allegati=allegati, env=env)       # un solo tentativo, timeout 10 s, mai riprovato da solo
         usati.append("email")
     if can["slack"]:
         testo = f"*{oggetto}*\n" + corpo[:2800]

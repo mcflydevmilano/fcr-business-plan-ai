@@ -78,14 +78,8 @@ def invia(oggetto, testo, corpo_html, env=None):
     host, user, pw, dest = env.get("SMTP_HOST", ""), env.get("SMTP_USER", ""), env.get("SMTP_PASSWORD", ""), [x.strip() for x in env.get("MAIL_TO", "").split(",") if x.strip()]
     if not (host and user and pw and dest):
         raise RuntimeError("Configurazione email incompleta: servono SMTP_HOST, SMTP_USER, SMTP_PASSWORD e MAIL_TO.")
-    msg = EmailMessage()
-    msg["Subject"], msg["From"], msg["To"] = oggetto, env.get("MAIL_FROM") or user, ", ".join(dest)
-    msg.set_content(testo)
-    msg.add_alternative(corpo_html, subtype="html")
-    with smtplib.SMTP(host, int(env.get("SMTP_PORT", "587") or 587), timeout=30) as s:
-        s.starttls()
-        s.login(user, pw)
-        s.send_message(msg)
+    import posta
+    posta.invia(dest, oggetto, testo, html=corpo_html, env=env)       # un solo tentativo, timeout 10 s, mai riprovato da solo
     return dest
 
 

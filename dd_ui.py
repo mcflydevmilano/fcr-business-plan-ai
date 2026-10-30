@@ -187,6 +187,8 @@ def _avvisi(righe, modo_demo, apri, metriche, audit, gen=None, azioni=None, font
             if esito["regole"]:
                 audit("avvisi_cruscotto_auto", f"chat {esito['chat']}, email {esito['email']}")
                 st.toast(f"Avvisi inviati: {esito['chat']} in chat, {esito['email']} email", icon="🔔")
+            if any("Email" in x for x in esito["errori"]):
+                st.warning("Gli avvisi per email non sono stati inviati: l'invio è stato bloccato per prevenire il blocco del dominio. Controlla le impostazioni della posta.")
         except Exception:
             pass
     with st.expander("🔔 Avvisi per email e chat interna", expanded=False):

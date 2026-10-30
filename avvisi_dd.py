@@ -119,26 +119,20 @@ def smtp_pronto(env=None):
 
 
 def _mail_smtp(destinatari, oggetto, corpo, env=None, allegati=()):
-    env = env or os.environ
-    msg = EmailMessage()
-    msg["Subject"], msg["From"], msg["To"] = oggetto, env.get("MAIL_FROM") or env["SMTP_USER"], ", ".join(destinatari)
-    msg.set_content(corpo)
-    for nome, dati, mime in allegati:
-        tipo, sotto = mime.split("/", 1)
-        msg.add_attachment(dati, maintype=tipo, subtype=sotto, filename=nome)
-    porta = int(env.get("SMTP_PORT", "587") or 587)
-    if porta == 465:
-        with smtplib.SMTP_SSL(env["SMTP_HOST"], porta, timeout=30) as s:
-            s.login(env["SMTP_USER"], env["SMTP_PASSWORD"])
-            s.send_message(msg)
-    else:
-        with smtplib.SMTP(env["SMTP_HOST"], porta, timeout=30) as s:
-            s.starttls()
-            s.login(env["SMTP_USER"], env["SMTP_PASSWORD"])
-            s.send_message(msg)
+    """Un solo invio, un solo tentativo (vedi posta.py). Se fallisce solleva l'errore e non riprova."""
+    import posta
+    posta.invia(destinatari, oggetto, corpo, allegati=allegati, env=env)
 
 
 MAIL = _mail_smtp          # sostituibile nei test
+
+
+def _posta_in_errore(path=None):
+    try:
+        import posta
+        return posta.errori_ultima_ora(path) >= 1
+    except Exception:
+        return False
 
 
 def _canale_pubblico(nome, path=None):
@@ -182,7 +176,9 @@ def invia(righe, cfg=None, path=None, forza=False, oggi=None, utenti_noti=(), li
                 ok = True
             except (ValueError, PermissionError) as e:
                 esito["errori"].append(f"{p}: {e}")
-        if regola["email"]:
+        if regola["email"] and not forza and _posta_in_errore(path):
+            esito["errori"].append("Email sospesa: nell'ultima ora l'invio è già fallito. Per non far scattare il blocco del dominio non riprovo da solo (usa «Invia ora» dal Cruscotto dopo aver controllato la posta).")
+        elif regola["email"]:
             try:
                 MAIL(regola["email"], f"FCR Suite - Cruscotto: {len(pert)} avvisi", testo)
                 esito["email"] += len(regola["email"])
