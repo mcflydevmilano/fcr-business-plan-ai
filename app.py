@@ -636,11 +636,12 @@ if _ap:
     if _ap.get("modulo") != MODULO or _ap["giri"] > 3:
         ss.pop("_apri_pratica", None)
 if ss.get("_scroll_su"):                                          # cambio di strumento: la pagina riparte dall'alto (altrimenti resta alla posizione di prima)
-    try:
-        st.components.v2.component("fcr_scroll_su", js=_JS_SCROLL_SU)(key=f"fcr_scroll_su_{ss['_scroll_su']}")
-    except Exception:
-        pass
+    ss["_scroll_gen"] = ss.get("_scroll_gen", 0) + 1
     ss["_scroll_su"] = 0
+try:                                                              # sempre presente, con la stessa posizione: se comparisse solo dopo un cambio di strumento
+    st.components.v2.component("fcr_scroll_su", js=_JS_SCROLL_SU)(key=f"fcr_scroll_su_{ss.get('_scroll_gen', 0)}")   # sposterebbe le schede e il primo clic le riporterebbe alla prima
+except Exception:
+    pass
 PERM = permessi.carica_config()
 CONSENTITI = permessi.moduli_consentiti(ss["utente"], PERM)
 PROFILO = "accesso completo" if ss["utente"].get("ruolo") == "admin" else permessi.profilo_di(ss["utente"], PERM)

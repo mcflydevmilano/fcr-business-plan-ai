@@ -507,4 +507,9 @@ def esporta_backup(path=None):
                              con.execute("SELECT pratica, report_id, creato, modello, hash_dati FROM report_log ORDER BY id")]
         out["audit_log"] = [dict(zip(("ts", "utente", "azione", "dettaglio"), r)) for r in
                             con.execute("SELECT ts, utente, azione, dettaglio FROM audit_log ORDER BY id")]
+    try:
+        import ddt
+        out["ddt_file"] = ddt.elenco_per_backup(path)                 # solo i dati descrittivi: i file non entrano nella copia JSON
+    except Exception:
+        out["ddt_file"] = []
     return out

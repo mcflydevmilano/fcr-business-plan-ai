@@ -82,7 +82,8 @@ def _motore(S, fcr_uri, audit, utente):
 
     S["_raccogli"] = raccogli
     pannello_archivio(sg, S["archivio"], raccogli, applica, audit, utente)
-    t1, t2, t3, t4 = st.tabs(["📝 1. Dati", "📊 2. Risultati", "🔗 3. Collegamenti", "📥 4. Excel"])
+    extra = S.get("tab_extra")
+    t1, t2, t3, t4, *t5 = st.tabs(["📝 1. Dati", "📊 2. Risultati", "🔗 3. Collegamenti", "📥 4. Excel"] + ([extra[0]] if extra else []))
     with t1:
         banner_esempio(f"{sg}_demo", [(T["chiave"], T["colonne"]) for T in S["tabelle"]], f"svuota_{sg}")
         if S.get("rapido"):
@@ -127,6 +128,9 @@ def _motore(S, fcr_uri, audit, utente):
             st.download_button("📥 Scarica tutto in Excel", _xlsx(S["fogli"](out)), file_name=f"{S['file']}_{dt.date.today().isoformat()}.xlsx",
                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dlx_{sg}")
             st.caption("Un foglio per ogni tabella dei risultati. I valori sono quelli calcolati oggi.")
+    if extra:
+        with t5[0]:
+            extra[1](out, dati, utente, audit)
 
 
 def _invia_a_sal(chiave, righe, marcatore, audit, sigla):
@@ -336,7 +340,7 @@ SPEC_PR["collegamenti"] = lambda out, dati, utente, audit: _coll_sal("pr", lambd
 # ----------------------------------------------------------------------------
 @senza_esempi
 def _es_mt():
-    return (_mk(mt.COLONNE_ORDINI, [("Calcestruzzo C25/30", "Beton Nord", "Villa Lago", 60, "mc", 120, g(-4), "no", ""), ("Ferro d'armatura", "Acciai Lombardi", "Villa Lago", 3000, "kg", 1.1, g(-20), "sì", g(-19)),
+    return (_mk(mt.COLONNE_ORDINI, [("Calcestruzzo C25/30", "Beton Nord", "Villa Lago", 60, "mc", 120, g(-4), "no", ""), ("Ferro d'armatura", "Acciai Lombardi", "Villa Lago", 3000, "kg", 1.1, g(-20), "sì", g(-19), "DDT 412"),
                                    ("Laterizi", "Fornaci Est", "Scuola Elementare", 8000, "pz", 0.6, g(5), "no", ""), ("Tubi multistrato", "Idro Sud", "Scuola Elementare", 400, "m", 3.2, g(12), "no", "")]),
             _mk(mt.COLONNE_MOV, [("Ferro d'armatura", "Villa Lago", g(-19), "Carico", 3000), ("Ferro d'armatura", "Villa Lago", g(-12), "Scarico", 1800), ("Ferro d'armatura", "Villa Lago", g(-3), "Scarico", 900)]))
 
@@ -345,7 +349,8 @@ def _cfg_mt():
     a, b = mt.ETICHETTE_ORDINI, mt.ETICHETTE_MOV
     return ({"Materiale": _t(a["Materiale"], width="medium"), "Fornitore": _t(a["Fornitore"]), "Commessa": _t(a["Commessa"]), "Quantita": _n(a["Quantita"], min_value=0.0, step=1.0), "Um": _t(a["Um"], width="small"),
              "Prezzo_unit": _n(a["Prezzo_unit"], min_value=0.0, step=0.1, format="%.2f"), "Consegna_prevista": _t(a["Consegna_prevista"], help="AAAA-MM-GG o GG/MM/AAAA"),
-             "Consegnato": st.column_config.SelectboxColumn(a["Consegnato"], options=["no", "sì"]), "Data_consegna": _t(a["Data_consegna"], help="AAAA-MM-GG o GG/MM/AAAA")},
+             "Consegnato": st.column_config.SelectboxColumn(a["Consegnato"], options=["no", "sì"]), "Data_consegna": _t(a["Data_consegna"], help="AAAA-MM-GG o GG/MM/AAAA"),
+             "Ddt": _t(a["Ddt"], help="Numero del documento di trasporto scritto sulla bolla, per esempio 412 del 28/10")},
             {"Materiale": _t(b["Materiale"], width="medium"), "Commessa": _t(b["Commessa"]), "Data": _t(b["Data"], help="AAAA-MM-GG o GG/MM/AAAA"),
              "Tipo": st.column_config.SelectboxColumn(b["Tipo"], options=mt.TIPI_MOV), "Quantita": _n(b["Quantita"], min_value=0.0, step=1.0)})
 
@@ -371,7 +376,7 @@ def _ris_mt(o):
 SPEC_MT = {
     "sigla": "mt", "titolo": "Materiali e magazzino", "sottotitolo": "Ordini e consegne, giacenze di cantiere e costo dei materiali per commessa.",
     "archivio": "i materiali", "file": "materiali", "unita": "problemi", "vuoto": "Inserisci almeno un ordine con materiale e quantità.",
-    "tabelle": [{"chiave": "mt_ord", "titolo": "Ordini e consegne", "nota": "Segna «sì» in «Consegnato» quando arriva. L'importo è quantità × prezzo unitario, IVA esclusa.", "colonne": mt.COLONNE_ORDINI, "etichette": mt.ETICHETTE_ORDINI,
+    "tabelle": [{"chiave": "mt_ord", "titolo": "Ordini e consegne", "nota": "Segna «sì» in «Consegnato» quando arriva e scrivi il numero del DDT della bolla. L'importo è quantità × prezzo unitario, IVA esclusa.", "colonne": mt.COLONNE_ORDINI, "etichette": mt.ETICHETTE_ORDINI,
                  "cfg": lambda: _cfg_mt()[0], "altezza": 280},
                 {"chiave": "mt_mov", "titolo": "Carichi e scarichi di magazzino", "nota": "Carico = arriva in cantiere; Scarico = usato o spostato. La giacenza è la differenza.", "colonne": mt.COLONNE_MOV, "etichette": mt.ETICHETTE_MOV,
                  "cfg": lambda: _cfg_mt()[1]}],
@@ -383,6 +388,7 @@ SPEC_MT = {
                         {"label": "Giacenze negative", "value": str(o["kpi"]["giacenze_negative"]), "sub": "da controllare", "tono": "warn" if o["kpi"]["giacenze_negative"] else "ok"}],
     "risultati": _ris_mt, "fogli": lambda o: {"Ordini": o["ordini"], "Giacenze": o["giacenze"], "Commesse": o["commesse"]},
 }
+SPEC_MT["tab_extra"] = ("📎 5. Bolle (DDT)", lambda out, dati, utente, audit: __import__("ddt_ui").render(out, dati, utente, audit))
 SPEC_MT["collegamenti"] = lambda out, dati, utente, audit: _coll_sal("mt", lambda o, d: mt.per_sl_costi(o), lambda r: str(r.get("Descrizione")).endswith("(da Materiali)"),
                                                                     "Porta i materiali consegnati tra i costi delle commesse di **SAL e contabilità lavori** (categoria «Materiali»; già pagato = 0 finché non lo segni in SAL).")(out, dati, utente, audit)
 

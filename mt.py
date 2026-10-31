@@ -7,9 +7,9 @@ from sc import data_da
 from scad import oggi_da
 
 MT_DEFAULT = {"oggi": None, "preavviso_gg": 7}
-COLONNE_ORDINI = ["Materiale", "Fornitore", "Commessa", "Quantita", "Um", "Prezzo_unit", "Consegna_prevista", "Consegnato", "Data_consegna"]
+COLONNE_ORDINI = ["Materiale", "Fornitore", "Commessa", "Quantita", "Um", "Prezzo_unit", "Consegna_prevista", "Consegnato", "Data_consegna", "Ddt"]
 ETICHETTE_ORDINI = {"Materiale": "Materiale", "Fornitore": "Fornitore", "Commessa": "Commessa", "Quantita": "Quantità", "Um": "Unità", "Prezzo_unit": "Prezzo unitario (€)",
-                    "Consegna_prevista": "Consegna prevista", "Consegnato": "Consegnato (sì/no)", "Data_consegna": "Data consegna"}
+                    "Consegna_prevista": "Consegna prevista", "Consegnato": "Consegnato (sì/no)", "Data_consegna": "Data consegna", "Ddt": "N. DDT (documento di trasporto)"}
 COLONNE_MOV = ["Materiale", "Commessa", "Data", "Tipo", "Quantita"]
 ETICHETTE_MOV = {"Materiale": "Materiale", "Commessa": "Cantiere / commessa", "Data": "Data", "Tipo": "Carico o scarico", "Quantita": "Quantità"}
 TIPI_MOV = ["Carico", "Scarico"]
@@ -36,7 +36,7 @@ def normalizza_ordini(righe):
         dc, dp = data_da(r.get("Data_consegna")), data_da(r.get("Consegna_prevista"))
         out.append({"Materiale": m, "Fornitore": _s(r.get("Fornitore")), "Commessa": _s(r.get("Commessa")) or "(senza commessa)", "Quantita": q, "Um": _s(r.get("Um")) or "pz",
                     "Prezzo_unit": max(0.0, to_float(r.get("Prezzo_unit"), 0.0)), "Consegna_prevista": dp.isoformat() if dp else "", "Consegnato": "sì" if cons else "no",
-                    "Data_consegna": dc.isoformat() if dc else ""})
+                    "Data_consegna": dc.isoformat() if dc else "", "Ddt": _s(r.get("Ddt"))})
     return out, avvisi
 
 
@@ -56,7 +56,7 @@ def normalizza_mov(righe):
 def calcola_mt(ordini, mov, p=None):
     q = {**MT_DEFAULT, **(p or {})}
     oggi, prev = oggi_da(q), int(max(0, to_float(q["preavviso_gg"], 7)))
-    righe, avvisi = [], []
+    righe, avvisi, senza_ddt = [], [], 0
     for o in ordini:
         importo = o["Quantita"] * o["Prezzo_unit"]
         g = (data_da(o["Consegna_prevista"]) - oggi).days if o["Consegna_prevista"] else None
@@ -67,6 +67,9 @@ def calcola_mt(ordini, mov, p=None):
         else:
             st = "bad" if g < 0 else ("warn" if g <= prev else "ok")
         righe.append({**o, "Importo": importo, "Giorni": g, "Stato": st})
+        if o["Consegnato"] == "sì" and not o["Ddt"]:
+            senza_ddt += 1
+            avvisi.append(f"{o['Materiale']} ({o['Commessa']}): consegnato ma senza numero DDT: scrivilo, serve per controllare la fattura.")
         if st == "bad":
             avvisi.append(f"{o['Materiale']} ({o['Commessa']}): consegna in ritardo di {-g} giorni" + (f", fornitore {o['Fornitore']}" if o["Fornitore"] else "") + ".")
     gi = {}
@@ -84,7 +87,7 @@ def calcola_mt(ordini, mov, p=None):
     per_comm = [{"Commessa": c, "Costo materiali consegnati": v} for c, v in sorted(com.items())]
     ritardi = sum(1 for r in righe if r["Stato"] == "bad")
     kpi = {"n_ordini": len(righe), "ordinato": sum(r["Importo"] for r in righe), "consegnato": sum(r["Importo"] for r in righe if r["Consegnato"] == "sì"),
-           "in_ritardo": ritardi, "in_arrivo": sum(1 for r in righe if r["Stato"] == "warn"), "giacenze_negative": sum(1 for g in giacenze if g["Giacenza"] < -1e-9),
+           "in_ritardo": ritardi, "in_arrivo": sum(1 for r in righe if r["Stato"] == "warn"), "senza_ddt": senza_ddt, "giacenze_negative": sum(1 for g in giacenze if g["Giacenza"] < -1e-9),
            "n_bad": ritardi + sum(1 for g in giacenze if g["Giacenza"] < -1e-9), "n_warn": sum(1 for r in righe if r["Stato"] == "warn")}
     return {"params": {"oggi": oggi, "preavviso_gg": prev}, "ordini": righe, "giacenze": giacenze, "commesse": per_comm, "kpi": kpi, "avvisi": avvisi}
 
@@ -94,5 +97,5 @@ def costi_per_commessa(out):
 
 
 def per_sl_costi(out):
-    return [{"Commessa": r["Commessa"], "Data": r["Data_consegna"] or out["params"]["oggi"].isoformat(), "Fornitore": r["Fornitore"] or "Materiali", "Descrizione": f"{r['Materiale']} - {r['Quantita']:g} {r['Um']} (da Materiali)",
+    return [{"Commessa": r["Commessa"], "Data": r["Data_consegna"] or out["params"]["oggi"].isoformat(), "Fornitore": r["Fornitore"] or "Materiali", "Descrizione": f"{r['Materiale']} - {r['Quantita']:g} {r['Um']}" + (f" - DDT {r['Ddt']}" if r["Ddt"] else "") + " (da Materiali)",
              "Categoria": "Materiali", "Importo": round(r["Importo"], 2), "Pagato": 0.0} for r in out["ordini"] if r["Consegnato"] == "sì" and r["Commessa"] != "(senza commessa)"]

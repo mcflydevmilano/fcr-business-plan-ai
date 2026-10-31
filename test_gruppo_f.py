@@ -230,3 +230,15 @@ def test_presenze_pulsante_importa_rapportini(tmp_path, monkeypatch):
     assert not at.exception, [e.value for e in at.exception]
     assert (at.session_state["pr_ore"]["Persona"] == "Squadra (da rapportini)").sum() == 1
     assert (at.session_state["pr_per"]["Persona"] == "Squadra (da rapportini)").sum() == 1
+
+
+def test_materiali_ddt_avviso_e_costo_in_sal():
+    od, _ = mt.normalizza_ordini([
+        {"Materiale": "Ferro", "Fornitore": "Acciai", "Commessa": "Villa Lago", "Quantita": 10, "Um": "q", "Prezzo_unit": 50, "Consegnato": "sì", "Data_consegna": g(-2), "Ddt": " 412 del 28/10 "},
+        {"Materiale": "Sabbia", "Fornitore": "Cave", "Commessa": "Villa Lago", "Quantita": 5, "Um": "mc", "Prezzo_unit": 20, "Consegnato": "sì", "Data_consegna": g(-1)},
+        {"Materiale": "Ghiaia", "Commessa": "Villa Lago", "Quantita": 1, "Prezzo_unit": 10, "Consegnato": "no"}])
+    o = mt.calcola_mt(od, [], {"oggi": OGGI})
+    assert od[0]["Ddt"] == "412 del 28/10" and o["kpi"]["senza_ddt"] == 1
+    assert any("Sabbia" in a and "senza numero DDT" in a for a in o["avvisi"]) and not any("Ghiaia" in a and "DDT" in a for a in o["avvisi"])
+    righe = mt.per_sl_costi(o)
+    assert "DDT 412 del 28/10" in righe[0]["Descrizione"] and all(r["Descrizione"].endswith("(da Materiali)") for r in righe)

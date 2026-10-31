@@ -12,6 +12,7 @@ Pillow
 psycopg[binary]>=3.1
 cryptography
 segno
+pypdf
 
 # solo per i test (facoltativo):
 pytest

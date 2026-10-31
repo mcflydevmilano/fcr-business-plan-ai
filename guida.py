@@ -143,7 +143,8 @@ PASSI = {
     "mt": ("Sapere cosa è stato ordinato, cosa è arrivato in cantiere e quanto costa per commessa.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:mt_demo"),
         ("Inserisci gli ordini", "Nella scheda «1. Dati» scrivi materiale, fornitore, commessa, quantità, prezzo e data di consegna prevista.", "dati:mt_ord"),
-        ("Segna le consegne", "Quando arriva scrivi «sì» in «Consegnato» e la data.", None),
+        ("Segna le consegne", "Quando arriva scrivi «sì» in «Consegnato», la data e il numero del DDT.", None),
+        ("Archivia le bolle", "Nella scheda «5. Bolle (DDT)» carica il PDF, la foto o l'Excel della bolla: la suite propone numero e data, tu controlli. Da Excel puoi anche aggiungere le righe agli ordini.", None),
         ("Registra carichi e scarichi", "Nella seconda tabella segna cosa entra e cosa esce dal cantiere: la giacenza si calcola da sola.", None),
         ("Salva", "Apri «💾 Salva e riapri i materiali» in alto e premi Salva.", "salvato"),
     ], "Un ritardo si vede in rosso: controlla prima il fornitore."),
