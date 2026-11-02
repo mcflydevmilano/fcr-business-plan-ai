@@ -240,6 +240,9 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.12.3
+- Corretto `StreamlitValueAssignmentNotAllowedError` al rientro in Chat/Offerte/Registro: i `file_uploader` hanno ora chiavi senza prefisso di modulo (`up_chat_allegato`, `up_of_cme`, `up_of_mill`, `up_rc_file`), così non finiscono nello snapshot di `vai_a()`. Test di regressione in `test_spazio.py`.
+
 ## Novità 3.12.2
 - **Scheda «💾 Spazio»** in Amministrazione (`spazio.py`): barre dello spazio disco del **server** e del **NAS** (verde / giallo oltre il 75% / rosso oltre il 90%), dimensione del database (PostgreSQL o SQLite) e delle copie di sicurezza. In cima alla pagina Amministrazione compare un avviso se un disco è quasi pieno. Percorsi con variabili d'ambiente: `FCR_DISCO_SERVER` (predefinito `/`), `FCR_NAS_PATH` (predefinito `/mnt/nas`; il NAS conta solo se è davvero montato), `BACKUP_DIR`.
 - **Esecuzione su server proprio**: servizio `systemd` con `DATABASE_URL` in `/etc/fcr-suite.env`, PostgreSQL locale, backup notturno con `pg_dump`, accesso da fuori con Cloudflare Tunnel.

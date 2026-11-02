@@ -178,7 +178,7 @@ def _scheda_pratica():
 def _scheda_computo(ctx):
     st.markdown("Carica il **computo metrico** del collega (foglio «Table 1» con i capitoli A–E e le ipotesi A/B; gli sconti sono letti dal «Foglio1»), oppure scrivi le voci a mano.")
     if not sola_lettura():
-        up = st.file_uploader("Computo metrico (.xlsx)", type=["xlsx"], key="of_up_cme")
+        up = st.file_uploader("Computo metrico (.xlsx)", type=["xlsx"], key="up_of_cme")
         if up is not None:
             try:
                 voci, sconti = of.import_cme(up.getvalue())
@@ -331,7 +331,7 @@ def _scheda_fin(ctx):
     st.caption("Impatto reale = rata − recupero fiscale mensile − risparmio energetico mensile. Costo reale = capitale + interessi − recupero fiscale − risparmio sul periodo.")
     st.markdown("---\n**Tabella millesimale** (una per condominio)")
     if not sola_lettura():
-        up = st.file_uploader("Importa la tabella millesimale (.xlsx con colonne Unità, Proprietario, Millesimi, Mq)", type=["xlsx"], key="of_up_mill")
+        up = st.file_uploader("Importa la tabella millesimale (.xlsx con colonne Unità, Proprietario, Millesimi, Mq)", type=["xlsx"], key="up_of_mill")
         if up is not None:
             try:
                 un = of.import_millesimi(up.getvalue())

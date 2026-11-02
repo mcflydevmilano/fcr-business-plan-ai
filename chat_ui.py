@@ -273,7 +273,7 @@ def _conversazioni_corpo(utente, utenti_noti, audit, vai_a, consentiti, nomi_str
                                  placeholder="Scrivi un messaggio… usa @nome per citare qualcuno")
             c1, c2 = st.columns([2, 2])
             with c1:
-                allegato = st.file_uploader("Allega una foto o un PDF", type=["jpg", "jpeg", "png", "webp", "pdf"], key="chat_allegato",
+                allegato = st.file_uploader("Allega una foto o un PDF", type=["jpg", "jpeg", "png", "webp", "pdf"], key="up_chat_allegato",
                                             help=f"Foto ridotte automaticamente; PDF fino a {chat.LIMITE_PDF_MB} MB.")
             with c2:
                 strumenti = [s for s in consentiti if s in nomi_strumenti and s != "ch"]

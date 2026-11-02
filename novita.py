@@ -15,6 +15,10 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.12.3", "data": "2026-11-02", "titolo": "Chat: corretto l'errore quando si rientra",
+     "voci": ["Se uscivi dalla Chat dopo aver allegato una foto o un PDF e poi ci rientravi, compariva un messaggio di errore: ora non succede più.",
+              "Lo stesso controllo vale per i caricamenti di file in Offerte e in Registro."],
+     "strumenti": ["Chat"]},
     {"id": "3.12.2", "data": "2026-11-02", "titolo": "Spazio libero sul server e sul NAS",
      "voci": ["In «⚙️ Amministrazione suite» (il pulsante sotto il tuo nome, a sinistra, che prima si chiamava «Utenti») c'è la nuova scheda «💾 Spazio»: una barra mostra quanto disco è usato sul server e sul NAS (verde, giallo oltre il 75%, rosso oltre il 90%).",
               "Sotto le barre vedi quanto occupano il database della suite e le copie di sicurezza.",

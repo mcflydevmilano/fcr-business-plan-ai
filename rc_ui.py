@@ -135,7 +135,7 @@ def render(fcr_uri, audit=None, utente=""):
         if sola_lettura():
             st.caption("Importazione non disponibile per il ruolo «lettore».")
         else:
-            up = st.file_uploader("File del registro (.xlsx)", type=["xlsx"], key="rc_file")
+            up = st.file_uploader("File del registro (.xlsx)", type=["xlsx"], key="up_rc_file")
             if up is not None:
                 try:
                     nuove, avvi, rapp = rc.importa_excel(up)

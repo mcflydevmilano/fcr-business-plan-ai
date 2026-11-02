@@ -89,3 +89,28 @@ def test_scheda_spazio_nell_amministrazione(monkeypatch, tmp_path):
     assert any("Spazio" in t.label for t in app.tabs)
     testo = " ".join(m.value for m in app.markdown)
     assert "Server (disco del computer in ufficio)" in testo and "NAS (archivio e copie di sicurezza)" in testo
+
+
+def test_rientrare_in_uno_strumento_con_un_file_caricato_non_da_errore(monkeypatch, tmp_path):
+    """Regressione: un file nel campo «Allega» (o simili) veniva ripristinato come valore e Streamlit dava
+    StreamlitValueAssignmentNotAllowedError al rientro nello strumento."""
+    from streamlit.testing.v1 import AppTest
+    monkeypatch.setenv("APP_PASSWORD", "segreta")
+    monkeypatch.setenv("FCR_DB_PATH", str(tmp_path / "t.db"))
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    import storage
+    monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "t.db"))
+    app = AppTest.from_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.py"), default_timeout=120)
+    app.session_state["utente"] = {"username": "root", "ruolo": "admin", "origine": "app_password"}
+    app.session_state["active_module"] = "ch"
+    app.run()
+    assert not app.exception
+    up = [u for u in app.file_uploader if u.key == "up_chat_allegato"]
+    assert up, "campo Allega non trovato (serve un canale: la chat parte con quello generale)"
+    up[0].set_value(("foto.png", b"\x89PNG\r\n\x1a\n" + b"0" * 50, "image/png"))
+    app.run()
+    assert not app.exception
+    next(b for b in app.button if "Torna all'Hub" in b.label).click().run()
+    assert not app.exception
+    next(b for b in app.button if b.key == "hub_ch").click().run()
+    assert not app.exception, [e.value for e in app.exception]
