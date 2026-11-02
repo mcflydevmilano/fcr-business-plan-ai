@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit as st
 
 import fc
+import fc_sync
 import guida
 import theme
 from ui_util import pannello_archivio, sola_lettura, sostituisci_tabella, tabella_modificabile
@@ -18,13 +19,43 @@ def _df(righe):
     return pd.DataFrame(righe or [], columns=fc.COLONNE)
 
 
+def _resp_df(mappa=None):
+    mappa = {k.lower(): v for k, v in (mappa or {}).items()}
+    return pd.DataFrame([{"Ruolo": r, "Utente": mappa.get(r.lower(), "")} for r in fc.RUOLI])
+
+
+def _mappa():
+    """{ruolo: nome utente} dalla tabella «Chi è chi»."""
+    if "fc_resp" not in ss:
+        return {}
+    return {str(r["Ruolo"]).strip(): str(r["Utente"] or "").strip() for r in ss["fc_resp"].to_dict("records") if str(r["Utente"] or "").strip() not in ("", "None", "nan")}
+
+
+def _params():
+    return {"responsabili": _mappa(), "scad_gg": int(ss.get("fc_scad_gg", fc_sync.SCAD_DEFAULT)),
+            "sync_registro": bool(ss.get("fc_sync_reg", True)), "crea_compiti": bool(ss.get("fc_sync_comp", True))}
+
+
 def _raccogli():
-    return {"passi": ss["fc_df"].to_dict("records"), "params": {"fermo_gg": ss.get("fc_fermo_gg", fc.FC_DEFAULT["fermo_gg"])}}
+    return {"passi": ss["fc_df"].to_dict("records"), "responsabili": _mappa(),
+            "params": {"fermo_gg": ss.get("fc_fermo_gg", fc.FC_DEFAULT["fermo_gg"]), "scad_gg": ss.get("fc_scad_gg", fc_sync.SCAD_DEFAULT),
+                       "sync_registro": ss.get("fc_sync_reg", True), "crea_compiti": ss.get("fc_sync_comp", True)}}
 
 
 def _applica(p, nome):
     sostituisci_tabella("fc_df", _df(p.get("passi")))
-    ss["_pending"] = {"fc_fermo_gg": (p.get("params") or {}).get("fermo_gg", fc.FC_DEFAULT["fermo_gg"])}
+    sostituisci_tabella("fc_resp", _resp_df(p.get("responsabili")))
+    par = p.get("params") or {}
+    ss["_pending"] = {"fc_fermo_gg": par.get("fermo_gg", fc.FC_DEFAULT["fermo_gg"]), "fc_scad_gg": par.get("scad_gg", fc_sync.SCAD_DEFAULT),
+                      "fc_sync_reg": par.get("sync_registro", True), "fc_sync_comp": par.get("crea_compiti", True)}
+
+
+def _collega(codice, passi, utente, audit):
+    """Dopo un passaggio: aggiorna Registro e compiti, e dice cosa e' successo."""
+    msg = fc_sync.dopo_azione(codice, passi, _params(), utente, sessione=ss)
+    if msg:
+        audit("fc_sync", f"{codice}: {msg}"[:200])
+        st.toast(msg)
 
 
 def _codici_registro():
@@ -109,6 +140,7 @@ def _scheda(codice, passi, righe, utente, audit):
                         _salva_passi(righe, codice, passi)
                         audit("fc_passo", f"{codice} passo {n}: {az}")
                         st.toast(msg)
+                        _collega(codice, passi, utente, audit)
                         st.rerun()
                     else:
                         st.warning(msg)
@@ -123,11 +155,16 @@ def render(fcr_uri, audit=None, utente=""):
     if "fc_df" not in ss:
         ss["fc_df"] = _df([])
     ss.setdefault("fc_fermo_gg", fc.FC_DEFAULT["fermo_gg"])
+    ss.setdefault("fc_scad_gg", fc_sync.SCAD_DEFAULT)
+    ss.setdefault("fc_sync_reg", True)
+    ss.setdefault("fc_sync_comp", True)
+    if "fc_resp" not in ss:
+        ss["fc_resp"] = _resp_df()
     pannello_archivio("fc", "il flusso delle commesse", _raccogli, _applica, audit, utente)
     righe, avv = fc.normalizza(ss["fc_df"].to_dict("records"))
     out = fc.calcola(righe, dt.date.today(), {"fermo_gg": ss["fc_fermo_gg"]})
     k = out["kpi"]
-    t1, t2, t3, t4 = st.tabs(["📊 1. Cruscotto", "🧭 2. Scheda commessa", "🔎 3. Controlli", "📋 4. Tabella e Excel"])
+    t1, t2, t3, t4, t5 = st.tabs(["📊 1. Cruscotto", "🧭 2. Scheda commessa", "🔎 3. Controlli", "📋 4. Tabella e Excel", "🔗 5. Chi è chi e collegamenti"])
 
     with t1:
         if not righe:
@@ -160,9 +197,11 @@ def render(fcr_uri, audit=None, utente=""):
                 if cod.lower() in {c.lower() for c in esistenti}:
                     st.warning("Questa commessa è già nel flusso.")
                 else:
-                    sostituisci_tabella("fc_df", _df(righe + fc.avvia(cod)))
+                    nuove = fc.avvia(cod)
+                    sostituisci_tabella("fc_df", _df(righe + nuove))
                     audit("fc_avvio", cod)
                     st.toast(f"Flusso avviato per {cod}")
+                    _collega(cod, {int(r["Passo"]): r for r in nuove}, utente, audit)
                     st.rerun()
         if not esistenti:
             st.info("Avvia una commessa per vedere i suoi 28 passaggi.")
@@ -193,3 +232,38 @@ def render(fcr_uri, audit=None, utente=""):
         if righe:
             st.download_button("📥 Scarica in Excel", fc.excel_bytes(righe, out["commesse"]), file_name=f"flusso_commesse_{dt.date.today().isoformat()}.xlsx",
                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="dl_fc_xlsx")
+
+    with t5:
+        st.caption("Per ogni ruolo dello schema scrivi il **nome utente** della persona (più nomi separati da virgola). Serve a creare i compiti e a mandare gli avvisi alla persona giusta.")
+        tabella_modificabile("fc_resp", _resp_df(), {"Ruolo": st.column_config.TextColumn("Ruolo dello schema", disabled=True),
+                                                     "Utente": st.column_config.TextColumn("Nome utente (es. mario, anna)")}, altezza=470, num_rows="fixed")
+        st.markdown("**Cosa succede quando un passaggio avanza**")
+        c1, c2, c3 = st.columns(3)
+        c1.checkbox("Aggiorna lo stato nel Registro commerciale", key="fc_sync_reg", help="La pratica avanza da sola (S0 → S5). Non torna mai indietro e non tocca «Sospeso».")
+        c2.checkbox("Crea i compiti per il responsabile", key="fc_sync_comp", help="Ogni passaggio «In corso» diventa un compito in «Compiti e attività»; si chiude quando il passaggio è concluso.")
+        c3.number_input("Scadenza dei compiti (giorni)", 1, 60, key="fc_scad_gg")
+        st.caption("Le scelte e la tabella si salvano insieme al flusso: apri «💾 Salva e riapri» in alto e premi Salva.")
+        if righe:
+            a, b = st.columns(2)
+            if a.button("🔄 Allinea ora tutte le commesse", key="cmd_fc_allinea", disabled=sola_lettura(), width="stretch",
+                        help="Utile dopo aver compilato «Chi è chi»: crea i compiti che mancano e riallinea il Registro."):
+                tot = []
+                for cod, passi_c in fc.per_codice(righe).items():
+                    msg = fc_sync.dopo_azione(cod, {n: dict(r) for n, r in passi_c.items()}, _params(), utente, sessione=ss)
+                    if msg:
+                        tot.append(f"{cod}: {msg}")
+                audit("fc_allinea", f"{len(tot)} commesse")
+                st.success("Fatto.\n\n" + "\n".join(f"- {t}" for t in tot) if tot else "Tutto era già allineato.")
+            dovuti = fc_sync.da_avvisare(righe, _mappa(), dt.date.today(), int(ss["fc_fermo_gg"]))
+            st.markdown("**Avvisi in chat in questo momento**")
+            if dovuti:
+                st.dataframe(pd.DataFrame([{"A": u, "Messaggio": t} for u, _k, t in dovuti]), hide_index=True, width="stretch")
+                st.caption("Gli avvisi partono da soli una volta al giorno, dal controllo programmato, usando l'ultimo flusso **salvato**. Un avviso uguale non si ripete nello stesso giorno.")
+            else:
+                st.caption("Nessuna commessa aspetta un'approvazione o è ferma, oppure manca la persona nella tabella «Chi è chi».")
+            if b.button("📣 Manda ora gli avvisi (flusso salvato)", key="cmd_fc_avvisa", disabled=sola_lettura(), width="stretch"):
+                es = fc_sync.avvisa(sincrono=False)
+                audit("fc_avvisi", f"{es['chat']} messaggi")
+                st.success(f"Messaggi inviati: {es['chat']} · già mandati oggi: {es['saltati']}")
+                for e in es["errori"][:5]:
+                    st.warning(e)

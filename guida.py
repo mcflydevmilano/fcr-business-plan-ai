@@ -164,8 +164,10 @@ PASSI = {
     ], "Il responsabile è il nome utente: scrivilo uguale per vedere «Solo i miei»."),
     "fc": ("Seguire ogni commessa lungo i 28 passaggi dello schema FCR, sapendo chi deve fare cosa e cosa è bloccato.", [
         ("Avvia una commessa", "Nella scheda «2. Scheda commessa» apri «Avvia il flusso» e scegli la pratica del Registro commerciale: il suo codice è il codice madre.", "dati:fc_df"),
+        ("Di' chi è chi", "Nella scheda «5. Chi è chi e collegamenti» scrivi il nome utente di chi ricopre ogni ruolo (DC, DT, CdA…): servono per assegnare compiti e avvisi.", None),
         ("Scrivi le tue iniziali", "In cima alla scheda: finiscono accanto a ogni passaggio che registri, insieme alla data.", None),
         ("Registra i passaggi", "Apri il passaggio e premi «Segna fatto». Dove serve, un'altra persona preme «Approva». Il CdA, il Presidente e l'assemblea danno GO o NO GO.", None),
+        ("Lascia fare al flusso", "Ogni passaggio aggiorna da solo lo stato nel Registro commerciale e crea il compito per il responsabile, con scadenza. Chi deve approvare riceve un messaggio in chat.", None),
         ("Guarda cosa blocca", "Se un GO manca, i passaggi dopo non si completano. Il NO GO del CdA o dell'assemblea ferma la commessa; quello del Presidente riporta l'offerta al passo 7.", None),
         ("Controlla e salva", "La scheda «3. Controlli» segnala passaggi senza iniziali, fuori sequenza o fermi. Poi apri «💾 Salva e riapri» in alto e premi Salva.", "salvato"),
     ], "Il flusso non sostituisce le firme e le approvazioni vere: registra chi le ha date e quando."),

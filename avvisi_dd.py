@@ -15,7 +15,7 @@ import storage
 NOME_CFG = "avvisi_cruscotto"
 NOME_STATO = "avvisi_cruscotto_stato"
 AUTORE_CHAT = "Cruscotto"
-AREE = ["Cassa", "Crediti", "Debiti", "Liquidita' di cantiere", "Margine", "Rating", "Piano", "Commerciale", "Commesse", "Cantieri", "Fornitori", "Sicurezza", "Mezzi", "Organico"]
+AREE = ["Cassa", "Crediti", "Debiti", "Liquidita' di cantiere", "Margine", "Rating", "Piano", "Commerciale", "Commesse", "Flusso commesse", "Cantieri", "Fornitori", "Sicurezza", "Mezzi", "Organico"]
 TUTTE = "Tutte le aree"
 GRAVITA = {"bad": "Solo rosso", "warn": "Giallo e rosso"}
 ETICHETTA_STATO = {"bad": "ROSSO", "warn": "GIALLO"}

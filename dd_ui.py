@@ -29,13 +29,13 @@ ss = st.session_state
 
 MODULI = [("sc", "Scadenzario", "Cassa, crediti e debiti"), ("cf", "Cash Flow di cantiere", "Liquidità e margine dei cantieri"),
           ("pv", "Computo e Preventivo", "Margine del preventivo"), ("credit", "Credit Risk & Rating", "Rating indicativo"),
-          ("bp", "Business Plan Studio", "DSCR del piano"), ("sl", "SAL e contabilità lavori", "Margine a finire delle commesse"), ("rc", "Registro commerciale", "Pipeline e interventi scaduti"), ("of", "Offerta e finanziamenti", "Copertura finanziaria dell'appalto"), ("ga", "Gare e offerte", "Scadenze delle gare"), ("fo", "Fornitori", "Documenti in scadenza"),
+          ("bp", "Business Plan Studio", "DSCR del piano"), ("sl", "SAL e contabilità lavori", "Margine a finire delle commesse"), ("rc", "Registro commerciale", "Pipeline e interventi scaduti"), ("fc", "Flusso commessa", "Commesse ferme o da approvare"), ("of", "Offerta e finanziamenti", "Copertura finanziaria dell'appalto"), ("ga", "Gare e offerte", "Scadenze delle gare"), ("fo", "Fornitori", "Documenti in scadenza"),
           ("sx", "Sicurezza", "Formazioni e documenti di cantiere"), ("mz", "Parco mezzi", "Scadenze e utilizzo"), ("og", "Organico", "Carico di lavoro"), ("rp", "Rapportini di cantiere", "Segnalazioni e rapportini"), ("gt", "Cronoprogramma", "Ritardi sulle fasi dei cantieri")]
 SESSIONE = "Dati della sessione"
 NESSUNO = "Non usare"
 
 
-_SESS_KEY = {"rc": "rc_df", "of": "of_voci", "ga": "ga_gare", "fo": "fo_doc", "sx": "sx_pers", "mz": "mz_mezzi", "og": "og_ris", "rp": "rp_rapp", "gt": "gt_fasi", "lg": "lg_riserve", "sa": "sa_con", "pr": "pr_per", "mt": "mt_ord", "vr": "vr_ver", "ad": "ad_doc"}
+_SESS_KEY = {"fc": "fc_df", "rc": "rc_df", "of": "of_voci", "ga": "ga_gare", "fo": "fo_doc", "sx": "sx_pers", "mz": "mz_mezzi", "og": "og_ris", "rp": "rp_rapp", "gt": "gt_fasi", "lg": "lg_riserve", "sa": "sa_con", "pr": "pr_per", "mt": "mt_ord", "vr": "vr_ver", "ad": "ad_doc"}
 
 
 def _sessione_disponibile(m):
@@ -55,7 +55,7 @@ def _sessione_disponibile(m):
 
 
 def _payload_sessione(m):
-    return {"sc": sc_ui._raccogli, "cf": cf_ui._raccogli, "pv": pv_ui._raccogli, "bp": bp_ui._raccogli, "sl": sl_ui._raccogli, "rc": __import__("rc_ui")._raccogli, "of": __import__("of_ui")._raccogli, "ga": ga_ui._raccogli, "fo": fo_ui._raccogli, "sx": sx_ui._raccogli, "mz": mz_ui._raccogli, "og": og_ui._raccogli, "rp": rp_ui._dati, "gt": gt_ui._raccogli, "lg": __import__("lg_ui")._raccogli}.get(m, lambda: getattr(__import__("nuovi_ui"), m + "_ui")._raccogli())()
+    return {"sc": sc_ui._raccogli, "cf": cf_ui._raccogli, "pv": pv_ui._raccogli, "bp": bp_ui._raccogli, "sl": sl_ui._raccogli, "rc": __import__("rc_ui")._raccogli, "fc": __import__("fc_ui")._raccogli, "of": __import__("of_ui")._raccogli, "ga": ga_ui._raccogli, "fo": fo_ui._raccogli, "sx": sx_ui._raccogli, "mz": mz_ui._raccogli, "og": og_ui._raccogli, "rp": rp_ui._dati, "gt": gt_ui._raccogli, "lg": __import__("lg_ui")._raccogli}.get(m, lambda: getattr(__import__("nuovi_ui"), m + "_ui")._raccogli())()
 
 
 def _elenco_salvati(m, demo=False):
@@ -75,7 +75,7 @@ def _calcola(m, payload):
             return dd.metriche_pv(payload)
         if m == "sl":
             return dd.metriche_sl(payload)
-        if m in ("rc", "of", "ga", "fo", "sx", "mz", "og", "rp", "gt"):
+        if m in ("rc", "fc", "of", "ga", "fo", "sx", "mz", "og", "rp", "gt"):
             return getattr(dd, "metriche_" + m)(payload)
         if m == "credit":
             return dd.metriche_credit(payload)

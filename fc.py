@@ -313,6 +313,117 @@ def calcola(righe, oggi=None, params=None):
     return {"commesse": comm, "kpi": kpi, "controlli": controlli(righe, oggi, fermo)}
 
 
+# chi deve approvare (ruolo dello schema) i passaggi che prevedono un'approvazione
+APPROVATORE = {3: "CdA", 8: "Presidente", 12: "CdA", 15: "Presidenza", 17: "Direzione", 21: "DL", 22: "Amministratore"}
+RUOLI = ["Commerciale", "DC", "DT", "DF", "DLg", "DL", "CdA", "Presidente", "Presidenza", "Direzione", "Acquisti", "Resp. di cantiere", "Amministrazione",
+         "Controllo di gestione", "Amministratore"]
+
+
+def ruolo_primario(chi):
+    """Primo ruolo di una dicitura dello schema: «Commerciale + DC» -> Commerciale, «DT / cantiere» -> DT."""
+    return re.split(r"\s*(?:\+|/)\s*", _s(chi))[0].strip()
+
+
+def responsabili(chi, mappa):
+    """Nomi utente a cui assegnare un passaggio: quelli del ruolo primario, oppure di un ruolo successivo se il primo non e' assegnato."""
+    mappa = {k.lower(): v for k, v in (mappa or {}).items() if _s(v)}
+    for r in re.split(r"\s*(?:\+|/)\s*", _s(chi)):
+        v = mappa.get(r.strip().lower())
+        if v:
+            return v
+    return ""
+
+
+def titolo_compito(n, codice, approvazione=False):
+    return (f"Approvare il passo {n} «{PASSO[n]['titolo']}» [{codice}]" if approvazione else f"Passo {n}: {PASSO[n]['titolo']} [{codice}]")
+
+
+def compiti_dal_flusso(codice, passi, compiti, mappa, oggi=None, scad_gg=7):
+    """
+    Allinea i compiti (righe di «Compiti e attivita'») allo stato del flusso di una commessa. Restituisce (nuovi compiti, creati, chiusi).
+    - passaggio «In corso»: compito al responsabile del ruolo, con scadenza tra `scad_gg` giorni (se non c'e' gia');
+    - passaggio fatto e in attesa di approvazione: compito «Approvare…» all'approvatore;
+    - passaggio concluso (o non necessario): i suoi compiti diventano «Fatto».
+    """
+    import ta
+    oggi = oggi or dt.date.today()
+    out = [dict(c) for c in compiti]
+    idx = {(c["Compito"].lower(), c["Commessa"].lower()): i for i, c in enumerate(out)}
+    creati = chiusi = 0
+
+    def trova(titolo):
+        return idx.get((titolo.lower(), codice.lower()))
+
+    def apri(titolo, resp, chi, nota, alta):
+        nonlocal creati
+        i = trova(titolo)
+        if i is not None:
+            if out[i]["Stato"] == "Fatto":                                  # riaperto: torna da fare
+                out[i] = ta.muovi(out[i], "Da fare", oggi)
+                creati += 1
+            return
+        r = ta.riga({"Compito": titolo, "Commessa": codice, "Responsabile": resp, "Priorita": "Alta" if alta else "Media", "Stato": "Da fare",
+                     "Scadenza": (oggi + dt.timedelta(days=scad_gg)).isoformat(), "Note": nota + ("" if resp else f" Nessun responsabile assegnato al ruolo «{chi}»: assegnalo in «Chi è chi».")}, oggi)
+        idx[(titolo.lower(), codice.lower())] = len(out)
+        out.append(r)
+        creati += 1
+
+    def chiudi(titolo):
+        nonlocal chiusi
+        i = trova(titolo)
+        if i is not None and out[i]["Stato"] != "Fatto":
+            out[i] = ta.muovi(out[i], "Fatto", oggi)
+            chiusi += 1
+
+    for n, r in sorted(passi.items()):
+        d = PASSO[n]
+        t_pass, t_appr = titolo_compito(n, codice), titolo_compito(n, codice, True)
+        if r["Stato"] == "In corso":
+            apri(t_pass, responsabili(d["chi"], mappa), d["chi"], d["cosa"], n in GATE)
+            chiudi(t_appr)
+        elif r["Stato"] == "Fatto" and n in APPROVAZIONE:
+            chiudi(t_pass)
+            apri(t_appr, responsabili(APPROVATORE.get(n, ""), mappa), APPROVATORE.get(n, ""), f"Passo registrato da {r['Titolare'] or '—'} il {r['Data titolare'] or '—'}: serve la tua approvazione.", True)
+        elif r["Stato"] in ("Fatto", "Approvato", "Non necessario", "NO GO"):
+            chiudi(t_pass)
+            chiudi(t_appr)
+    return out, creati, chiusi
+
+
+def stato_registro(passi, attuale):
+    """
+    Stato del Registro commerciale che corrisponde al flusso, oppure None se non va cambiato. Regole: il flusso fa avanzare la pratica ma non la fa
+    tornare indietro; NO GO del CdA = Annullato, NO GO dell'assemblea = Offerta KO; «Sospeso» e «Da validare» decisi a mano non vengono toccati.
+    """
+    import rc
+    if attuale in ("S8-Da Validare", "S9-Sospeso"):
+        return None
+    if passi.get(3, {}).get("Stato") == "NO GO":
+        nuovo = "S7-Annullato"
+    elif passi.get(12, {}).get("Stato") == "NO GO":
+        nuovo = "S6-Offerta KO"
+    else:
+        corr = next((n for n in sorted(passi) if not completo(passi[n]) and not (n in FACOLTATIVI and passi[n]["Stato"] == "Da fare")), None)
+        nuovo = stato_dal_passo(corr if corr else N_PASSI)
+        if attuale not in rc.STATI or attuale in ("S6-Offerta KO", "S7-Annullato"):
+            pass                                                            # pratica ripresa dopo uno stop: si riallinea
+        elif rc.STATI.index(nuovo) <= rc.STATI.index(attuale):
+            return None
+    return None if nuovo == attuale else nuovo
+
+
+def aggiorna_stato_registro(pratiche, codice, nuovo):
+    """Cambia lo stato della pratica attiva con quel codice. Restituisce (elenco, stato precedente o None se non trovata/invariata)."""
+    out, prima = [], None
+    for r in pratiche or []:
+        r = dict(r)
+        if str(r.get("Codice", "")).strip().lower() == codice.lower() and str(r.get("Archivio") or "Attiva") == "Attiva" and prima is None:
+            prima = r.get("Stato") or ""
+            r["Stato"] = nuovo
+        out.append(r)
+    return out, prima
+
+
 def stato_dal_passo(passo):
     """Stato del Registro commerciale corrispondente al passo del flusso (per proporre l'aggiornamento)."""
     if passo <= 1:

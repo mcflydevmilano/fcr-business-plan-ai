@@ -79,6 +79,16 @@ def metriche_rc(payload, oggi=None):
     return {"kpi": out["kpi"], "avvisi": out["avvisi"], "da_fare": out["da_fare"], "per_commerciale": out["per_commerciale"]}
 
 
+def metriche_fc(payload, oggi=None):
+    """Flusso commessa: commesse ferme, in attesa di approvazione o con NO GO."""
+    import fc
+    righe, _ = fc.normalizza(payload.get("passi"))
+    if not righe:
+        return None
+    out = fc.calcola(righe, oggi, payload.get("params"))
+    return {"kpi": out["kpi"], "commesse": out["commesse"]}
+
+
 def metriche_of(payload, oggi=None):
     """Offerta e finanziamenti: copertura finanziaria dell'appalto (richieste al Condominio e ai condomini)."""
     import of
@@ -334,6 +344,15 @@ def semafori(m, soglie=None):
                            f"{k['n_aperte']} pratiche aperte per {fmt_num(k['valore_aperte'])} € · {k['n_offerte']} offerte · {k['n_scadute']} interventi scaduti"))
         if strc != "ok":
             azioni.append((strc, f"Registro commerciale: {k['n_scadute']} prossimi interventi sono scaduti e {k['n_in_scadenza']} stanno per scadere: aggiorna le pratiche o ricontatta i clienti."))
+    if m.get("fc"):
+        cur[0] = "fc"
+        k = m["fc"]["kpi"]
+        n_fc = k["ferme"] + k["attesa_appr"]
+        stf = "bad" if (k["ferme"] >= 3 or n_fc >= 6) else ("warn" if n_fc else "ok")
+        righe.append(R("Flusso commesse", "Commesse ferme o da approvare", str(n_fc), stf,
+                       f"{k['ferme']} ferme da troppo tempo · {k['attesa_appr']} in attesa di approvazione · {k['commesse']} nel flusso"))
+        if stf != "ok":
+            azioni.append((stf, f"Flusso commesse: {k['attesa_appr']} passaggi aspettano un'approvazione e {k['ferme']} commesse non hanno aggiornamenti: sbloccale."))
     if m.get("of"):
         cur[0] = "of"
         o = m["of"]
@@ -420,7 +439,7 @@ def conteggio(righe):
     return c
 
 
-MODULI_METRICHE = ("sc", "cf", "pv", "sl", "rc", "ga", "fo", "sx", "mz", "og", "rp", "gt", "of", "credit", "bp")
+MODULI_METRICHE = ("sc", "cf", "pv", "sl", "rc", "fc", "ga", "fo", "sx", "mz", "og", "rp", "gt", "of", "credit", "bp")
 
 
 def metriche_da_payload(m, payload, oggi=None):
@@ -472,6 +491,12 @@ def dettagli(m):
                  for d in rc_.get("da_fare") or [] if d["Stato_scad"] == "bad"][:30]
         blocco("rc_scaduti", "bad" if len(righe) >= 10 else "warn", "Pratiche commerciali con intervento scaduto", "Commerciale", "rc",
                ["Pratica", "Indirizzo", "Chi", "Scadenza", "Giorni di ritardo"], righe)
+    fc_ = m.get("fc")
+    if fc_:
+        righe = [{"Commessa": c["Codice"], "Situazione": c["Stato"], "Passo": f"{c['Passo']}. {c['Fase']}", "Chi": c["Chi"], "Giorni": c["Giorni"] if c["Giorni"] is not None else "—"}
+                 for c in fc_.get("commesse") or [] if c["Stato"] in ("Ferma da troppo tempo", "In attesa di approvazione")]
+        blocco("fc_ferme", "bad" if sum(r["Situazione"] == "Ferma da troppo tempo" for r in righe) >= 3 else "warn", "Commesse del flusso ferme o da approvare", "Direzione", "fc",
+               ["Commessa", "Situazione", "Passo", "Chi", "Giorni"], righe)
     of_ = m.get("of")
     if of_ and of_["da_seguire"]:
         righe = [{"Tipo": r["Tipo"], "Richiedente": r["Richiedente"] or r["Unita"], "Istituto": r["Istituto"], "Stato": r["Stato"], "Richiesto (€)": round(r["Richiesto"], 2)} for r in of_["da_seguire"]][:40]

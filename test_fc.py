@@ -191,3 +191,116 @@ def test_schermata_flusso_commessa(tmp_path, monkeypatch):
     r = at.session_state["fc_df"]
     assert r[r["Passo"] == 8].iloc[0]["Stato"] != "NO GO"
     assert any("motivo" in w.value for w in at.warning)
+
+
+# ---- collegamenti: Registro, compiti, avvisi -------------------------------------
+import ta as _ta
+
+MAPPA = {"Commerciale": "marco", "DC": "raffaella", "DT": "nicola", "CdA": "saverio", "Presidente": "presidente", "DL": "luigi"}
+
+
+def test_ruoli_e_responsabili():
+    assert fc.ruolo_primario("Commerciale + DC") == "Commerciale" and fc.ruolo_primario("DT / cantiere") == "DT"
+    assert fc.responsabili("Commerciale + DC", MAPPA) == "marco"
+    assert fc.responsabili("Acquisti + DT", MAPPA) == "nicola"          # Acquisti non assegnato: passa al ruolo successivo
+    assert fc.responsabili("Amministrazione", MAPPA) == ""
+
+
+def test_compiti_per_il_passo_in_corso():
+    p = _p("002-MI-X")
+    comp, creati, chiusi = fc.compiti_dal_flusso("002-MI-X", p, [], MAPPA, OGGI, 7)
+    assert creati == 1 and chiusi == 0 and comp[0]["Responsabile"] == "marco" and comp[0]["Scadenza"] == "2026-11-09" and comp[0]["Commessa"] == "002-MI-X"
+    assert comp[0]["Compito"].startswith("Passo 1:")
+    # richiamato due volte non duplica
+    comp2, creati2, _ = fc.compiti_dal_flusso("002-MI-X", p, comp, MAPPA, OGGI, 7)
+    assert creati2 == 0 and len(comp2) == 1
+
+
+def test_compiti_seguono_i_passaggi_e_le_approvazioni():
+    p = _p("A")
+    comp, _, _ = fc.compiti_dal_flusso("A", p, [], MAPPA, OGGI)
+    fc.registra(p, 1, "fatto", "AB", OGGI)
+    fc.registra(p, 2, "fatto", "AB", OGGI)
+    comp, creati, chiusi = fc.compiti_dal_flusso("A", p, comp, MAPPA, OGGI)
+    stati = {c["Compito"][:8]: c["Stato"] for c in comp}
+    assert chiusi == 1 and stati["Passo 1:"] == "Fatto" and "Passo 2:" not in stati       # il compito del passo 2 non e' mai stato aperto
+    t3 = next(c for c in comp if c["Compito"].startswith("Passo 3:"))
+    assert t3["Responsabile"] == "saverio" and t3["Stato"] == "Da fare" and t3["Priorita"] == "Alta"
+    fc.registra(p, 3, "approva", "CdA", OGGI)
+    comp, _, chiusi = fc.compiti_dal_flusso("A", p, comp, MAPPA, OGGI)
+    assert next(c for c in comp if c["Compito"].startswith("Passo 3:"))["Stato"] == "Fatto"
+    # passo 15: fatto, in attesa di approvazione -> compito all'approvatore
+    _percorso(p, 14)
+    fc.registra(p, 15, "fatto", "DL", OGGI)
+    comp, _, _ = fc.compiti_dal_flusso("A", p, comp, {**MAPPA, "Presidenza": "presidente"}, OGGI)
+    ap = next(c for c in comp if c["Compito"].startswith("Approvare il passo 15"))
+    assert ap["Responsabile"] == "presidente" and ap["Stato"] == "Da fare"
+    fc.registra(p, 15, "approva", "PR", OGGI)
+    comp, _, _ = fc.compiti_dal_flusso("A", p, comp, MAPPA, OGGI)
+    assert next(c for c in comp if c["Compito"].startswith("Approvare il passo 15"))["Stato"] == "Fatto"
+
+
+def test_senza_responsabile_lo_dice():
+    p = _p("B")
+    comp, _, _ = fc.compiti_dal_flusso("B", p, [], {}, OGGI)
+    assert comp[0]["Responsabile"] == "" and "Chi è chi" in comp[0]["Note"]
+
+
+def test_compito_riaperto_dopo_riapertura_del_passo():
+    p = _p("C")
+    comp, _, _ = fc.compiti_dal_flusso("C", p, [], MAPPA, OGGI)
+    fc.registra(p, 1, "fatto", "AB", OGGI)
+    comp, _, _ = fc.compiti_dal_flusso("C", p, comp, MAPPA, OGGI)
+    fc.registra(p, 1, "riapri", "AB", OGGI)
+    comp, creati, _ = fc.compiti_dal_flusso("C", p, comp, MAPPA, OGGI)
+    assert creati == 1 and next(c for c in comp if c["Compito"].startswith("Passo 1:"))["Stato"] == "Da fare"
+
+
+def test_stato_registro_avanza_ma_non_torna_indietro():
+    p = _p("D")
+    assert fc.stato_registro(p, "S0-Apertura Pratica") is None            # passo 1 = S0: invariato
+    fc.registra(p, 1, "fatto", "AB", OGGI)
+    assert fc.stato_registro(p, "S0-Apertura Pratica") == "S1-Sopralluogo"
+    assert fc.stato_registro(p, "S3-Contratto") is None                   # non retrocede
+    assert fc.stato_registro(p, "S9-Sospeso") is None                     # sospeso a mano: non si tocca
+    _percorso(p, 8)
+    assert fc.stato_registro(p, "S1-Sopralluogo") == "S2-Offerta"
+
+
+def test_stato_registro_con_nogo_e_ripresa():
+    p = _p("E")
+    fc.registra(p, 3, "nogo", "PR", OGGI, note="no")
+    assert fc.stato_registro(p, "S1-Sopralluogo") == "S7-Annullato"
+    fc.registra(p, 3, "riapri", "AB", OGGI)
+    assert fc.stato_registro(p, "S7-Annullato") == "S0-Apertura Pratica"  # ripresa: riallinea
+    q = _p("F")
+    _percorso(q, 11)
+    fc.registra(q, 12, "nogo", "CdA", OGGI, note="assemblea contraria")
+    assert fc.stato_registro(q, "S2-Offerta") == "S6-Offerta KO"
+
+
+def test_aggiorna_stato_registro():
+    pr = [{"Codice": "X1", "Stato": "S0-Apertura Pratica", "Archivio": "Eliminata"}, {"Codice": "x1", "Stato": "S0-Apertura Pratica", "Archivio": "Attiva"}, {"Codice": "Y"}]
+    out, prima = fc.aggiorna_stato_registro(pr, "X1", "S1-Sopralluogo")
+    assert prima == "S0-Apertura Pratica" and out[1]["Stato"] == "S1-Sopralluogo" and out[0]["Stato"] == "S0-Apertura Pratica"
+    assert fc.aggiorna_stato_registro(pr, "ZZ", "S2-Offerta")[1] is None
+
+
+def test_schermata_collegamenti_registro_e_compiti(tmp_path, monkeypatch):
+    import storage
+    at = _app(tmp_path, monkeypatch)
+    storage.salva_pratica("Reg", {"pratiche": [{"Codice": "002-MI-MILLELIRE", "Stato": "S0-Apertura Pratica", "Archivio": "Attiva"}], "params": {}}, autore="t", modulo="rc")
+    at.text_input(key="fc_nuovo_txt").set_value("002-MI-MILLELIRE")
+    at.run()
+    _btn(at, "cmd_fc_avvia").click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    _btn(at, "cmd_fc_002-MI-MILLELIRE_1_fatto").click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    _n, rc_p = __import__("fc_sync").ultimo("rc")
+    assert rc_p["pratiche"][0]["Stato"] == "S1-Sopralluogo"
+    _n, ta_p = __import__("fc_sync").ultimo("ta")
+    assert any(c["Compito"].startswith("Passo 2:") for c in ta_p["compiti"])
+    # la scheda «Chi è chi» e i pulsanti ci sono
+    assert any(b.key == "cmd_fc_allinea" for b in at.button) and any(b.key == "cmd_fc_avvisa" for b in at.button)
+    _btn(at, "cmd_fc_allinea").click().run()
+    assert not at.exception, [e.value for e in at.exception]
