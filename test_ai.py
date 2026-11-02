@@ -25,7 +25,7 @@ def _stub(monkeypatch, comportamento):
     models = _Models(comportamento)
 
     class Client:
-        def __init__(self, api_key):
+        def __init__(self, api_key, **k):
             self.models = models
 
     monkeypatch.setattr(ai.genai, "Client", Client)
@@ -99,3 +99,26 @@ def test_errori_non_temporanei_non_vengono_ripetuti(monkeypatch):
         ai.genera("k", "x", "p", ["a"], attese=(0, 0))
     assert m.chiamati == ["p"]
     assert not ai.errore_temporaneo(Exception("400 API key not valid"))
+
+
+def test_scadenza_totale_ferma_i_tentativi(monkeypatch):
+    m = _stub(monkeypatch, lambda mod: Exception("503 UNAVAILABLE"))
+    with pytest.raises(Exception):
+        ai.genera("k", "x", "a", ["b"], attese=(0, 0, 0, 0), scadenza_s=-1)
+    assert len(m.chiamati) == 1
+
+
+def test_timeout_e_errore_temporaneo():
+    assert ai.errore_temporaneo(Exception("The read operation timed out"))
+
+
+def test_testo_da_pdf():
+    import io
+    from reportlab.pdfgen import canvas
+    b = io.BytesIO(); c = canvas.Canvas(b)
+    for i in range(2):
+        c.drawString(50, 800, "Totale attivo 1.234.567 Patrimonio netto 456.789 " * 6); c.showPage()
+    c.save()
+    t, n = ai.testo_da_pdf(b.getvalue(), min_car=50)
+    assert n == 2 and "Patrimonio netto" in t
+    assert ai.testo_da_pdf(b"non un pdf")[0] is None

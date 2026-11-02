@@ -240,6 +240,9 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.10.1
+- **Credit Risk, lettura del bilancio PDF più rapida:** se il PDF ha il testo, all'IA si invia solo il testo (secondi invece di minuti); limite di attesa di 90 secondi per richiesta e 200 secondi in tutto, poi messaggio chiaro invece di un'attesa senza fine.
+
 ## Novità 3.10.0
 - Sei nuovi strumenti: Margini per commessa, Subappalti, Presenze e ore, Materiali e magazzino, Verbali e riunioni, Archivio documenti per commessa (totale 30).
 - Campanella «Avvisi» e «Esporta tutto in Excel» nella barra laterale.

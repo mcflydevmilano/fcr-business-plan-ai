@@ -25,14 +25,22 @@ types = _Pigro("google.genai.types")
 ATTESE_RIPROVA = (2.0, 5.0)
 
 
-def genera(api_key, contents, modello, fallback=(), json_mode=False, temperature=0.2, attese=None):
+# attesa massima per una singola richiesta e per l'intera operazione (tentativi e modelli di ripiego inclusi)
+TIMEOUT_RICHIESTA_S = 90
+SCADENZA_TOTALE_S = 200
+
+
+def genera(api_key, contents, modello, fallback=(), json_mode=False, temperature=0.2, attese=None,
+           timeout_s=None, scadenza_s=None):
     """
     Restituisce (testo, modello_usato). Con errore 404/NOT_FOUND passa subito al modello di ripiego; con errori
     temporanei (503 UNAVAILABLE, 500, 504) riprova con una breve attesa e poi passa al modello di ripiego.
     Gli altri errori (es. 429 quota, chiave non valida) vengono sollevati subito.
     """
     attese = ATTESE_RIPROVA if attese is None else attese
-    client = genai.Client(api_key=api_key)
+    timeout_s = TIMEOUT_RICHIESTA_S if timeout_s is None else timeout_s
+    fine = time.monotonic() + (SCADENZA_TOTALE_S if scadenza_s is None else scadenza_s)
+    client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=int(timeout_s * 1000)))
     cfg = types.GenerateContentConfig(
         temperature=temperature,
         response_mime_type="application/json" if json_mode else "text/plain",
@@ -50,9 +58,11 @@ def genera(api_key, contents, modello, fallback=(), json_mode=False, temperature
                     break                              # modello inesistente: prova il successivo
                 if not errore_sovraccarico(e):
                     raise
+                if time.monotonic() >= fine:
+                    break                              # tempo massimo esaurito: niente altri tentativi
                 if tentativo < len(attese):
                     time.sleep(attese[tentativo])
-        if res is not None:
+        if res is not None or time.monotonic() >= fine:
             break
     if res is None:
         raise last_err
@@ -63,6 +73,28 @@ def genera(api_key, contents, modello, fallback=(), json_mode=False, temperature
     if not text:
         raise RuntimeError("Risposta vuota o bloccata dal modello. Riprova.")
     return text, usato
+
+
+def testo_da_pdf(dati, max_pagine=80, max_car=150000, min_car=800):
+    """
+    Testo di un PDF con livello di testo (bilanci scaricati dal Registro Imprese o dal gestionale): mandarlo
+    all'IA al posto del file e' molto piu' rapido. Restituisce (testo, pagine) oppure (None, pagine) per i PDF
+    scansionati (pochi caratteri) o illeggibili: in quel caso si invia il file intero.
+    """
+    try:
+        import io
+        from pypdf import PdfReader
+        r = PdfReader(io.BytesIO(dati))
+        n = len(r.pages)
+        parti = []
+        for i, pg in enumerate(r.pages[:max_pagine]):
+            parti.append(f"\n--- Pagina {i + 1} ---\n" + (pg.extract_text() or ""))
+        testo = "".join(parti)
+        if len(re.sub(r"\s", "", testo)) < min_car:
+            return None, n
+        return testo[:max_car], n
+    except Exception:
+        return None, 0
 
 
 def pulisci_testo(testo):
@@ -84,7 +116,8 @@ def errore_quota(e):
 def errore_sovraccarico(e):
     """True per errori temporanei lato Google: 503 UNAVAILABLE (modello sovraccarico), 500 INTERNAL, 504 DEADLINE_EXCEEDED."""
     t = str(e)
-    return any(x in t for x in ("503", "UNAVAILABLE", "500 INTERNAL", "504", "DEADLINE_EXCEEDED", "overloaded"))
+    return any(x in t for x in ("503", "UNAVAILABLE", "500 INTERNAL", "504", "DEADLINE_EXCEEDED", "overloaded",
+                                        "timed out", "Timeout", "timeout"))
 
 
 def errore_temporaneo(e):

@@ -967,11 +967,15 @@ with tab_dati:
                 ia_info.attivazione(active_key, "l'estrazione automatica dal PDF o dall'Excel")
             else:
                 name = uploaded.name.lower()
-                with st.spinner("Elaborazione dati contabili in corso..."):
+                with st.spinner("Elaborazione dati contabili in corso (di solito meno di un minuto, massimo circa 3)..."):
                     try:
                         if name.endswith(".pdf"):
-                            contents = [PROMPT_ESTRAZIONE,
-                                        ai.types.Part.from_bytes(data=uploaded.getvalue(), mime_type="application/pdf")]
+                            _tp, _np = ai.testo_da_pdf(uploaded.getvalue())
+                            if _tp:       # PDF con testo: si invia solo il testo (molto piu' veloce)
+                                contents = [PROMPT_ESTRAZIONE, _tp]
+                            else:         # PDF scansionato: serve il file intero, puo' richiedere piu' tempo
+                                contents = [PROMPT_ESTRAZIONE,
+                                            ai.types.Part.from_bytes(data=uploaded.getvalue(), mime_type="application/pdf")]
                         else:
                             engine = "xlrd" if name.endswith(".xls") else "openpyxl"
                             xls = pd.ExcelFile(uploaded, engine=engine)
