@@ -152,7 +152,7 @@ con scenari pessimistico/base/ottimistico modificabili, grafico tornado e mappa 
 
 ## Rubrica e cantieri, Studio legale, Riconciliazione bancaria, Ordini e approvazioni
 
-- **Rubrica e cantieri** (`ru.py`, `ru_ui.py`): contatti con chiama / scrivi / WhatsApp, documenti e fatture collegati (per nome), cantieri con codice unico `CAN-anno-numero` e colonna per il codice di monday.
+- **Rubrica e cantieri** (`ru.py`, `ru_ui.py`): contatti con chiama / scrivi / WhatsApp, documenti e fatture collegati (per nome), cantieri con codice unico `CAN-anno-numero` e colonna per un eventuale codice in altri sistemi.
 - **Studio legale** (`lg.py`, `lg_ui.py`): fascicolo del cliente con fatture scadute e solleciti già fatti, invio allo studio per email (con PDF allegato) e/o Slack, registro di riserve/varianti/contestazioni con i termini fissati dallo studio, contratti e polizze in scadenza, penali di ritardo calcolate dal Cronoprogramma. Promemoria organizzativo: non è consulenza legale. Segreti: `STUDIO_LEGALE_EMAIL` (con `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`) e/o `STUDIO_LEGALE_SLACK_WEBHOOK_URL`.
 - **Riconciliazione bancaria** (`bk.py`, `bk_ui.py`): abbina i movimenti dell'estratto conto alle fatture dello Scadenzario (importo, numero fattura, nome nella causale, data), propone e fa confermare, poi aggiorna lo Scadenzario.
 - **Ordini e approvazioni** (`oa.py`, `oa_ui.py`): soglie d'importo per chi approva, chi chiede non approva, fornitori con documenti scaduti bloccati, decisioni tracciate con nome e ora, nuova approvazione se l'importo cambia.
@@ -240,6 +240,9 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.12.4
+- Rimosso ogni collegamento a monday: niente più import dall'Excel di monday in «Compiti e attività» (`ta.da_excel`, `importa_excel`, `unisci`, scheda UI), testi, guide ed esempi ripuliti.
+
 ## Novità 3.12.3
 - Corretto `StreamlitValueAssignmentNotAllowedError` al rientro in Chat/Offerte/Registro: i `file_uploader` hanno ora chiavi senza prefisso di modulo (`up_chat_allegato`, `up_of_cme`, `up_of_mill`, `up_rc_file`), così non finiscono nello snapshot di `vai_a()`. Test di regressione in `test_spazio.py`.
 
@@ -257,7 +260,7 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 
 ## Novità 3.11.0
 - **Flusso commessa** (nuovo strumento): lo schema FCR rev. 3.8 con i 28 passaggi dal primo incontro alla chiusura. Il codice madre è quello del Registro commerciale. Ogni passaggio registra iniziali e data di chi lo fa e di chi approva; per i bonifici anche esecutore, data e identificativo. I GO / NO GO del CdA (3), del Presidente (8), dell'assemblea (12) e la firma dei contratti (15) bloccano i passaggi successivi; il NO GO del Presidente riporta l'offerta al passo 7. Cruscotto con commesse ferme o in attesa di approvazione, controlli sulle regole trasversali, Excel.
-- **Compiti e attività** (nuovo strumento): bacheca a colonne (Da fare, In corso, In attesa, Fatto) con responsabile, priorità, scadenza e commessa; import dall'Excel di monday; scadenze nel Calendario; carico per persona.
+- **Compiti e attività** (nuovo strumento): bacheca a colonne (Da fare, In corso, In attesa, Fatto) con responsabile, priorità, scadenza e commessa; scadenze nel Calendario; carico per persona.
 - Rubrica: import da Excel di rubriche e amministratori. Credit Risk: lettura del bilancio PDF più rapida, con limite di attesa.
 
 ## Novità 3.10.2

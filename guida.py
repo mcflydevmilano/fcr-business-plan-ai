@@ -160,8 +160,7 @@ PASSI = {
         ("Cerca", "Scrivi una parola (per esempio «bolle» o «compiti») o scegli uno strumento per vedere solo le novità che lo riguardano.", None),
         ("Aggiungi una novità (amministratori)", "In fondo alla pagina scrivi titolo e voci in parole semplici e premi «Pubblica».", None),
     ], "Se una novità riguarda il tuo lavoro, provala subito: ogni strumento ha il suo riquadro «Come si usa»."),
-    "ta": ("Sapere cosa c'è da fare, chi se ne occupa e per quando, senza usare monday.", [
-        ("Importa da monday (una volta)", "Nella scheda «3. Importa da monday» carica l'Excel esportato: compiti, persone, stati e scadenze arrivano da soli.", "dati:ta_df"),
+    "ta": ("Sapere cosa c'è da fare, chi se ne occupa e per quando, tutto in un posto solo.", [
         ("Aggiungi un compito", "Nella scheda «2. Nuovo e tabella» scrivi cosa fare, il responsabile, la scadenza e la commessa.", None),
         ("Muovi i compiti", "Nella bacheca premi ◀ e ▶ per spostare un compito tra Da fare, In corso, In attesa e Fatto.", None),
         ("Controlla i ritardi", "La scheda «4. Per persona» mostra chi ha compiti scaduti. Le scadenze compaiono anche nel Calendario.", None),
@@ -219,7 +218,7 @@ PASSI = {
         ("Inserisci i cantieri", "Più sotto scrivi i cantieri. Lascia vuoto il «Codice»: premi «🔢 Assegna i codici mancanti» e ognuno riceve il suo (CAN-anno-numero).", "dati:ru_can"),
         ("Chiama o scrivi", "Nella scheda «2. Scheda contatto» scegli un nome: trovi i pulsanti Chiama, Scrivi e WhatsApp e tutto ciò che lo riguarda (documenti, fatture, cantieri).", None),
         ("Controlla i nomi", "Nella scheda «4. Controllo nomi» vedi i nomi scritti diversamente negli altri strumenti (refusi, «Srl» in più) e li correggi tutti con un clic.", None),
-        ("Usa lo stesso codice ovunque", "Scrivi il codice cantiere nelle altre tabelle e in monday: così ritrovi tutto di un lavoro. Nella colonna «Codice in altro sistema» metti quello di monday.", None),
+        ("Usa lo stesso codice ovunque", "Scrivi il codice cantiere nelle altre tabelle: così ritrovi tutto di un lavoro. La colonna «Codice in altro sistema» serve se un cantiere ha un codice anche altrove.", None),
         ("Salva", "Apri «💾 Salva e riapri la rubrica» in alto e premi Salva.", "salvato"),
     ], "I collegamenti con fatture e documenti funzionano per nome: scrivi il fornitore sempre allo stesso modo in tutti gli strumenti."),
     "pe": ("Avere l'elenco di chi lavora in azienda e dare a ciascuno solo gli accessi che gli servono.", [

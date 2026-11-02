@@ -1,5 +1,5 @@
 """
-ta.py - Compiti e attivita': la bacheca che sostituisce il monday dei compiti. Ogni compito ha responsabile, scadenza, priorita', stato e, se serve,
+ta.py - Compiti e attivita': la bacheca dei compiti. Ogni compito ha responsabile, scadenza, priorita', stato e, se serve,
 la commessa (codice madre). Senza Streamlit, quindi testabile. Le scadenze finiscono nel Calendario.
 """
 import datetime as dt
@@ -13,14 +13,7 @@ PRIORITA = ["Alta", "Media", "Bassa"]
 COLONNE = ["Compito", "Commessa", "Responsabile", "Priorita", "Stato", "Scadenza", "Note", "Creato", "Chiuso"]
 ETICHETTE = {"Compito": "Compito", "Commessa": "Commessa (codice madre)", "Responsabile": "Responsabile", "Priorita": "Priorità", "Stato": "Stato",
              "Scadenza": "Scadenza", "Note": "Note", "Creato": "Creato il", "Chiuso": "Chiuso il"}
-SINONIMI = {"Compito": ("Item", "Name", "Nome", "Attività", "Attivita", "Task", "Titolo", "Elemento"),
-            "Commessa": ("Codice", "Progetto", "Cantiere", "Board", "Gruppo", "Group"),
-            "Responsabile": ("Persona", "Person", "Owner", "Assegnato a", "Assegnatario", "People", "Persone", "Incaricato"),
-            "Priorita": ("Priority", "Priorità", "Importanza"),
-            "Stato": ("Status", "Stato avanzamento"),
-            "Scadenza": ("Due date", "Data scadenza", "Date", "Data", "Timeline", "Entro il", "Deadline"),
-            "Note": ("Notes", "Descrizione", "Commento", "Commenti", "Text", "Testo", "Update")}
-# come monday (inglese o italiano) chiama gli stati e le priorita'
+# modi (inglese o italiano) di scrivere gli stati e le priorita'
 _STATO = {"done": "Fatto", "completato": "Fatto", "completata": "Fatto", "fatto": "Fatto", "chiuso": "Fatto", "finito": "Fatto", "ok": "Fatto",
           "working on it": "In corso", "in corso": "In corso", "in lavorazione": "In corso", "in progress": "In corso",
           "stuck": "In attesa", "bloccato": "In attesa", "in attesa": "In attesa", "on hold": "In attesa", "sospeso": "In attesa",
@@ -46,7 +39,7 @@ def priorita_canonica(v):
 def _data_iso(v):
     d = data_da(v)
     if d is None and _s(v):
-        m = re.search(r"(\d{4}-\d{2}-\d{2})", _s(v))          # intervalli di monday: «2026-11-02 - 2026-11-10» -> la fine
+        m = re.search(r"(\d{4}-\d{2}-\d{2})", _s(v))          # intervalli di date: «2026-11-02 - 2026-11-10» -> la fine
         for g in reversed(re.findall(r"\d{4}-\d{2}-\d{2}", _s(v))):
             d = data_da(g)
             break
@@ -134,65 +127,6 @@ def filtra(righe, responsabile="", commessa="", testo="", solo_aperti=False):
 def ordina(righe):
     """Prima le scadenze piu' vicine, poi la priorita'."""
     return sorted(righe, key=lambda r: (r["Scadenza"] or "9999-12-31", PRIORITA.index(r["Priorita"])))
-
-
-def da_excel(sorgente):
-    """Legge un export di monday (o un Excel con colonne simili). Se ci sono piu' fogli li legge tutti. Restituisce (righe grezze, avvisi)."""
-    import pandas as pd
-    xls = pd.ExcelFile(sorgente)
-    righe, avvisi = [], []
-    norm = lambda s: re.sub(r"[^a-z0-9]", "", str(s).lower())
-    for nome in xls.sheet_names:
-        raw = pd.read_excel(xls, nome, header=None, dtype=object)
-        h = None
-        for i in range(min(len(raw), 12)):                       # monday mette il nome della bacheca e del gruppo sopra le colonne
-            celle = [norm(c) for c in raw.iloc[i] if _s(c)]
-            if any(c in celle for c in ("compito", "item", "name", "nome", "task", "attivita", "titolo", "elemento")):
-                h = i
-                break
-        if h is None:
-            avvisi.append(f"Foglio «{nome}»: non trovo l'intestazione, saltato.")
-            continue
-        cols = list(raw.iloc[h])
-        mappa = {}
-        for campo in COLONNE:
-            cand = [norm(campo)] + [norm(x) for x in SINONIMI.get(campo, ())]
-            for j, c in enumerate(cols):
-                if norm(c) in cand and j not in mappa.values():
-                    mappa[campo] = j
-                    break
-        if "Compito" not in mappa:
-            avvisi.append(f"Foglio «{nome}»: manca la colonna del compito, saltato.")
-            continue
-        for _, rr in raw.iloc[h + 1:].iterrows():
-            d = {c: rr.iloc[j] for c, j in mappa.items()}
-            if _s(d.get("Compito")):
-                righe.append(d)
-    return righe, avvisi
-
-
-def importa_excel(sorgente, oggi=None):
-    grezze, avv = da_excel(sorgente)
-    righe, a2 = normalizza(grezze, oggi)
-    return righe, avv + a2
-
-
-def unisci(attuali, nuove):
-    """Aggiunge i compiti nuovi; se esiste gia' lo stesso compito con la stessa commessa lo aggiorna. Restituisce (elenco, aggiunti, aggiornati)."""
-    chiave = lambda r: (r["Compito"].lower(), r["Commessa"].lower())
-    out = [dict(r) for r in attuali]
-    idx = {chiave(r): i for i, r in enumerate(out)}
-    agg = upd = 0
-    for r in nuove:
-        k = chiave(r)
-        if k in idx:
-            out[idx[k]] = r
-            upd += 1
-        else:
-            idx[k] = len(out)
-            out.append(r)
-            agg += 1
-    return out, agg, upd
 
 
 def excel_bytes(righe, kpi=None):

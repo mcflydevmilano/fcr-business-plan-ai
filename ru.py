@@ -1,7 +1,7 @@
 """
 ru.py - Rubrica contatti e registro cantieri con codice unico. Deterministico e senza Streamlit.
 Il codice cantiere (es. CAN-2026-007) e' la chiave comune: lo stesso codice si scrive nelle altre tabelle (fatture, rapportini, cronoprogramma)
-e nei sistemi esterni (per esempio monday) per ritrovare tutto di un lavoro.
+e in eventuali altri sistemi per ritrovare tutto di un lavoro.
 """
 import re
 import urllib.parse
@@ -16,7 +16,7 @@ SINONIMI_CONTATTI = {"Nome": ("Ragione sociale", "Anagrafica", "Fornitore", "Cli
 STATI_CANTIERE = ["In preparazione", "In corso", "Sospeso", "Concluso"]
 COLONNE_CANTIERI = ["Codice", "Cantiere", "Cliente", "Indirizzo", "Responsabile", "Stato", "Esterno"]
 ETICHETTE_CANTIERI = {"Codice": "Codice unico", "Cantiere": "Nome del cantiere", "Cliente": "Cliente", "Indirizzo": "Indirizzo", "Responsabile": "Responsabile",
-                      "Stato": "Stato", "Esterno": "Codice in altro sistema (es. monday)"}
+                      "Stato": "Stato", "Esterno": "Codice in altro sistema (se esiste)"}
 _RE_MAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 

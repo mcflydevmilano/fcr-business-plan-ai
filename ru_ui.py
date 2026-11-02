@@ -26,8 +26,8 @@ def _esempio():
             ("Ponteggi Gamma", "Subappaltatore", "Anna Neri", "347 7654321", "amministrazione@ponteggigamma.example", "Noleggio a settimana"),
             ("Comune di Esempio", "Cliente", "Ufficio tecnico", "02 5550000", "utc@comune.example", ""),
             ("Studio Legale Rossi", "Studio legale", "Avv. Rossi", "02 5559999", "studio@legalerossi.example", "Interno al gruppo")]
-    can = [(f"CAN-{anno}-001", "Villa Lago", "Famiglia Lago", "Via dei Tigli 12, Como", "Ing. Di Ferdinando", "In corso", "monday-1001"),
-           (f"CAN-{anno}-002", "Scuola Elementare", "Comune di Esempio", "Via Roma 1, Milano", "Geom. Colombo", "In corso", "monday-1002")]
+    can = [(f"CAN-{anno}-001", "Villa Lago", "Famiglia Lago", "Via dei Tigli 12, Como", "Ing. Di Ferdinando", "In corso", "EXT-1001"),
+           (f"CAN-{anno}-002", "Scuola Elementare", "Comune di Esempio", "Via Roma 1, Milano", "Geom. Colombo", "In corso", "EXT-1002")]
     return mk(ru.COLONNE_CONTATTI, cont), mk(ru.COLONNE_CANTIERI, can)
 
 
@@ -38,7 +38,7 @@ def _cfg():
              "Email": t(a["Email"], width="medium"), "Note": t(a["Note"], width="medium")},
             {"Codice": t(b["Codice"], help="Lascialo vuoto: lo assegna l'app (CAN-anno-progressivo)."), "Cantiere": t(b["Cantiere"], width="medium"), "Cliente": t(b["Cliente"]),
              "Indirizzo": t(b["Indirizzo"], width="medium"), "Responsabile": t(b["Responsabile"]), "Stato": st.column_config.SelectboxColumn(b["Stato"], options=ru.STATI_CANTIERE),
-             "Esterno": t(b["Esterno"], help="Il codice con cui lo stesso cantiere è registrato in un altro sistema (es. la riga di monday).")})
+             "Esterno": t(b["Esterno"], help="Il codice con cui lo stesso cantiere è registrato in un altro sistema (se esiste).")})
 
 
 def _raccogli():
@@ -237,7 +237,7 @@ def render(fcr_uri, audit=None, utente=""):
         else:
             for x in a2[:3]:
                 st.warning(x)
-            st.caption("Questo è l'elenco da tenere a fianco di monday o di qualsiasi altro sistema: stesso codice, stesso cantiere ovunque.")
+            st.caption("Questo è l'elenco da tenere a fianco di qualsiasi altro sistema: stesso codice, stesso cantiere ovunque.")
             st.dataframe(pd.DataFrame(cantieri).rename(columns=ru.ETICHETTE_CANTIERI), hide_index=True, width="stretch")
             if k["senza_codice_esterno"]:
                 st.caption(f"{k['senza_codice_esterno']} cantieri senza codice nell'altro sistema (colonna «Codice in altro sistema»).")

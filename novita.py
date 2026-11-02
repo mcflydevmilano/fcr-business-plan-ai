@@ -15,6 +15,10 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.12.4", "data": "2026-11-02", "titolo": "Via ogni riferimento a monday",
+     "voci": ["In «Compiti e attività» non c'è più la scheda «Importa da monday»: i compiti si scrivono direttamente nella suite.",
+              "Tolti anche i richiami a monday da guide, esempi e descrizioni degli strumenti."],
+     "strumenti": ["Compiti"]},
     {"id": "3.12.3", "data": "2026-11-02", "titolo": "Chat: corretto l'errore quando si rientra",
      "voci": ["Se uscivi dalla Chat dopo aver allegato una foto o un PDF e poi ci rientravi, compariva un messaggio di errore: ora non succede più.",
               "Lo stesso controllo vale per i caricamenti di file in Offerte e in Registro."],
@@ -38,10 +42,10 @@ NOVITE = [
               "Nella scheda «Chi è chi e collegamenti» scrivi una volta sola il nome utente di chi ricopre ogni ruolo.",
               "Nel Cruscotto di direzione c'è il nuovo semaforo «Flusso commesse»."],
      "strumenti": ["Flusso commessa", "Compiti e attività", "Registro commerciale", "Cruscotto"]},
-    {"id": "3.11.0", "data": "2026-11-02", "titolo": "Due strumenti nuovi al posto di monday: Flusso commessa e Compiti",
+    {"id": "3.11.0", "data": "2026-11-02", "titolo": "Due strumenti nuovi: Flusso commessa e Compiti",
      "voci": ["Flusso commessa: i 28 passaggi dello schema FCR, dal primo incontro alla chiusura. Per ogni passaggio vedi chi lo fa, chi approva, con iniziali e data.",
               "I GO / NO GO del CdA, del Presidente e dell'assemblea bloccano i passaggi successivi finché non c'è l'approvazione.",
-              "Compiti e attività: la bacheca a colonne (Da fare, In corso, In attesa, Fatto) con responsabile, priorità, scadenza e commessa. Si importa dall'Excel di monday.",
+              "Compiti e attività: la bacheca a colonne (Da fare, In corso, In attesa, Fatto) con responsabile, priorità, scadenza e commessa.",
               "Nella pagina iniziale, «Da dove comincio?» ora ha un percorso per chi lavora in cantiere, in ufficio, sulle commesse e in direzione.",
               "Nuova guida per i colleghi, con la pagina «Cosa faccio io?»."],
      "strumenti": ["Flusso commessa", "Compiti e attività", "Hub"]},

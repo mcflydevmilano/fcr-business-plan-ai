@@ -48,29 +48,9 @@ def test_filtra_e_ordina():
     assert [r["Compito"] for r in ta.ordina(righe)][0] == "b"
 
 
-def test_import_export_di_monday(tmp_path):
-    p = tmp_path / "monday.xlsx"
-    # monday: nome della bacheca, riga vuota, gruppo, poi le colonne
-    righe = [["Bacheca lavori", None, None, None, None], [None] * 5, ["Gruppo Aprile", None, None, None, None],
-             ["Name", "Person", "Status", "Due date", "Priority"],
-             ["Ordinare ponteggio", "Mario Rossi", "Working on it", "2026-11-10", "High"],
-             ["Inviare PEC", "Anna", "Done", "2026-10-20", "Low"],
-             ["Chiamare banca", None, "Stuck", None, None]]
-    pd.DataFrame(righe).to_excel(p, header=False, index=False)
-    r, avv = ta.importa_excel(str(p), OGGI)
-    assert len(r) == 3 and avv == []
-    assert (r[0]["Stato"], r[0]["Priorita"], r[0]["Scadenza"], r[0]["Responsabile"]) == ("In corso", "Alta", "2026-11-10", "Mario Rossi")
-    assert r[1]["Stato"] == "Fatto" and r[2]["Stato"] == "In attesa"
-    el, a, u = ta.unisci(r[:1], r)
-    assert (len(el), a, u) == (3, 2, 1)
+def test_export_excel():
+    r, _ = ta.normalizza([{"Compito": "Ordinare ponteggio", "Responsabile": "Mario", "Stato": "In corso"}], OGGI)
     assert ta.excel_bytes(r)[:2] == b"PK"
-
-
-def test_import_senza_intestazione(tmp_path):
-    p = tmp_path / "x.xlsx"
-    pd.DataFrame([["a", "b"], ["c", "d"]]).to_excel(p, header=False, index=False)
-    r, avv = ta.importa_excel(str(p), OGGI)
-    assert r == [] and avv
 
 
 def test_scadenze_nel_calendario():
@@ -101,14 +81,13 @@ def _app(tmp_path, monkeypatch):
 
 
 def test_schermata_compiti(tmp_path, monkeypatch):
-    X = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    p = tmp_path / "m.xlsx"
-    pd.DataFrame([["Name", "Person", "Status", "Due date"], ["Ordinare ponteggio", "admin", "Working on it", "2026-11-10"], ["Inviare PEC", "anna", "Done", None]]).to_excel(p, header=False, index=False)
     at = _app(tmp_path, monkeypatch)
     assert not at.exception, [e.value for e in at.exception]
-    at.get("file_uploader")[0].set_value([("m.xlsx", open(p, "rb").read(), X)])
+    assert not [u for u in at.get("file_uploader") if "monday" in str(u.key)]
+    righe = [ta.riga({"Compito": "Ordinare ponteggio", "Responsabile": "admin", "Stato": "In corso", "Scadenza": "2026-11-10"}),
+             ta.riga({"Compito": "Inviare PEC", "Responsabile": "anna", "Stato": "Fatto"})]
+    at.session_state["ta_df"] = pd.DataFrame(righe, columns=ta.COLONNE)
     at.run()
-    next(b for b in at.button if b.key == "imp_ta_monday").click().run()
     assert not at.exception, [e.value for e in at.exception]
     df = at.session_state["ta_df"]
     assert sorted(df["Compito"]) == ["Inviare PEC", "Ordinare ponteggio"]

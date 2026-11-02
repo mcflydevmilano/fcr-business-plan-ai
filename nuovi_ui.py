@@ -529,7 +529,7 @@ SPEC_AD = {
                         {"label": "Scaduti", "value": str(o["kpi"]["scaduti"]), "sub": f"{o['kpi']['in_arrivo']} in arrivo", "tono": "bad" if o["kpi"]["scaduti"] else "ok"},
                         {"label": "Mancanti", "value": str(o["kpi"]["mancanti"]), "sub": "documenti attesi", "tono": "warn" if o["kpi"]["mancanti"] else "ok"},
                         {"label": "Senza link", "value": str(o["kpi"]["senza_link"]), "sub": "non apribili", "tono": "warn" if o["kpi"]["senza_link"] else "ok"}],
-    "risultati": _ris_ad, "collegamenti": lambda out, dati, utente, audit: st.info("Le scadenze dei documenti compaiono nel **Calendario**. Il collegamento con Monday e con le cartelle aziendali lo decidiamo insieme: oggi basta incollare il link."),
+    "risultati": _ris_ad, "collegamenti": lambda out, dati, utente, audit: st.info("Le scadenze dei documenti compaiono nel **Calendario**. Il collegamento con le cartelle aziendali lo decidiamo insieme: oggi basta incollare il link."),
     "fogli": lambda o: {"Documenti": o["documenti"], "Commesse": o["commesse"], "Mancanti": o["mancanti"]},
 }
 

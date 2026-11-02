@@ -1,4 +1,4 @@
-"""ta_ui.py - Interfaccia di Compiti e attivita' (la bacheca che sostituisce monday)."""
+"""ta_ui.py - Interfaccia di Compiti e attivita' (la bacheca dei compiti)."""
 import datetime as dt
 
 import pandas as pd
@@ -114,32 +114,6 @@ def _nuovo(utente, audit):
         st.rerun()
 
 
-def _importa(audit):
-    st.caption("Carica l'Excel esportato da monday (una o più bacheche): riconosco compito, persona, stato, scadenza e priorità. "
-               "Gli stati inglesi («Working on it», «Done», «Stuck») diventano In corso, Fatto, In attesa. Se il compito c'è già, lo aggiorno invece di duplicarlo.")
-    if sola_lettura():
-        st.caption("Importazione non disponibile per il ruolo «lettore».")
-        return
-    files = st.file_uploader("File Excel", type=["xlsx"], accept_multiple_files=True, key="up_ta_monday")
-    if files and st.button("Importa i compiti", type="primary", key="imp_ta_monday"):
-        elenco = [z for z in (ta.riga(r) for r in ss["ta_df"].to_dict("records")) if z and z["Compito"]]
-        tot_a = tot_u = 0
-        for f in files:
-            try:
-                nuove, avv = ta.importa_excel(f)
-            except Exception as e:
-                st.error(f"«{f.name}» non leggibile: {e}")
-                continue
-            for a in avv[:3]:
-                st.warning(f"{f.name}: {a}")
-            elenco, a_, u_ = ta.unisci(elenco, nuove)
-            tot_a, tot_u = tot_a + a_, tot_u + u_
-            audit("ta_import", f"{f.name}: {len(nuove)} compiti")
-        sostituisci_tabella("ta_df", _df(elenco))
-        st.toast(f"Aggiunti {tot_a} compiti, aggiornati {tot_u}")
-        st.rerun()
-
-
 def render(fcr_uri, audit=None, utente=""):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Compiti e attività", "Cosa c'è da fare, chi lo fa e per quando: la bacheca di tutta l'azienda."), unsafe_allow_html=True)
@@ -152,7 +126,7 @@ def render(fcr_uri, audit=None, utente=""):
     righe, avv = ta.normalizza(ss["ta_df"].to_dict("records"))
     out = ta.calcola(righe, oggi, {"preavviso_gg": ss["ta_preavviso_gg"]})
     k = out["kpi"]
-    t1, t2, t3, t4 = st.tabs(["🗂️ 1. Bacheca", "➕ 2. Nuovo e tabella", "📥 3. Importa da monday", "📊 4. Per persona"])
+    t1, t2, t4 = st.tabs(["🗂️ 1. Bacheca", "➕ 2. Nuovo e tabella", "📊 3. Per persona"])
 
     with t1:
         st.markdown(theme.stat_strip([
@@ -161,7 +135,7 @@ def render(fcr_uri, audit=None, utente=""):
             {"label": "In scadenza", "value": str(k["in_arrivo"]), "sub": f"entro {ss['ta_preavviso_gg']} giorni", "tono": "warn" if k["in_arrivo"] else "ok"},
             {"label": "Senza responsabile", "value": str(k["senza_resp"]), "sub": "da assegnare", "tono": "warn" if k["senza_resp"] else "ok"}]), unsafe_allow_html=True)
         if not righe:
-            st.info("Nessun compito. Aggiungine uno nella scheda «2», oppure importa l'Excel di monday nella scheda «3».")
+            st.info("Nessun compito. Aggiungine uno nella scheda «2».")
         else:
             _bacheca(_carte(ss["ta_df"], utente), oggi, audit, utente)
 
@@ -175,9 +149,6 @@ def render(fcr_uri, audit=None, utente=""):
                     "Scadenza": st.column_config.TextColumn("Scadenza", help="AAAA-MM-GG o GG/MM/AAAA")})
         tabella_modificabile("ta_df", _df([]), cfg, altezza=380)
         ss["ta_preavviso_gg"] = int(st.number_input("Giorni di preavviso per le scadenze", 0, 30, int(ss["ta_preavviso_gg"]), 1, key="ta_prev_in"))
-
-    with t3:
-        _importa(audit)
 
     with t4:
         if not righe:
