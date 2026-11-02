@@ -158,6 +158,31 @@ def render(fcr_uri, audit=None, utente=""):
         banner_esempio("ru_demo", [("ru_cont", ru.COLONNE_CONTATTI), ("ru_can", ru.COLONNE_CANTIERI)], "svuota_ru")
         blocco_tabella("ru_cont", "Contatti", "Fornitori, clienti, professionisti, enti. Una riga per azienda, con la persona di riferimento.", ru.COLONNE_CONTATTI, ru.ETICHETTE_CONTATTI, cc,
                        ss["ru_cont"], "ru", 1, audit, 260, ru.SINONIMI_CONTATTI)
+        with st.expander("📥 Importa rubriche da Excel (collaboratori, amministratori…)"):
+            st.caption("Carica uno o più file con nome, telefono e email (per esempio la rubrica e l'elenco amministratori che avevi altrove). "
+                       "I contatti già presenti non vengono duplicati: si completano solo i campi vuoti.")
+            if sola_lettura():
+                st.caption("Importazione non disponibile per il ruolo «lettore».")
+            else:
+                files = st.file_uploader("File Excel", type=["xlsx"], accept_multiple_files=True, key="up_ru_mult")
+                if files and st.button("Importa nella rubrica", type="primary", key="imp_ru_contatti"):
+                    elenco = [] if ss.get("ru_demo") else [r for r in ss["ru_cont"].to_dict("records") if any(str(x or "").strip() for x in r.values())]
+                    tot_a = tot_c = 0
+                    for f in files:
+                        try:
+                            nuovi, avv = ru.contatti_da_excel(f)
+                        except Exception as e:
+                            st.error(f"«{f.name}» non leggibile: {e}")
+                            continue
+                        for a in avv:
+                            st.warning(f"{f.name}: {a}")
+                        elenco, a_, c_ = ru.unisci_contatti(elenco, nuovi)
+                        tot_a, tot_c = tot_a + a_, tot_c + c_
+                        audit("ru_import_contatti", f"{f.name}: {len(nuovi)} righe")
+                    sostituisci_tabella("ru_cont", pd.DataFrame(elenco, columns=ru.COLONNE_CONTATTI))
+                    ss["ru_demo"] = False
+                    st.toast(f"Aggiunti {tot_a} contatti, completati {tot_c}")
+                    st.rerun()
         blocco_tabella("ru_can", "Cantieri", "Lascia vuoto il codice: lo assegna l'app. Poi usa lo stesso codice nelle altre tabelle.", ru.COLONNE_CANTIERI, ru.ETICHETTE_CANTIERI, ccan, ss["ru_can"], "ru", 2, audit, 200)
         if st.button("🔢 Assegna i codici mancanti", key="codici_ru", disabled=sola_lettura()):
             nuovi, _ = ru.normalizza_cantieri(ss["ru_can"].to_dict("records"))

@@ -242,3 +242,58 @@ def test_materiali_ddt_avviso_e_costo_in_sal():
     assert any("Sabbia" in a and "senza numero DDT" in a for a in o["avvisi"]) and not any("Ghiaia" in a and "DDT" in a for a in o["avvisi"])
     righe = mt.per_sl_costi(o)
     assert "DDT 412 del 28/10" in righe[0]["Descrizione"] and all(r["Descrizione"].endswith("(da Materiali)") for r in righe)
+
+
+# ---- Rubrica: import da Excel di altri programmi --------------------------------
+def _xlsx_contatti(tmp_path, nome, colonne, righe):
+    import pandas as pd
+    p = tmp_path / nome
+    pd.DataFrame(righe, columns=colonne).to_excel(p, index=False)
+    return str(p)
+
+
+def test_rubrica_import_excel(tmp_path):
+    import ru
+    f1 = _xlsx_contatti(tmp_path, "r.xlsx", ["Nominativo", "Email", "cell", "Funzione"], [
+        ["Rossi Mario", "rossi@fcrgeneralcontractor.eu", "+39 333 1", "Tecnico"],
+        ["Studio Bianchi", "b@x.it", None, "Ufficio legale"],
+        ["da designare", None, None, None]])
+    f2 = _xlsx_contatti(tmp_path, "a.xlsx", ["Nome", "Telefono", "Cellulare", "Indirizzo", "Prov", "Mail"], [
+        ["Verdi Anna", "02123", "3331112222", "Via Roma 1", "MI", None],
+        ["Neri Luca", "luca@pec.it", None, None, None, None],
+        ["verdi anna", None, "3339998888", None, None, "anna@x.it"]])
+    a, _ = ru.contatti_da_excel(f1)
+    b, _ = ru.contatti_da_excel(f2)
+    assert [x["Nome"] for x in a] == ["Rossi Mario", "Studio Bianchi"]
+    assert a[0]["Ruolo"] == "Collaboratore" and a[1]["Ruolo"] == "Studio legale" and "Funzione: Tecnico" in a[0]["Note"]
+    assert b[0]["Telefono"] == "3331112222" and "Fisso: 02123" in b[0]["Note"] and b[0]["Ruolo"] == "Amministratore"
+    assert b[1]["Email"] == "luca@pec.it" and b[1]["Telefono"] == ""
+    el, ag, co = ru.unisci_contatti([], a + b)
+    assert len(el) == 4 and ag == 4 and co == 1
+    verdi = next(x for x in el if x["Nome"] == "Verdi Anna")
+    assert verdi["Email"] == "anna@x.it" and "Altro numero: 3339998888" in verdi["Note"]
+    el2, ag2, co2 = ru.unisci_contatti(el, a + b)
+    assert (ag2, co2) == (0, 0) and len(el2) == 4
+    assert ru.normalizza_contatti(el)[1] == []
+
+
+def test_rubrica_import_senza_nome(tmp_path):
+    import ru
+    f = _xlsx_contatti(tmp_path, "x.xlsx", ["Colonna"], [["a"]])
+    assert ru.contatti_da_excel(f)[0] == []
+
+
+def test_rubrica_import_dalla_schermata(tmp_path, monkeypatch):
+    X = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    f1 = _xlsx_contatti(tmp_path, "rubrica.xlsx", ["Nominativo", "Email", "cell", "Funzione"], [["Rossi Mario", "rossi@fcrgeneralcontractor.eu", "+39 333 1", "Tecnico"]])
+    f2 = _xlsx_contatti(tmp_path, "amm.xlsx", ["Nome", "Telefono", "Cellulare", "Indirizzo", "Prov", "Mail"], [["Verdi Anna", None, "3331112222", "Via Roma 1", "MI", "a@x.it"]])
+    at = _app(tmp_path, monkeypatch, "ru")
+    assert not at.exception
+    fu = next(u for u in at.get("file_uploader") if u.proto.label == "File Excel")
+    fu.set_value([("rubrica.xlsx", open(f1, "rb").read(), X), ("amm.xlsx", open(f2, "rb").read(), X)])
+    at.run()
+    next(b for b in at.button if b.key == "imp_ru_contatti").click().run()
+    assert not at.exception
+    df = at.session_state["ru_cont"]
+    assert sorted(df["Nome"]) == ["Rossi Mario", "Verdi Anna"]
+    assert not at.session_state["ru_demo"]

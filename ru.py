@@ -8,7 +8,7 @@ import urllib.parse
 
 from sc import data_da
 
-RUOLI = ["Fornitore", "Subappaltatore", "Cliente", "Professionista", "Ente / PA", "Banca", "Studio legale", "Altro"]
+RUOLI = ["Fornitore", "Subappaltatore", "Cliente", "Professionista", "Ente / PA", "Banca", "Studio legale", "Amministratore", "Collaboratore", "Altro"]
 COLONNE_CONTATTI = ["Nome", "Ruolo", "Referente", "Telefono", "Email", "Note"]
 ETICHETTE_CONTATTI = {"Nome": "Ragione sociale", "Ruolo": "Tipo", "Referente": "Persona di riferimento", "Telefono": "Telefono / cellulare", "Email": "Email", "Note": "Note"}
 SINONIMI_CONTATTI = {"Nome": ("Ragione sociale", "Anagrafica", "Fornitore", "Cliente", "Nominativo"), "Telefono": ("Tel", "Cellulare", "cell", "Telefono / cellulare"),
@@ -75,6 +75,91 @@ def normalizza_contatti(righe):
             avvisi.append(f"«{n}»: l'email «{mail}» non sembra valida.")
         out.append({"Nome": n, "Ruolo": ruolo if ruolo in RUOLI else "Altro", "Referente": _t(r.get("Referente")), "Telefono": _t(r.get("Telefono")), "Email": mail, "Note": _t(r.get("Note"))})
     return out, avvisi
+
+
+_SEGNAPOSTO = ("non presente", "da designare", "nessuno", "n/a")
+
+
+def _col(df, *nomi):
+    """Prima colonna del file il cui nome (senza spazi, maiuscole e punteggiatura) coincide con uno dei nomi."""
+    per = {re.sub(r"[^a-z0-9]", "", str(c).lower()): c for c in df.columns}
+    for n in nomi:
+        if re.sub(r"[^a-z0-9]", "", n.lower()) in per:
+            return per[re.sub(r"[^a-z0-9]", "", n.lower())]
+    return None
+
+
+def contatti_da_excel(sorgente):
+    """
+    Legge una rubrica in Excel (anche quelle esportate da altri programmi: «Nominativo / Email / cell / Funzione» oppure
+    «Nome / Telefono / Cellulare / Indirizzo / Prov / Mail»). Restituisce (contatti, avvisi). Il cellulare ha la precedenza
+    nel campo telefono; il fisso, l'indirizzo e la funzione vanno nelle note; un'email scritta nel campo telefono viene spostata.
+    """
+    import pandas as pd
+    df = pd.read_excel(sorgente, sheet_name=0, dtype=str)
+    cn = _col(df, "Nome", "Nominativo", "Ragione sociale")
+    if cn is None:
+        return [], ["Non trovo la colonna del nome (Nome o Nominativo): file non letto."]
+    cm, cc = _col(df, "Email", "Mail", "E-mail", "PEC"), _col(df, "Cellulare", "cell")
+    ct, cf, ci, cp = _col(df, "Telefono", "Tel"), _col(df, "Funzione", "Ruolo", "Tipo"), _col(df, "Indirizzo"), _col(df, "Prov", "Provincia")
+    out, avvisi, vuoto = [], [], (None, "", "nan")
+
+    def v(r, c):
+        x = r[c] if c is not None else None
+        return None if x is None or str(x).strip() in vuoto else str(x).strip()
+
+    for _, r in df.iterrows():
+        nome = v(r, cn)
+        if not nome or nome.lower() in _SEGNAPOSTO:
+            continue
+        mail, cell, fisso = v(r, cm), v(r, cc), v(r, ct)
+        if fisso and "@" in fisso:                         # un'email finita nel campo telefono
+            mail, fisso = mail or fisso, None
+        tel = cell or fisso
+        note = []
+        if cell and fisso:
+            note.append(f"Fisso: {fisso}")
+        fun = v(r, cf)
+        if fun:
+            note.append(f"Funzione: {fun}")
+        ind = " ".join(x for x in (v(r, ci), f"({v(r, cp)})" if v(r, cp) else None) if x)
+        if ind:
+            note.append(f"Indirizzo: {ind}")
+        interno = bool(mail and "fcrgeneralcontractor" in mail.lower())
+        f = (fun or "").lower()
+        ruolo = ("Studio legale" if "legal" in f else "Collaboratore" if interno else "Amministratore" if cf is None and ci is not None else "Altro")
+        out.append({"Nome": nome, "Ruolo": ruolo, "Referente": "", "Telefono": tel or "", "Email": mail or "", "Note": " · ".join(note)})
+    return out, avvisi
+
+
+def unisci_contatti(esistenti, nuovi):
+    """Aggiunge i nuovi contatti senza duplicare: se il nome c'e' gia' (maiuscole e spazi ignorati) completa solo i campi vuoti. Restituisce (elenco, aggiunti, completati)."""
+    chiave = lambda n: re.sub(r"\s+", " ", str(n)).strip().lower()
+    out = [dict(r) for r in esistenti]
+    idx = {chiave(r["Nome"]): r for r in out}
+    agg = compl = 0
+    for n in nuovi:
+        r = idx.get(chiave(n["Nome"]))
+        if r is None:
+            r = dict(n)
+            out.append(r)
+            idx[chiave(n["Nome"])] = r
+            agg += 1
+            continue
+        mod = False
+        for c in ("Telefono", "Email", "Referente"):
+            if not r.get(c) and n.get(c):
+                r[c], mod = n[c], True
+        if r.get("Telefono") and n.get("Telefono") and re.sub(r"\D", "", r["Telefono"]) != re.sub(r"\D", "", n["Telefono"]):
+            extra = f"Altro numero: {n['Telefono']}"
+            if extra not in (r.get("Note") or ""):
+                r["Note"], mod = " · ".join(x for x in (r.get("Note"), extra) if x), True
+        if n.get("Note") and n["Note"] not in (r.get("Note") or ""):
+            r["Note"], mod = " · ".join(x for x in (r.get("Note"), n["Note"]) if x), True
+        if (r.get("Ruolo") in (None, "", "Altro")) and n.get("Ruolo") not in (None, "", "Altro"):
+            r["Ruolo"], mod = n["Ruolo"], True
+        compl += mod
+    return out, agg, compl
 
 
 def prossimo_codice(cantieri, anno):

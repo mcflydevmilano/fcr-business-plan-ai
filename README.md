@@ -240,6 +240,9 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.10.2
+- **Rubrica: importa le rubriche da Excel** (collaboratori, amministratori, anche di altri programmi): riconosce nome, telefono, cellulare, email, funzione e indirizzo; non duplica chi c'è già (completa solo i campi vuoti); sposta un'email scritta nel campo telefono. Nuovi tipi di contatto «Amministratore» e «Collaboratore».
+
 ## Novità 3.10.1
 - **Credit Risk, lettura del bilancio PDF più rapida:** se il PDF ha il testo, all'IA si invia solo il testo (secondi invece di minuti); limite di attesa di 90 secondi per richiesta e 200 secondi in tutto, poi messaggio chiaro invece di un'attesa senza fine.
 
