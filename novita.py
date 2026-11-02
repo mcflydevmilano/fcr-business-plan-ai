@@ -15,6 +15,12 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.12.2", "data": "2026-11-02", "titolo": "Spazio libero sul server e sul NAS",
+     "voci": ["Nell'Amministrazione c'è la nuova scheda «💾 Spazio»: una barra mostra quanto disco è usato sul server e sul NAS (verde, giallo oltre il 75%, rosso oltre il 90%).",
+              "Sotto le barre vedi quanto occupano il database della suite e le copie di sicurezza.",
+              "Se il disco sta per finire, compare un avviso in cima alla pagina Amministrazione.",
+              "La suite ora gira sul nostro server: più veloce, con i dati in azienda e una copia di sicurezza ogni notte."],
+     "strumenti": ["Amministrazione"]},
     {"id": "3.12.1", "data": "2026-11-02", "titolo": "Nuova pagina «Novità e aggiornamenti»",
      "voci": ["Qui trovi, in parole semplici, cosa cambia nella suite a ogni aggiornamento: la più recente è in alto.",
               "Quando c'è una novità che non hai ancora letto, nella pagina iniziale compare un avviso con il pulsante «Leggi le novità».",

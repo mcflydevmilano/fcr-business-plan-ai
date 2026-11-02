@@ -7,6 +7,7 @@ import streamlit as st
 
 import auth
 import permessi
+import spazio
 import storage
 
 
@@ -15,7 +16,9 @@ def render(utente, utenti_secrets, audit):
     if utente.get("ruolo") != "admin":
         st.error("Accesso riservato agli amministratori.")
         return
-    t1, t2, t3, t4 = st.tabs(["Utenti", "Registro attività", "Backup", "🔒 Permessi"])
+    for frase in spazio.avvisi():
+        st.warning("💾 " + frase + " Vedi la scheda «Spazio».")
+    t1, t2, t3, t4, t5 = st.tabs(["Utenti", "Registro attività", "Backup", "🔒 Permessi", "💾 Spazio"])
 
     with t1:
         st.markdown("#### Utenti configurati nei secrets")
@@ -149,6 +152,9 @@ def render(utente, utenti_secrets, audit):
     with t4:
         _permessi(utente, utenti_secrets, audit)
 
+    with t5:
+        _spazio()
+
 
 def _permessi(utente, utenti_secrets, audit):
     cfg = permessi.carica_config()
@@ -193,3 +199,50 @@ def _permessi(utente, utenti_secrets, audit):
         audit("permessi_modificati", "; ".join(f"{u}→{p}" for u, p in sorted(salvato["utenti"].items())) or "profili aggiornati")
         st.success("Permessi salvati. Hanno effetto al prossimo caricamento di pagina di ciascun utente.")
         st.rerun()
+
+
+_COLORI = {"ok": "#2e9e5b", "attenzione": "#e0a100", "critico": "#d03b3b", "nd": "#9aa0a6"}
+
+
+def _barra(titolo, x, aiuto=""):
+    """Barra dello spazio usato: verde sotto il 75%, gialla fino al 90%, rossa oltre."""
+    st.markdown(f"**{titolo}**")
+    if not x.get("disponibile"):
+        st.warning(f"{x.get('motivo') or 'non disponibile'}. {aiuto}")
+        return
+    perc = x["perc"] or 0
+    col = _COLORI.get(x["stato"], _COLORI["nd"])
+    st.markdown(
+        f"<div style='background:#e6e8eb;border-radius:8px;height:22px;overflow:hidden'>"
+        f"<div style='width:{min(perc, 100):.1f}%;height:100%;background:{col}'></div></div>",
+        unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Usato", f"{spazio.leggibile(x['usato'])}", f"{perc:.0f}%", delta_color="off")
+    c2.metric("Libero", spazio.leggibile(x["libero"]))
+    c3.metric("Totale", spazio.leggibile(x["totale"]))
+    if x["stato"] == "critico":
+        st.error("Spazio quasi finito: libera spazio o amplia il disco prima che la suite si fermi.")
+    elif x["stato"] == "attenzione":
+        st.warning("Lo spazio sta finendo: conviene fare pulizia o programmare un disco più grande.")
+
+
+def _spazio():
+    st.markdown("#### Spazio del server e del NAS")
+    st.caption("Si aggiorna ogni volta che apri questa scheda. Verde: tutto a posto. Giallo: oltre il 75%. Rosso: oltre il 90%.")
+    if st.button("🔄 Aggiorna", key="cmd_spazio_agg"):
+        st.rerun()
+    r = spazio.riepilogo()
+    _barra("🖥️ Server (disco del computer in ufficio)", r["server"], "Se vedi questo messaggio la suite non gira sul server.")
+    st.divider()
+    nas = r["nas"]
+    _barra("🗄️ NAS (archivio e copie di sicurezza)", nas,
+           "Controlla che il NAS sia acceso e collegato al server (cartella " + spazio.percorso_nas() + ").")
+    st.divider()
+    st.markdown("**Cosa occupa spazio**")
+    c1, c2 = st.columns(2)
+    db = r["db"]
+    c1.metric("Database della suite", spazio.leggibile(db) if db is not None else "non leggibile")
+    bk = r["backup"]
+    c2.metric("Copie di sicurezza", spazio.leggibile(bk["byte"]), f"{bk['file']} file" if bk["cartella"] else "cartella non trovata", delta_color="off")
+    if bk["cartella"]:
+        st.caption(f"Cartella delle copie: {bk['cartella']}")
