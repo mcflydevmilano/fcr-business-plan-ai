@@ -728,10 +728,9 @@ with st.sidebar:
                 profilo.rimuovi(_u["username"])
                 ss["_fp"] = None
                 st.rerun()
-        _ca, _cb = st.columns(2)
-        if _u["ruolo"] == "admin" and _ca.button("👥 Utenti", key="btn_admin", width="stretch"):
+        if _u["ruolo"] == "admin" and st.button("⚙️ Amministrazione suite", key="btn_admin", width="stretch"):
             vai_a("admin")
-        if _cb.button("Esci", key="btn_logout", width="stretch"):
+        if st.button("Esci", key="btn_logout", width="stretch"):
             audit("logout")
             _nome_addio = _u["username"]
             ss.clear()

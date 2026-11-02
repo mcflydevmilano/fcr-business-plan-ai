@@ -12,7 +12,7 @@ import storage
 
 
 def render(utente, utenti_secrets, audit):
-    st.markdown("## 👥 Amministrazione")
+    st.markdown("## ⚙️ Amministrazione suite")
     if utente.get("ruolo") != "admin":
         st.error("Accesso riservato agli amministratori.")
         return
