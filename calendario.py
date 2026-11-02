@@ -12,6 +12,7 @@ import ad
 import lg
 import mt
 import sa
+import ta
 import vr
 import mz
 import rp
@@ -19,9 +20,9 @@ import sc
 import sx
 from sc import data_da
 
-MODULI_CALENDARIO = ("sc", "ga", "fo", "sx", "mz", "rp", "gt", "lg", "sa", "mt", "vr", "ad")
-NOMI_MODULO = {"sc": "Scadenzario", "ga": "Gare e offerte", "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "rp": "Rapportini di cantiere", "gt": "Cronoprogramma", "lg": "Studio legale", "ch": "Compiti dalla chat", "sa": "Subappalti", "mt": "Materiali", "vr": "Verbali e riunioni", "ad": "Archivio documenti"}
-CATEGORIE = ["Incasso", "Pagamento", "Gara", "Documento gara", "Documento fornitore", "Formazione / idoneità", "Documento di cantiere", "Mezzo", "Segnalazione", "Fine fase", "Termine legale", "Contratto", "Compito", "Documento subappalto", "Consegna", "Azione di riunione", "Documento commessa"]
+MODULI_CALENDARIO = ("sc", "ga", "fo", "sx", "mz", "rp", "gt", "lg", "sa", "mt", "vr", "ad", "ta")
+NOMI_MODULO = {"sc": "Scadenzario", "ga": "Gare e offerte", "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "rp": "Rapportini di cantiere", "gt": "Cronoprogramma", "lg": "Studio legale", "ch": "Compiti dalla chat", "sa": "Subappalti", "mt": "Materiali", "vr": "Verbali e riunioni", "ad": "Archivio documenti", "ta": "Compiti e attività"}
+CATEGORIE = ["Incasso", "Pagamento", "Gara", "Documento gara", "Documento fornitore", "Formazione / idoneità", "Documento di cantiere", "Mezzo", "Segnalazione", "Fine fase", "Termine legale", "Contratto", "Compito", "Documento subappalto", "Consegna", "Azione di riunione", "Documento commessa", "Attività"]
 
 
 def _stato(giorni, preavviso):
@@ -116,6 +117,11 @@ def eventi(payloads, oggi=None, orizzonte_gg=60, categorie=None):
         for x in vr.normalizza_azioni(p["vr"].get("azi"), tit)[0]:
             if x["Stato"] == "Aperta" and x["Scadenza"]:
                 ev.append(_ev(data_da(x["Scadenza"]), oggi, "vr", "Azione di riunione", x["Azione"][:80], f"{x['Responsabile'] or 'senza responsabile'} · {x['Verbale'][:40]}", None, prev))
+    if p.get("ta"):
+        prev = int((p["ta"].get("params") or {}).get("preavviso_gg", ta.TA_DEFAULT["preavviso_gg"]))
+        for x in ta.normalizza(p["ta"].get("compiti"))[0]:
+            if x["Stato"] != "Fatto" and x["Scadenza"]:
+                ev.append(_ev(data_da(x["Scadenza"]), oggi, "ta", "Attività", x["Compito"][:80], f"{x['Responsabile'] or 'senza responsabile'}" + (f" · {x['Commessa']}" if x["Commessa"] else ""), None, prev))
     if p.get("ad"):
         prev = int((p["ad"].get("params") or {}).get("preavviso_gg", ad.AD_DEFAULT["preavviso_gg"]))
         for x in ad.normalizza_doc(p["ad"].get("doc"))[0]:

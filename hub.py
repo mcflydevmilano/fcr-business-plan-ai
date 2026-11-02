@@ -276,7 +276,27 @@ CARDS = {'credit': {'icona': '📊',
                  'Scadenze nel calendario',
                  'Scarico in Excel'],
         'tag': ['Link', 'Scadenze', 'Excel'],
-        'bottone': 'Archivio documenti'}}
+        'bottone': 'Archivio documenti'},
+ 'fc': {'icona': '🧭',
+        'titolo': 'Flusso commessa (28 passaggi)',
+        'desc': 'Lo schema FCR dal primo incontro alla chiusura: chi fa cosa, chi approva e cosa blocca.',
+        'voci': ['I 28 passaggi di ogni commessa con responsabile',
+                 'GO / NO GO del CdA, del Presidente e dell\'assemblea',
+                 'Iniziali e data di chi fa e di chi approva',
+                 'Commesse ferme, in attesa o fuori sequenza',
+                 'Scarico in Excel'],
+        'tag': ['Schema rev. 3.8', 'GO / NO GO', 'Tracciabilità'],
+        'bottone': 'Flusso commessa'},
+ 'ta': {'icona': '✅',
+        'titolo': 'Compiti e attività',
+        'desc': 'Cosa c\'è da fare, chi lo fa e per quando: la bacheca di tutta l\'azienda.',
+        'voci': ['Bacheca a colonne: da fare, in corso, in attesa, fatto',
+                 'Responsabile, priorità, scadenza e commessa',
+                 'Compiti in ritardo e carico per persona',
+                 'Scadenze nel calendario',
+                 'Import dall\'Excel di monday'],
+        'tag': ['Bacheca', 'Scadenze', 'Import monday'],
+        'bottone': 'Compiti'}}
 
 # (titolo sezione, sottotitolo, [sigle])  -  ogni gruppo ha un numero pari di schede, tranne l'ultimo (a tutta larghezza)
 GRUPPI = [
@@ -288,6 +308,8 @@ GRUPPI = [
      ["rp", "sx", "mz", "og", "pr", "mt"]),
     ("Fornitori, acquisti e scadenze", "Contatti, ordini approvati, documenti dei fornitori e calendario unico",
      ["ru", "fo", "oa", "ca", "sa", "ad"]),
+    ("Flusso e compiti", "Lo schema delle commesse passo per passo e le cose da fare",
+     ["fc", "ta"]),
     ("Studio legale", "Riserve, contratti e passaggio dei crediti allo studio",
      ["lg"]),
     ("Direzione e persone", "La sintesi di tutta l'azienda e chi ci lavora",
@@ -298,7 +320,7 @@ GRUPPI = [
 
 
 ICONE_GRUPPO = {"Parte finanziaria": "💰", "Offerte e commesse": "🏗️", "Cantiere e risorse": "👷",
-                "Fornitori, acquisti e scadenze": "📦", "Studio legale": "⚖️", "Direzione e persone": "📊", "Comunicazione": "💬"}
+                "Fornitori, acquisti e scadenze": "📦", "Studio legale": "⚖️", "Direzione e persone": "📊", "Comunicazione": "💬", "Flusso e compiti": "🧭"}
 
 
 def numero(sigla):
@@ -322,9 +344,13 @@ NOTA = "Le simulazioni sono indicative e non costituiscono rating regolamentare,
 
 
 PERCORSI = [
-    ("👷 Sono in cantiere", "Scrivi il rapportino e segnala i problemi, dal telefono.", [("rp", "✍️ Scrivi il rapportino")]),
-    ("🗂️ Lavoro in ufficio", "Fatture, commesse, fornitori, gare e scadenze.", [("sc", "🧾 Fatture e cassa"), ("sl", "🏗️ Commesse e SAL"), ("ca", "📅 Scadenze")]),
-    ("📊 Dirigo l'azienda", "La situazione in un colpo d'occhio.", [("dd", "📊 Apri il Cruscotto")]),
+    ("👷 Sono in cantiere", "Rapportino, ore, bolle dei materiali e le cose da fare: tutto dal telefono.",
+     [("rp", "✍️ Scrivi il rapportino"), ("pr", "⏱️ Presenze e ore"), ("mt", "📦 Materiali e bolle"), ("ta", "✅ Le mie cose da fare")]),
+    ("🗂️ Lavoro in ufficio", "Fatture, commesse, fornitori, documenti e scadenze.",
+     [("sc", "🧾 Fatture e cassa"), ("sl", "🏗️ Commesse e SAL"), ("ad", "🗂️ Documenti di commessa"), ("ca", "📅 Scadenze")]),
+    ("🤝 Seguo le commesse", "Dalla prima visita alla chiusura: a che punto è ogni commessa e chi deve fare cosa.",
+     [("rc", "📋 Pratiche commerciali"), ("fc", "🧭 Flusso commessa (28 passaggi)"), ("ta", "✅ Compiti e attività")]),
+    ("📊 Dirigo l'azienda", "La situazione in un colpo d'occhio.", [("dd", "📊 Apri il Cruscotto"), ("fc", "🧭 Commesse ferme o da approvare")]),
 ]
 
 
@@ -343,12 +369,12 @@ def _da_dove_comincio(vai_a, consentiti=None):
             st.caption("Apri uno strumento dall'elenco qui sotto.")
             return
         cols = st.columns(len(percorsi), gap="large")
-        for col, (titolo, testo, bottoni) in zip(cols, percorsi):
+        for k, (col, (titolo, testo, bottoni)) in enumerate(zip(cols, percorsi)):
             with col:
                 st.markdown(f"**{titolo}**")
                 st.caption(testo)
                 for s, etichetta in bottoni:
-                    if st.button(etichetta, key=f"start_{s}", width="stretch"):
+                    if st.button(etichetta, key=f"start_{k}_{s}", width="stretch"):
                         vai_a(s)
 
 
@@ -371,7 +397,7 @@ def _freschezza(righe):
             st.markdown(f"{ico[r['stato']]} **{r['nome']}** — {quando}{chi}  <span style='color:#94a3b8'>(si aggiorna ogni {r['soglia']} gg)</span>", unsafe_allow_html=True)
 
 
-DATI_RICERCA = ["rc", "of", "ru", "fo", "sc", "sl", "ga", "sx", "mz", "og", "rp", "gt", "lg", "bk", "oa", "pe", "pv", "cf", "bp", "sa", "pr", "mt", "vr", "ad"]
+DATI_RICERCA = ["rc", "of", "ru", "fo", "sc", "sl", "ga", "sx", "mz", "og", "rp", "gt", "lg", "bk", "oa", "pe", "pv", "cf", "bp", "sa", "pr", "mt", "vr", "ad", "fc", "ta"]
 
 
 @st.cache_data(ttl=30, show_spinner=False)

@@ -240,6 +240,11 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.11.0
+- **Flusso commessa** (nuovo strumento): lo schema FCR rev. 3.8 con i 28 passaggi dal primo incontro alla chiusura. Il codice madre è quello del Registro commerciale. Ogni passaggio registra iniziali e data di chi lo fa e di chi approva; per i bonifici anche esecutore, data e identificativo. I GO / NO GO del CdA (3), del Presidente (8), dell'assemblea (12) e la firma dei contratti (15) bloccano i passaggi successivi; il NO GO del Presidente riporta l'offerta al passo 7. Cruscotto con commesse ferme o in attesa di approvazione, controlli sulle regole trasversali, Excel.
+- **Compiti e attività** (nuovo strumento): bacheca a colonne (Da fare, In corso, In attesa, Fatto) con responsabile, priorità, scadenza e commessa; import dall'Excel di monday; scadenze nel Calendario; carico per persona.
+- Rubrica: import da Excel di rubriche e amministratori. Credit Risk: lettura del bilancio PDF più rapida, con limite di attesa.
+
 ## Novità 3.10.2
 - **Rubrica: importa le rubriche da Excel** (collaboratori, amministratori, anche di altri programmi): riconosce nome, telefono, cellulare, email, funzione e indirizzo; non duplica chi c'è già (completa solo i campi vuoti); sposta un'email scritta nel campo telefono. Nuovi tipi di contatto «Amministratore» e «Collaboratore».
 

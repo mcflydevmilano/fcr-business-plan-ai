@@ -155,6 +155,20 @@ PASSI = {
         ("Crea i compiti", "Nella scheda «3. Collegamenti» premi «Crea i compiti nella chat»: ognuno li vede nella chat e nel calendario.", None),
         ("Salva", "Apri «💾 Salva e riapri i verbali» in alto e premi Salva.", "salvato"),
     ], "I compiti si creano solo per persone che hanno un utente nella suite."),
+    "ta": ("Sapere cosa c'è da fare, chi se ne occupa e per quando, senza usare monday.", [
+        ("Importa da monday (una volta)", "Nella scheda «3. Importa da monday» carica l'Excel esportato: compiti, persone, stati e scadenze arrivano da soli.", "dati:ta_df"),
+        ("Aggiungi un compito", "Nella scheda «2. Nuovo e tabella» scrivi cosa fare, il responsabile, la scadenza e la commessa.", None),
+        ("Muovi i compiti", "Nella bacheca premi ◀ e ▶ per spostare un compito tra Da fare, In corso, In attesa e Fatto.", None),
+        ("Controlla i ritardi", "La scheda «4. Per persona» mostra chi ha compiti scaduti. Le scadenze compaiono anche nel Calendario.", None),
+        ("Salva", "Apri «💾 Salva e riapri» in alto e premi Salva.", "salvato"),
+    ], "Il responsabile è il nome utente: scrivilo uguale per vedere «Solo i miei»."),
+    "fc": ("Seguire ogni commessa lungo i 28 passaggi dello schema FCR, sapendo chi deve fare cosa e cosa è bloccato.", [
+        ("Avvia una commessa", "Nella scheda «2. Scheda commessa» apri «Avvia il flusso» e scegli la pratica del Registro commerciale: il suo codice è il codice madre.", "dati:fc_df"),
+        ("Scrivi le tue iniziali", "In cima alla scheda: finiscono accanto a ogni passaggio che registri, insieme alla data.", None),
+        ("Registra i passaggi", "Apri il passaggio e premi «Segna fatto». Dove serve, un'altra persona preme «Approva». Il CdA, il Presidente e l'assemblea danno GO o NO GO.", None),
+        ("Guarda cosa blocca", "Se un GO manca, i passaggi dopo non si completano. Il NO GO del CdA o dell'assemblea ferma la commessa; quello del Presidente riporta l'offerta al passo 7.", None),
+        ("Controlla e salva", "La scheda «3. Controlli» segnala passaggi senza iniziali, fuori sequenza o fermi. Poi apri «💾 Salva e riapri» in alto e premi Salva.", "salvato"),
+    ], "Il flusso non sostituisce le firme e le approvazioni vere: registra chi le ha date e quando."),
     "ad": ("Avere in un posto solo i link dei documenti di ogni commessa e sapere cosa manca o scade.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:ad_demo"),
         ("Inserisci i documenti", "Nella scheda «1. Dati» scrivi commessa, categoria, titolo e il link al file o alla cartella (https://...).", "dati:ad_doc"),

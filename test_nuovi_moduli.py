@@ -283,7 +283,7 @@ def test_i_nuovi_strumenti_si_aprono(modulo):
     assert len(at.tabs) >= 3
 
 
-@pytest.mark.parametrize("modulo", ["ru", "lg", "bk", "oa", "rp"])
+@pytest.mark.parametrize("modulo", ["ru", "lg", "bk", "oa", "rp", "fc", "ta"])
 def test_uscire_e_rientrare_nello_strumento_non_da_errore(modulo):
     """I pulsanti e i widget con chiave che inizia col prefisso dello strumento non vanno ripristinati: regressione di ru_codici."""
     at = _app(_u("root", "admin"), modulo)
