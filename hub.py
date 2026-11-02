@@ -1,5 +1,6 @@
 """Hub: schede degli strumenti raggruppate per area, in sequenza logica.
 Aggiungere o spostare uno strumento = modificare GRUPPI. Il numero "Strumento N" segue l'ordine."""
+import html
 import streamlit as st
 
 import theme
@@ -378,11 +379,14 @@ def _da_dove_comincio(vai_a, consentiti=None):
         if not percorsi:
             st.caption("Apri uno strumento dall'elenco qui sotto.")
             return
+        # le descrizioni hanno altezza uguale (su schermo largo), cosi' i pulsanti delle colonne partono tutti alla stessa altezza
+        st.markdown("<style>.fcr-desc{font-size:.85rem;line-height:1.4;opacity:.65;margin:.2rem 0 .8rem 0}"
+                    "@media (min-width: 900px){.fcr-desc{min-height:4.4em}[class*='st-key-start_'] button{min-height:3.3rem}}</style>", unsafe_allow_html=True)
         cols = st.columns(len(percorsi), gap="large")
         for k, (col, (titolo, testo, bottoni)) in enumerate(zip(cols, percorsi)):
             with col:
                 st.markdown(f"**{titolo}**")
-                st.caption(testo)
+                st.markdown(f"<div class='fcr-desc'>{html.escape(testo)}</div>", unsafe_allow_html=True)
                 for s, etichetta in bottoni:
                     if st.button(etichetta, key=f"start_{k}_{s}", width="stretch"):
                         vai_a(s)
