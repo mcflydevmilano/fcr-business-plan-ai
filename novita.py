@@ -1,0 +1,178 @@
+"""
+novita.py - «Novità e aggiornamenti»: cosa cambia nella suite, in parole semplici, versione per versione.
+Le voci del programma stanno qui sotto (le aggiunge chi rilascia l'aggiornamento); le voci scritte a mano dagli amministratori dentro la suite
+si salvano a parte e si mescolano a queste. Per ogni persona si ricorda l'ultima novità letta, cosi' l'Hub mostra un avviso solo quando c'e' qualcosa di nuovo.
+Senza Streamlit, quindi testabile.
+"""
+import datetime as dt
+import uuid
+
+import storage
+
+NOME_MANUALI = "novita_manuali"
+NOME_LETTE = "novita_lette"
+MAX_MANUALI = 200
+
+# Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
+NOVITE = [
+    {"id": "3.12.1", "data": "2026-11-02", "titolo": "Nuova pagina «Novità e aggiornamenti»",
+     "voci": ["Qui trovi, in parole semplici, cosa cambia nella suite a ogni aggiornamento: la più recente è in alto.",
+              "Quando c'è una novità che non hai ancora letto, nella pagina iniziale compare un avviso con il pulsante «Leggi le novità».",
+              "Puoi cercare per parola o per strumento.",
+              "Gli amministratori possono scrivere una novità direttamente dalla pagina, senza aspettare un aggiornamento del programma."],
+     "strumenti": ["Novità e aggiornamenti", "Hub"]},
+    {"id": "3.12.0", "data": "2026-11-02", "titolo": "Il Flusso commessa lavora per te",
+     "voci": ["Quando fai avanzare un passaggio del Flusso commessa, lo stato della pratica nel Registro commerciale si aggiorna da solo.",
+              "Ogni passaggio «in corso» diventa un compito per chi lo deve fare, con scadenza. Quando il passaggio è chiuso, il compito si chiude.",
+              "Chi deve approvare (CdA, Presidente, assemblea, firma contratti) riceve un messaggio in chat. Se una commessa resta ferma, lo riceve il responsabile.",
+              "Nella scheda «Chi è chi e collegamenti» scrivi una volta sola il nome utente di chi ricopre ogni ruolo.",
+              "Nel Cruscotto di direzione c'è il nuovo semaforo «Flusso commesse»."],
+     "strumenti": ["Flusso commessa", "Compiti e attività", "Registro commerciale", "Cruscotto"]},
+    {"id": "3.11.0", "data": "2026-11-02", "titolo": "Due strumenti nuovi al posto di monday: Flusso commessa e Compiti",
+     "voci": ["Flusso commessa: i 28 passaggi dello schema FCR, dal primo incontro alla chiusura. Per ogni passaggio vedi chi lo fa, chi approva, con iniziali e data.",
+              "I GO / NO GO del CdA, del Presidente e dell'assemblea bloccano i passaggi successivi finché non c'è l'approvazione.",
+              "Compiti e attività: la bacheca a colonne (Da fare, In corso, In attesa, Fatto) con responsabile, priorità, scadenza e commessa. Si importa dall'Excel di monday.",
+              "Nella pagina iniziale, «Da dove comincio?» ora ha un percorso per chi lavora in cantiere, in ufficio, sulle commesse e in direzione.",
+              "Nuova guida per i colleghi, con la pagina «Cosa faccio io?»."],
+     "strumenti": ["Flusso commessa", "Compiti e attività", "Hub"]},
+    {"id": "3.10.2", "data": "2026-11-02", "titolo": "Rubrica: importa le rubriche da Excel",
+     "voci": ["In «Rubrica e cantieri» carichi in una volta le rubriche dei colleghi e l'elenco degli amministratori da file Excel.",
+              "Chi è già in rubrica non viene duplicato: si completano solo i dati mancanti.",
+              "Nuovi tipi di contatto: «Amministratore» e «Collaboratore»."],
+     "strumenti": ["Rubrica e cantieri"]},
+    {"id": "3.10.1", "data": "2026-11-02", "titolo": "Credit Risk: il bilancio in PDF si legge molto più in fretta",
+     "voci": ["Se il PDF ha il testo (quelli del Registro Imprese o del gestionale) la lettura richiede pochi secondi invece di minuti.",
+              "C'è un tempo massimo di attesa: dopo circa 3 minuti la suite ti avvisa e puoi inserire i dati a mano.",
+              "Con un PDF scansionato la lettura resta più lenta: meglio il bilancio in formato XBRL o Excel."],
+     "strumenti": ["Credit Risk & Rating"]},
+    {"id": "3.10.0", "data": "2026-10-30", "quando": "Fine ottobre 2026", "titolo": "Cinque strumenti nuovi, avvisi e archivio delle bolle",
+     "voci": ["Nuovi strumenti: Subappalti, Presenze e ore, Materiali e magazzino, Verbali e riunioni, Archivio documenti per commessa.",
+              "Materiali: ora puoi caricare le bolle (DDT) in PDF, foto o Excel. La suite propone numero, data e fornitore e avvisa se una bolla è doppia o manca.",
+              "Presenze: le ore si possono prendere dai rapportini giornalieri.",
+              "Nella barra laterale: la campanella «Avvisi» con le scadenze e «Esporta tutto in Excel» in un solo file.",
+              "Le email della suite sono più sicure: un solo tentativo, nessun ripetersi se il server di posta rifiuta, per non far bloccare il dominio.",
+              "Corretto un difetto per cui, aprendo uno strumento, si tornava alla prima scheda."],
+     "strumenti": ["Subappalti", "Presenze e ore", "Materiali e magazzino", "Verbali e riunioni", "Archivio documenti", "Avvisi"]},
+]
+
+
+def _s(v):
+    return str(v or "").strip()
+
+
+def _voce(v, manuale=False):
+    return {"id": _s(v.get("id")), "data": _s(v.get("data")), "quando": _s(v.get("quando")), "titolo": _s(v.get("titolo")),
+            "voci": [_s(x) for x in (v.get("voci") or []) if _s(x)], "strumenti": [_s(x) for x in (v.get("strumenti") or []) if _s(x)], "manuale": manuale, "autore": _s(v.get("autore"))}
+
+
+def carica_manuali(path=None):
+    try:
+        raw = storage.carica_pratica(NOME_MANUALI, path, modulo="cfg") or {}
+    except Exception:
+        raw = {}
+    out = []
+    for v in raw.get("voci") or []:
+        x = _voce(v, True)
+        if x["id"] and x["titolo"] and x["voci"]:
+            out.append(x)
+    return out
+
+
+def tutte(path=None):
+    """Tutte le novita', dalla piu' recente. A parita' di data, prima quelle scritte a mano."""
+    elenco = [(_voce(v), 0, i) for i, v in enumerate(NOVITE)] + [(v, 1, i) for i, v in enumerate(carica_manuali(path))]
+    elenco.sort(key=lambda t: (t[0]["data"], t[1], -t[2]), reverse=True)
+    return [t[0] for t in elenco]
+
+
+def aggiungi(versione, titolo, voci, strumenti=(), data=None, autore="", path=None):
+    """Aggiunge una novita' scritta a mano. `voci`: elenco di frasi (o testo con una voce per riga). Restituisce l'id."""
+    if isinstance(voci, str):
+        voci = voci.splitlines()
+    voci = [_s(x).lstrip("-•* ").strip() for x in voci if _s(x).lstrip("-•* ").strip()]
+    titolo = _s(titolo)
+    if not titolo or not voci:
+        raise ValueError("Servono un titolo e almeno una voce.")
+    try:
+        d = dt.date.fromisoformat(_s(data)) if data else dt.date.today()
+    except ValueError:
+        raise ValueError("La data non è valida.")
+    attuali = [v for v in (storage.carica_pratica(NOME_MANUALI, path, modulo="cfg") or {}).get("voci") or []]
+    if len(attuali) >= MAX_MANUALI:
+        raise ValueError("Ci sono troppe novità scritte a mano: elimina le più vecchie.")
+    nuovo = {"id": _s(versione) or f"nota-{uuid.uuid4().hex[:6]}", "data": d.isoformat(), "titolo": titolo, "voci": voci, "strumenti": [_s(x) for x in strumenti if _s(x)], "autore": autore}
+    attuali.append(nuovo)
+    storage.salva_pratica(NOME_MANUALI, {"voci": attuali}, path, autore=autore or "admin", modulo="cfg")
+    storage.svuota_cache()
+    return nuovo["id"]
+
+
+def elimina(id_, data, path=None, autore=""):
+    """Toglie una novita' scritta a mano (le voci del programma non si cancellano). Restituisce True se l'ha trovata."""
+    attuali = (storage.carica_pratica(NOME_MANUALI, path, modulo="cfg") or {}).get("voci") or []
+    resto = [v for v in attuali if not (_s(v.get("id")) == id_ and _s(v.get("data")) == data)]
+    if len(resto) == len(attuali):
+        return False
+    storage.salva_pratica(NOME_MANUALI, {"voci": resto}, path, autore=autore or "admin", modulo="cfg")
+    storage.svuota_cache()
+    return True
+
+
+def _chiave(v):
+    return f"{v['id']}|{v['data']}"
+
+
+def ultima(path=None):
+    t = tutte(path)
+    return t[0] if t else None
+
+
+def _lette(path=None):
+    try:
+        raw = storage.carica_pratica(NOME_LETTE, path, modulo="cfg") or {}
+    except Exception:
+        raw = {}
+    return raw if isinstance(raw, dict) else {}
+
+
+def da_leggere(utente, path=None):
+    """L'ultima novita' se questa persona non l'ha ancora aperta, altrimenti None."""
+    u = ultima(path)
+    if not u or not _s(utente):
+        return None
+    return None if _lette(path).get(_s(utente).lower()) == _chiave(u) else u
+
+
+def segna_lette(utente, path=None):
+    """Ricorda che la persona ha visto l'ultima novita'."""
+    u = ultima(path)
+    if not u or not _s(utente):
+        return
+    lette = _lette(path)
+    k = _s(utente).lower()
+    if lette.get(k) == _chiave(u):
+        return
+    lette[k] = _chiave(u)
+    storage.salva_pratica(NOME_LETTE, lette, path, autore=_s(utente), modulo="cfg")
+    storage.svuota_cache()
+
+
+def data_it(iso):
+    try:
+        d = dt.date.fromisoformat(iso)
+    except ValueError:
+        return iso
+    mesi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"]
+    return f"{d.day} {mesi[d.month - 1]} {d.year}"
+
+
+def filtra(elenco, testo="", strumento=""):
+    t = _s(testo).lower()
+    out = []
+    for v in elenco:
+        if strumento and strumento not in v["strumenti"]:
+            continue
+        if t and t not in " ".join([v["titolo"], v["id"], *v["voci"], *v["strumenti"]]).lower():
+            continue
+        out.append(v)
+    return out

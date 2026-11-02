@@ -240,6 +240,9 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.12.1
+- **Pagina «Novità e aggiornamenti»** (`novita.py`, `novita_ui.py`): le novità in parole semplici, versione per versione, con ricerca per parola e per strumento. Nell'Hub compare un avviso finché la persona non ha letto l'ultima. Gli amministratori possono aggiungere novità a mano dalla pagina. **A ogni rilascio si aggiunge la voce in cima a `NOVITE`** (un test controlla che coincida con la versione corrente).
+
 ## Novità 3.12.0
 - **Flusso commessa collegato al resto della suite.** Quando un passaggio avanza: (1) lo stato della pratica nel **Registro commerciale** si aggiorna da solo (avanza ma non torna mai indietro; NO GO del CdA = Annullato, NO GO dell'assemblea = Offerta KO; «Sospeso» non si tocca); (2) il passaggio «In corso» crea il **compito** in «Compiti e attività» per il responsabile del ruolo, con scadenza, e lo chiude a passaggio concluso; un passaggio in attesa di approvazione crea il compito «Approvare…» all'approvatore.
 - **Avvisi in chat** all'approvatore quando un passaggio aspetta il suo GO / NO GO e al responsabile quando una commessa è ferma da troppo tempo: una volta al giorno per lo stesso motivo, dal controllo programmato (`job_avvisi.py`). Nel Cruscotto compare il semaforo «Flusso commesse», con le stesse regole e canali (email, chat, telefono) degli altri.

@@ -155,6 +155,11 @@ PASSI = {
         ("Crea i compiti", "Nella scheda «3. Collegamenti» premi «Crea i compiti nella chat»: ognuno li vede nella chat e nel calendario.", None),
         ("Salva", "Apri «💾 Salva e riapri i verbali» in alto e premi Salva.", "salvato"),
     ], "I compiti si creano solo per persone che hanno un utente nella suite."),
+    "nv": ("Sapere cosa è cambiato nella suite dopo ogni aggiornamento, senza chiedere a nessuno.", [
+        ("Leggi l'ultima novità", "La più recente è in alto, già aperta. Le altre si aprono con un clic.", None),
+        ("Cerca", "Scrivi una parola (per esempio «bolle» o «compiti») o scegli uno strumento per vedere solo le novità che lo riguardano.", None),
+        ("Aggiungi una novità (amministratori)", "In fondo alla pagina scrivi titolo e voci in parole semplici e premi «Pubblica».", None),
+    ], "Se una novità riguarda il tuo lavoro, provala subito: ogni strumento ha il suo riquadro «Come si usa»."),
     "ta": ("Sapere cosa c'è da fare, chi se ne occupa e per quando, senza usare monday.", [
         ("Importa da monday (una volta)", "Nella scheda «3. Importa da monday» carica l'Excel esportato: compiti, persone, stati e scadenze arrivano da soli.", "dati:ta_df"),
         ("Aggiungi un compito", "Nella scheda «2. Nuovo e tabella» scrivi cosa fare, il responsabile, la scadenza e la commessa.", None),

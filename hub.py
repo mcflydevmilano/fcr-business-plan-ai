@@ -298,7 +298,15 @@ CARDS = {'credit': {'icona': '📊',
                  'Scadenze nel calendario',
                  'Import dall\'Excel di monday'],
         'tag': ['Bacheca', 'Scadenze', 'Import monday'],
-        'bottone': 'Compiti'}}
+        'bottone': 'Compiti'},
+ 'nv': {'icona': '🆕',
+        'titolo': 'Novità e aggiornamenti',
+        'desc': 'Cosa è cambiato nella suite, in parole semplici, e cosa puoi fare di nuovo.',
+        'voci': ['Ogni aggiornamento spiegato in poche righe',
+                 'Avviso nella pagina iniziale quando c\'è qualcosa di nuovo',
+                 'Ricerca per strumento o parola'],
+        'tag': ['Novità', 'Versioni'],
+        'bottone': 'Novità'}}
 
 # (titolo sezione, sottotitolo, [sigle])  -  ogni gruppo ha un numero pari di schede, tranne l'ultimo (a tutta larghezza)
 GRUPPI = [
@@ -317,7 +325,7 @@ GRUPPI = [
     ("Direzione e persone", "La sintesi di tutta l'azienda e chi ci lavora",
      ["pe", "dd"]),
     ("Comunicazione", "Parlarsi senza uscire dalla suite",
-     ["ch", "vr"]),
+     ["ch", "vr", "nv"]),
 ]
 
 
@@ -505,13 +513,19 @@ def _ricerca(vai_a, consentiti):
     return True
 
 
-def render(vai_a, consentiti=None, freschezza_righe=None, non_letti_chat=0, giornata=None):
+def render(vai_a, consentiti=None, freschezza_righe=None, non_letti_chat=0, giornata=None, novita=None):
     """consentiti: insieme di sigle visibili a chi guarda (None = tutte). I gruppi rimasti vuoti spariscono."""
     if _ricerca(vai_a, consentiti):
         return
     if giornata:                                    # (utente, profilo, compiti, audit): le cose urgenti per questa persona
         import miagiornata
         miagiornata.render(vai_a, giornata[0], giornata[1], consentiti or [], giornata[2], non_letti_chat, giornata[3])
+    if novita:                                      # ultima novita' non ancora letta da questa persona
+        with st.container(border=True):
+            c1, c2 = st.columns([4, 1.4], vertical_alignment="center")
+            c1.markdown(f"**🆕 Novità nella suite** · versione {novita['id']}: {novita['titolo']}")
+            if c2.button("Leggi le novità", key="hub_nv_apri", type="primary", width="stretch"):
+                vai_a("nv")
     if consentiti is None or "ch" in consentiti:
         with st.container(key="hub_chat"):
             c1, c2 = st.columns([4, 1.4], vertical_alignment="center")
