@@ -56,6 +56,86 @@ def _aggiungi_righe(righe, utente, audit, sorgente):
     return len(nuove), doppie
 
 
+def _ia():
+    return ss.get("_ia") or (None, "")
+
+
+def _leggi_con_ia(nome, dati, tipo, sha):
+    """Pulsante «Leggi con l'IA»: compila numero, data e fornitore e prepara le righe della bolla."""
+    fn, chiave = _ia()
+    if tipo not in ("pdf", "jpg", "png") or fn is None:
+        return
+    if not chiave:
+        st.caption("🤖 La lettura automatica con l'IA si attiva dalla barra laterale (spunta l'informativa privacy).")
+        return
+    if st.button("🤖 Leggi la bolla con l'IA", key=f"ddt_ai_btn_{sha}", help="L'IA legge numero, data, fornitore e righe. Poi controlli e confermi tu."):
+        try:
+            import ai
+            testo = ddt.testo_pdf(dati) if tipo == "pdf" else ""
+            if len(testo.strip()) > 80:
+                contenuto = [ddt.PROMPT_BOLLA, testo]
+            else:
+                mime = "application/pdf" if tipo == "pdf" else ("image/png" if tipo == "png" else "image/jpeg")
+                contenuto = [ddt.PROMPT_BOLLA, ai.types.Part.from_bytes(data=dati, mime_type=mime)]
+            with st.spinner("Leggo la bolla..."):
+                raw, _m = fn(chiave, contenuto, json_mode=True, temperature=0.0)
+            import json
+            r = ddt.normalizza_ai(json.loads(raw))
+            ss[("ddt_ai", sha)] = r
+            if r["numero"]:
+                ss[f"ddt_n_{sha}"] = r["numero"]
+            if r["data"]:
+                ss[f"ddt_d_{sha}"] = _data_it(r["data"])
+            if r["fornitore"]:
+                ss[f"ddt_f_{sha}"] = r["fornitore"]
+            if not r["righe"] and not r["numero"]:
+                st.warning("L'IA non ha trovato dati leggibili: scrivili a mano.")
+        except Exception as e:
+            try:
+                import ai
+                st.error(ai.messaggio_errore(e) if ai.errore_temporaneo(e) else f"Lettura non riuscita: {e}")
+            except Exception:
+                st.error("Lettura non riuscita: scrivi i dati a mano.")
+
+
+def _proposte_ia(sha, numero, data, forn, comm, utente, audit):
+    """Righe lette dall'IA, abbinate agli ordini aperti: proponi «Consegnato sì + data + DDT», conferma l'utente."""
+    r = ss.get(("ddt_ai", sha))
+    if not r or not r["righe"]:
+        return
+    ordini = mt.normalizza_ordini(ss["mt_ord"].to_dict("records"))[0] if len(ss["mt_ord"]) else []
+    abb = ddt.abbina_ordini(r["righe"], ordini, forn or r["fornitore"])
+    st.markdown(f"**🤖 {len(abb)} righe lette dalla bolla**: controlla gli abbinamenti con gli ordini aperti.")
+    scelte = []
+    for i, a in enumerate(abb):
+        riga = a["riga"]
+        c1, c2 = st.columns([1, 4])
+        if a["indice"] is not None:
+            ok = c1.checkbox("Conferma", value=a["punteggio"] >= 0.7, key=f"ddt_cf_{sha}_{i}")
+            if ok:
+                scelte.append(a["indice"])
+            c2.markdown(f"**{riga['Materiale']}** · {riga['Quantita']:g} {riga['Um']}  \n→ {a['motivo']} (somiglianza {a['punteggio'] * 100:.0f}%)")
+        else:
+            c1.markdown("➖")
+            c2.markdown(f"**{riga['Materiale']}** · {riga['Quantita']:g} {riga['Um']}  \n→ {a['motivo']}")
+    d = data_da(data)
+    cc1, cc2 = st.columns(2)
+    if cc1.button(f"✅ Segna {len(scelte)} ordini come consegnati", key=f"ddt_ok_{sha}", type="primary", disabled=sola_lettura() or not scelte or d is None,
+                  help="Imposta «Consegnato: sì», la data della bolla e il numero DDT. Poi salva con «Salva e riapri»."):
+        nuovi, n = ddt.conferma_consegne(ordini, scelte, ddt.normalizza_numero(numero), d.isoformat())
+        sostituisci_tabella("mt_ord", pd.DataFrame(nuovi, columns=mt.COLONNE_ORDINI))
+        audit("ddt_consegne_confermate", f"{n} ordini, DDT {numero}")
+        st.success(f"{n} ordini segnati come consegnati con DDT {numero} del {d.strftime('%d/%m/%Y')}. Salva con «Salva e riapri».")
+    if d is None and scelte:
+        st.caption("Scrivi una data valida (GG/MM/AAAA) per poter confermare.")
+    senza = [a["riga"] for a in abb if a["indice"] is None]
+    if senza and cc2.button(f"➕ Aggiungi le {len(senza)} righe senza ordine come nuove consegne", key=f"ddt_new_{sha}", disabled=sola_lettura() or d is None):
+        nuove = [{"Materiale": x["Materiale"], "Fornitore": forn or r["fornitore"], "Commessa": comm or "", "Quantita": x["Quantita"], "Um": x["Um"], "Prezzo_unit": x["Prezzo_unit"],
+                  "Consegna_prevista": "", "Consegnato": "sì", "Data_consegna": d.isoformat(), "Ddt": ddt.normalizza_numero(numero)} for x in senza]
+        a_, dop = _aggiungi_righe(nuove, utente, audit, "bolla IA")
+        st.success(f"Aggiunte {a_} righe. Salva con «Salva e riapri».")
+
+
 # ----------------------------------------------------------------------------
 def _carica(utente, audit):
     if sola_lettura():
@@ -79,6 +159,7 @@ def _carica(utente, audit):
                 st.error("Formato non riconosciuto: questo file non verrà caricato.")
                 continue
             sug = _suggerimenti(f.name, dati)
+            _leggi_con_ia(f.name, dati, tipo, sha)
             c1, c2, c3, c4 = st.columns([1, 1, 1.4, 1.4])
             numero = c1.text_input("N. DDT", value=sug["numero"], key=f"ddt_n_{sha}")
             data = c2.text_input("Data (GG/MM/AAAA)", value=_data_it(sug["data"]), key=f"ddt_d_{sha}")
@@ -106,6 +187,7 @@ def _carica(utente, audit):
                         st.success(f"Aggiunte {a} righe" + (f" ({d} già presenti, saltate)" if d else "") + ". Per tenerle, salva con «Salva e riapri» in alto." if a else f"Nessuna riga aggiunta: erano già tutte presenti ({d}).")
                 except ddt.DdtErrore as e:
                     st.warning(str(e) + " Puoi comunque archiviare il file.")
+            _proposte_ia(sha, numero, data, forn, comm, utente, audit)
             pronti.append((f.name, dati, numero, data, forn, comm))
     if pronti and st.button(f"💾 Archivia {len(pronti)} file", type="primary", key="ddt_salva"):
         ok, avvisi = 0, []

@@ -9,8 +9,8 @@ from sc import data_da
 from scad import oggi_da
 
 PR_DEFAULT = {"oggi": None, "ore_giorno": 8.0, "magg_straord_pct": 25.0, "max_ore_giorno": 12.0}
-COLONNE_PERSONE = ["Persona", "Qualifica", "Costo_orario"]
-ETICHETTE_PERSONE = {"Persona": "Persona", "Qualifica": "Qualifica", "Costo_orario": "Costo orario aziendale (€/h)"}
+COLONNE_PERSONE = ["Persona", "Qualifica", "Costo_orario", "Assunzione", "Cessazione"]
+ETICHETTE_PERSONE = {"Persona": "Persona", "Qualifica": "Qualifica", "Costo_orario": "Costo orario aziendale (€/h)", "Assunzione": "Assunto dal (facoltativo)", "Cessazione": "Cessato il (facoltativo)"}
 COLONNE_ORE = ["Persona", "Data", "Commessa", "Ore"]
 ETICHETTE_ORE = {"Persona": "Persona", "Data": "Data", "Commessa": "Commessa", "Ore": "Ore lavorate"}
 SQUADRA = "Squadra (da rapportini)"      # le ore totali dei rapportini non hanno nomi: sono tutte ordinarie e possono superare le 24 h
@@ -34,7 +34,11 @@ def normalizza_persone(righe):
             avvisi.append(f"Persona «{n}» ripetuta: la seconda riga è ignorata.")
             continue
         visti.add(n.lower())
-        out.append({"Persona": n, "Qualifica": _s(r.get("Qualifica")), "Costo_orario": c})
+        a_, c_ = data_da(r.get("Assunzione")), data_da(r.get("Cessazione"))
+        if a_ and c_ and c_ < a_:
+            avvisi.append(f"«{n}»: la cessazione è prima dell'assunzione, ignoro la cessazione.")
+            c_ = None
+        out.append({"Persona": n, "Qualifica": _s(r.get("Qualifica")), "Costo_orario": c, "Assunzione": a_.isoformat() if a_ else "", "Cessazione": c_.isoformat() if c_ else ""})
     return out, avvisi
 
 
@@ -70,6 +74,14 @@ def calcola_pr(persone, ore, p=None):
             giorno[k] = prima + r["Ore"]
         c = costo[r["Persona"]]
         righe.append({**r, "Ordinarie": ord_, "Straordinario": stra, "Costo": ord_ * c + stra * c * (1 + mag / 100.0)})
+    fuori = {}
+    for x in persone:
+        a_, c_ = x.get("Assunzione") or "", x.get("Cessazione") or ""
+        for r in ore:
+            if r["Persona"] == x["Persona"] and ((c_ and r["Data"] > c_) or (a_ and r["Data"] < a_)):
+                fuori.setdefault(x["Persona"], []).append(r["Data"])
+    for n, ds in fuori.items():
+        avvisi.append(f"{n}: {len(ds)} registrazioni fuori dal periodo di assunzione (dal {min(ds)[8:10]}/{min(ds)[5:7]}/{min(ds)[:4]}): controlla le date.")
     for (n, d), t in sorted(giorno.items()):
         if t > mx:
             avvisi.append(f"{n} il {d[8:10]}/{d[5:7]}/{d[:4]}: {t:g} ore in un giorno (oltre {mx:g}): controlla se è un errore.")
@@ -119,6 +131,23 @@ def da_rapportini(rapp, persone_costi=None):
     return out
 
 
-def costo_orario_squadra(persone):
-    c = [p["Costo_orario"] for p in persone if p["Persona"] != SQUADRA and p["Costo_orario"] > 0]
+def in_forza(p, oggi=None):
+    """True se la persona non e' cessata alla data (oggi di default)."""
+    c = data_da(p.get("Cessazione"))
+    return not (c and c < (oggi or dt.date.today()))
+
+
+def costo_orario_squadra(persone, oggi=None):
+    c = [p["Costo_orario"] for p in persone if p["Persona"] != SQUADRA and p["Costo_orario"] > 0 and in_forza(p, oggi)]
     return round(sum(c) / len(c), 2) if c else 25.0
+
+
+def costo_orario_da_ral(ral, contributi_pct=32.0, inail_pct=4.0, tfr_pct=7.41, altri_annui=0.0, ore_annue=1720.0, mensilita=14):
+    """Costo orario AZIENDALE da RAL (retribuzione annua lorda): RAL + contributi INPS + INAIL + TFR + altri costi annui, diviso le ore realmente lavorate.
+    Stima: i contributi reali dipendono dal CCNL e dall'inquadramento. 1720 h = 52 settimane x 40 h meno ferie, festivita' e permessi."""
+    ral, ore_annue = max(0.0, to_float(ral, 0.0)), max(1.0, to_float(ore_annue, 1720.0))
+    contributi, inail, tfr = ral * to_float(contributi_pct, 32.0) / 100.0, ral * to_float(inail_pct, 4.0) / 100.0, ral * to_float(tfr_pct, 7.41) / 100.0
+    altri = max(0.0, to_float(altri_annui, 0.0))
+    totale = ral + contributi + inail + tfr + altri
+    return {"ral": ral, "contributi": contributi, "inail": inail, "tfr": tfr, "altri": altri, "costo_annuo": totale, "ore_annue": ore_annue, "costo_orario": totale / ore_annue,
+            "lordo_orario": ral / ore_annue, "mensile_lordo": ral / mensilita}

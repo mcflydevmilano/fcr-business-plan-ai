@@ -159,7 +159,8 @@ def metriche_og(payload, oggi=None):
     p = dict(payload.get("params") or {})
     if oggi is not None:
         p["oggi"] = oggi
-    out = og.calcola_og(ris, ass, p)
+    ab, _ = og.normalizza_assenze(payload.get("abs"), [r["Risorsa"] for r in ris])
+    out = og.calcola_og(ris, ass, p, ab)
     return {"kpi": out["kpi"], "avvisi": out["avvisi"]}
 
 

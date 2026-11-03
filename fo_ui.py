@@ -10,7 +10,7 @@ import fo
 import ops_report
 import theme
 from core import fmt_num
-from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella
+from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
 
 ss = st.session_state
 ICONE = {"ok": "🟢", "warn": "🟡", "bad": "🔴", "nd": "⚪"}
@@ -57,6 +57,48 @@ def _dati():
     c, a2 = fo.normalizza_contratti(ss["fo_contr"].to_dict("records"))
     o, a3 = fo.normalizza_offerte(ss["fo_off"].to_dict("records"))
     return d, c, o, a1 + a2 + a3
+
+
+def _unisci_voci(off, audit):
+    """Propone di unire le voci scritte in modo diverso ma uguali nella sostanza; applica solo quelle confermate."""
+    voci = fo.voci_uniche(off)
+    if len(voci) < 2:
+        return
+    gruppi = ss.get("fo_gruppi_ia") if ss.get("fo_gruppi_ia") is not None else fo.gruppi_simili(off)
+    with st.expander(f"🧩 Voci scritte in modo diverso ma uguali ({len(gruppi)} proposte)" if gruppi else "🧩 Voci scritte in modo diverso", expanded=bool(gruppi)):
+        st.caption("Il programma confronta le parole delle voci e propone quelle che sembrano la stessa lavorazione. **Decidi tu**: spunta quelle da unire.")
+        fn, chiave = (ss.get("_ia") or (None, ""))
+        if fn is not None and chiave:
+            if st.button("🤖 Chiedi anche all'IA", key="fo_gr_ia", help="L'IA legge le voci e propone i gruppi in base al significato."):
+                try:
+                    prompt, elenco = fo.elenco_per_ia(off)
+                    with st.spinner("L'IA sta leggendo le voci..."):
+                        raw, _m = fn(chiave, [prompt, elenco], json_mode=True, temperature=0.0)
+                    ss["fo_gruppi_ia"] = fo.gruppi_da_risposta_ia(off, raw)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Richiesta all'IA non riuscita: {e}")
+            if ss.get("fo_gruppi_ia") is not None and st.button("Torna alle proposte automatiche", key="fo_gr_auto"):
+                ss.pop("fo_gruppi_ia", None)
+                st.rerun()
+        if not gruppi:
+            st.info("Non vedo voci simili da unire.")
+            return
+        scelti = []
+        for i, g in enumerate(gruppi):
+            c1, c2 = st.columns([1, 5])
+            if c1.checkbox("Unisci", value=False, key=f"fo_gr_{i}"):
+                scelti.append(g)
+            c2.markdown("**" + " · ".join(g["voci"]) + f"**  \nFornitori: {', '.join(g['fornitori'])} → diventano «{g['canonica']}»")
+        if st.button(f"Unisci {len(scelti)} gruppi", type="primary", key="fo_gr_ok", disabled=sola_lettura() or not scelti):
+            nuove, n = fo.applica_gruppi(ss["fo_off"].to_dict("records"), scelti)
+            sostituisci_tabella("fo_off", pd.DataFrame(nuove, columns=fo.COLONNE_OFF))
+            ss.pop("fo_gruppi_ia", None)
+            audit("fo_voci_unite", f"{len(scelti)} gruppi, {n} righe")
+            st.success(f"Unite {n} righe. Per tenere il risultato salva con «Salva e riapri».")
+            st.rerun()
+
+
 
 
 def render(fcr_uri, audit=None, utente=""):
@@ -122,8 +164,11 @@ def render(fcr_uri, audit=None, utente=""):
 
     with t3:
         if not out["confronto"]:
+            if len(off) >= 2:
+                _unisci_voci(off, audit)
             st.info("Inserisci almeno due offerte per la stessa voce.")
         else:
+            _unisci_voci(off, audit)
             st.caption("Per ogni voce: l'offerta più bassa e la più bassa tra i fornitori con i documenti in regola.")
             st.dataframe(pd.DataFrame(out["confronto"]).round(1), hide_index=True, width="stretch")
             st.metric("Risparmio potenziale rispetto alla media", f"{fmt_num(k['risparmio_potenziale'])} €")

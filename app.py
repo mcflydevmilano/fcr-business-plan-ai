@@ -895,6 +895,7 @@ if MODULO == "sl":
     sl_ui.render(FCR_URI, audit, ss["utente"]["username"])
     st.stop()
 
+ss["_ia"] = (ai_generate, active_key)          # per i moduli che leggono documenti con l'IA (es. bolle DDT)
 for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og", og_ui), ("rp", rp_ui), ("gt", gt_ui), ("ru", ru_ui), ("lg", lg_ui), ("bk", bk_ui), ("oa", oa_ui), ("pz", pz_ui), ("rc", rc_ui), ("of", of_ui), ("mc", nuovi_ui.mc_ui), ("sa", nuovi_ui.sa_ui), ("pr", nuovi_ui.pr_ui), ("mt", nuovi_ui.mt_ui), ("vr", nuovi_ui.vr_ui), ("ad", nuovi_ui.ad_ui), ("fc", fc_ui), ("ta", ta_ui), ("sk", sk_ui), ("nv", novita_ui)):
     if MODULO == _m:
         _ui.render(FCR_URI, audit, ss["utente"]["username"])

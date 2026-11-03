@@ -13,36 +13,40 @@ from core import fmt_num
 from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella
 
 ss = st.session_state
-PARAM = ("mesi", "sat_min_pct")
+PARAM = ("mesi", "sat_min_pct", "ore_giorno", "patrono", "festivita")
 
 
 @senza_esempi
 def _esempio():
     oggi = dt.date.today()
     g = lambda n: (oggi + dt.timedelta(days=n)).isoformat()
-    ris = [("Squadra Muratori A", "Muratori", 32, 480), ("Squadra Muratori B", "Muratori", 32, 320), ("Impiantisti", "Impianti", 38, 320), ("Capocantiere Bianchi", "Capocantiere", 45, 160), ("Gruista", "Operatore", 34, 160)]
+    ris = [("Squadra Muratori A", "Muratori", 32, 24, None, "", ""), ("Squadra Muratori B", "Muratori", 32, 16, None, "", ""), ("Impiantisti", "Impianti", 38, 16, None, "", ""),
+           ("Capocantiere Bianchi", "Capocantiere", 45, 8, None, "", ""), ("Gruista", "Operatore", 34, 8, None, "", "")]
     ass = [("Squadra Muratori A", "Villa Lago", g(-60), g(60), 300), ("Squadra Muratori A", "Scuola Elementare", g(30), g(240), 260), ("Squadra Muratori B", "Scuola Elementare", g(-30), g(150), 280),
            ("Impiantisti", "Scuola Elementare", g(60), g(180), 300), ("Impiantisti", "Villa Lago", g(-30), g(45), 120), ("Capocantiere Bianchi", "Villa Lago", g(-60), g(60), 90),
            ("Capocantiere Bianchi", "Scuola Elementare", g(-30), g(240), 100), ("Gruista", "Scuola Elementare", g(20), g(120), 120)]
     mk = lambda cols, rows: pd.DataFrame([dict(zip(cols, r)) for r in rows], columns=cols)
-    return mk(og.COLONNE_RIS, ris), mk(og.COLONNE_ASS, ass)
+    return mk(og.COLONNE_RIS, ris), mk(og.COLONNE_ASS, ass), mk(og.COLONNE_ASSENZE, [])
 
 
 def _cfg():
     n, t = st.column_config.NumberColumn, st.column_config.TextColumn
     a, b = og.ETICHETTE_RIS, og.ETICHETTE_ASS
-    return ({"Risorsa": t(a["Risorsa"], width="medium"), "Ruolo": t(a["Ruolo"]), "Costo_orario": n(a["Costo_orario"], min_value=0.0, step=1.0, format="%.1f"), "Ore_mese": n(a["Ore_mese"], min_value=1.0, step=10.0, format="%.0f")},
+    return ({"Risorsa": t(a["Risorsa"], width="medium"), "Ruolo": t(a["Ruolo"]), "Costo_orario": n(a["Costo_orario"], min_value=0.0, step=1.0, format="%.1f"), "Ore_giorno": n(a["Ore_giorno"], min_value=0.0, max_value=24.0, step=1.0, format="%.1f"),
+             "Ore_mese": n(a["Ore_mese"], min_value=0.0, step=10.0, format="%.0f"), "Assunzione": t(a["Assunzione"], help="AAAA-MM-GG o GG/MM/AAAA"), "Cessazione": t(a["Cessazione"], help="Dopo questa data la persona esce da capacità, costi e previsioni.")},
             {"Risorsa": t(b["Risorsa"], width="medium"), "Commessa": t(b["Commessa"]), "Dal": t(b["Dal"], help="AAAA-MM-GG o GG/MM/AAAA"), "Al": t(b["Al"], help="Vuoto = senza fine"),
-             "Ore_mese": n(b["Ore_mese"], min_value=0.0, step=10.0, format="%.0f")})
+             "Ore_mese": n(b["Ore_mese"], min_value=0.0, step=10.0, format="%.0f")},
+            {"Risorsa": t(og.ETICHETTE_ASSENZE["Risorsa"], width="medium"), "Dal": t("Dal", help="AAAA-MM-GG o GG/MM/AAAA"), "Al": t(og.ETICHETTE_ASSENZE["Al"]), "Motivo": t(og.ETICHETTE_ASSENZE["Motivo"])})
 
 
 def _raccogli():
-    return {"ris": ss["og_ris"].to_dict("records"), "ass": ss["og_ass"].to_dict("records"), "params": {k: ss.get("og_" + k, og.OG_DEFAULT[k]) for k in PARAM}}
+    return {"ris": ss["og_ris"].to_dict("records"), "ass": ss["og_ass"].to_dict("records"), "abs": ss["og_abs"].to_dict("records"), "params": {k: ss.get("og_" + k, og.OG_DEFAULT[k]) for k in PARAM}}
 
 
 def _applica(p, nome):
     sostituisci_tabella("og_ris", pd.DataFrame(p.get("ris") or [], columns=og.COLONNE_RIS))
     sostituisci_tabella("og_ass", pd.DataFrame(p.get("ass") or [], columns=og.COLONNE_ASS))
+    sostituisci_tabella("og_abs", pd.DataFrame(p.get("abs") or [], columns=og.COLONNE_ASSENZE))
     ss["og_demo"] = False
     ss["_pending"] = {"og_" + k: v for k, v in (p.get("params") or {}).items() if k in PARAM}
 
@@ -50,33 +54,52 @@ def _applica(p, nome):
 def _dati():
     r, a1 = og.normalizza_ris(ss["og_ris"].to_dict("records"))
     a, a2 = og.normalizza_ass(ss["og_ass"].to_dict("records"), {x["Risorsa"] for x in r})
-    return r, a, a1 + a2
+    ab, a3 = og.normalizza_assenze(ss["og_abs"].to_dict("records"), [x["Risorsa"] for x in r])
+    return r, a, ab, a1 + a2 + a3
 
 
 def render(fcr_uri, audit=None, utente=""):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Organico e carico di lavoro", "Quanta gente serve nei prossimi mesi, quando si è in troppi o in pochi e quanto costano le ore ferme."), unsafe_allow_html=True)
     guida.mostra("og")
+    if "og_ris" in ss and "og_abs" not in ss:
+        ss["og_abs"] = pd.DataFrame(columns=og.COLONNE_ASSENZE)
+        for c in ("Ore_giorno", "Assunzione", "Cessazione"):
+            if c not in ss["og_ris"].columns:
+                ss["og_ris"][c] = None
     if "og_ris" not in ss:
-        ss["og_ris"], ss["og_ass"] = _esempio()
+        ss["og_ris"], ss["og_ass"], ss["og_abs"] = _esempio()
         ss["og_demo"] = esempi_attivi()
+    for _k, _cols in (("og_ris", ("Ruolo", "Assunzione", "Cessazione")), ("og_ass", ("Dal", "Al")), ("og_abs", ("Risorsa", "Dal", "Al", "Motivo"))):
+        for _c in _cols:
+            if _c in ss[_k].columns and ss[_k][_c].dtype != object:
+                ss[_k][_c] = ss[_k][_c].astype(object).where(ss[_k][_c].notna(), "")
     pannello_archivio("og", "l'organico", _raccogli, _applica, audit, utente)
     t1, t2, t3 = st.tabs(["👷 1. Risorse e Assegnazioni", "📊 2. Carico di lavoro", "📄 3. Dossier"])
-    cr, ca = _cfg()
+    cr, ca, cb = _cfg()
     with t1:
-        banner_esempio("og_demo", [("og_ris", og.COLONNE_RIS), ("og_ass", og.COLONNE_ASS)], "svuota_og")
-        blocco_tabella("og_ris", "Risorse", "Persone o squadre. «Ore al mese» = ore realmente disponibili (al netto di ferie e malattie medie).", og.COLONNE_RIS, og.ETICHETTE_RIS, cr, ss["og_ris"], "og", 1, audit, 220)
+        banner_esempio("og_demo", [("og_ris", og.COLONNE_RIS), ("og_ass", og.COLONNE_ASS), ("og_abs", og.COLONNE_ASSENZE)], "svuota_og")
+        blocco_tabella("og_ris", "Risorse", "Persone o squadre. Le ore disponibili si calcolano dal calendario (lun-ven, senza festivi). Per una squadra di 3 persone scrivi 24 ore al giorno. Con «Cessato il» la persona esce in automatico da capacità e costi (le ore passate restano).", og.COLONNE_RIS, og.ETICHETTE_RIS, cr, ss["og_ris"], "og", 1, audit, 220)
         blocco_tabella("og_ass", "Assegnazioni alle commesse", "Una riga per ogni periodo in cui una risorsa lavora a una commessa, con le ore mensili. Al vuoto = senza fine.", og.COLONNE_ASS, og.ETICHETTE_ASS, ca, ss["og_ass"], "og", 2, audit, 280)
+        blocco_tabella("og_abs", "Ferie, malattie, chiusure", "Giorni in cui una risorsa non c'è. Scrivi «Tutti» per una chiusura aziendale (es. Ferragosto, ponte). Sabato, domenica e festività nazionali sono già esclusi.", og.COLONNE_ASSENZE, og.ETICHETTE_ASSENZE, cb, ss["og_abs"], "og", 3, audit, 180)
         ss.setdefault("og_mesi", int(og.OG_DEFAULT["mesi"]))
         ss.setdefault("og_sat_min_pct", float(og.OG_DEFAULT["sat_min_pct"]))
         st.subheader("Ipotesi")
+        ss.setdefault("og_ore_giorno", float(og.OG_DEFAULT["ore_giorno"]))
+        ss.setdefault("og_patrono", "")
+        ss.setdefault("og_festivita", True)
         a, b, c = st.columns(3)
         a.date_input("Data di riferimento", key="og_oggi", value=dt.date.today())
         b.number_input("Mesi da prevedere", 1, 24, step=1, key="og_mesi")
         c.number_input("Saturazione minima (%)", 0.0, 100.0, step=5.0, key="og_sat_min_pct", help="Sotto questa soglia il mese è considerato «scarico».")
+        d, e, f = st.columns(3)
+        d.number_input("Ore al giorno (standard)", 1.0, 24.0, step=0.5, key="og_ore_giorno", help="Usate quando in Risorse non indichi le ore al giorno.")
+        e.text_input("Festa del patrono (GG/MM)", key="og_patrono", placeholder="es. 07/12", help="Il giorno del santo patrono della tua città: non si lavora.")
+        f.toggle("Escludi le festività nazionali", key="og_festivita", help="Capodanno, Epifania, Pasqua e Pasquetta, 25 aprile, 1 maggio, 2 giugno, Ferragosto, Ognissanti, 8, 25 e 26 dicembre.")
 
-    ris, ass, av_n = _dati()
-    out = og.calcola_og(ris, ass, {"oggi": ss.get("og_oggi", dt.date.today()), "mesi": ss.get("og_mesi", 6), "sat_min_pct": ss.get("og_sat_min_pct", 60.0)})
+    ris, ass, ab, av_n = _dati()
+    out = og.calcola_og(ris, ass, {"oggi": ss.get("og_oggi", dt.date.today()), "mesi": ss.get("og_mesi", 6), "sat_min_pct": ss.get("og_sat_min_pct", 60.0),
+                                   "ore_giorno": ss.get("og_ore_giorno", 8.0), "patrono": ss.get("og_patrono", ""), "festivita": ss.get("og_festivita", True)}, ab)
     k, mesi = out["kpi"], out["mesi"]
 
     with t2:
@@ -110,5 +133,5 @@ def render(fcr_uri, audit=None, utente=""):
         if not ris:
             st.info("Aggiungi delle risorse per generare il dossier.")
         else:
-            scarica_dossier("og", lambda n: ops_report.report_og(out, ris, ass, n), "Organico", audit, "Organico e carico di lavoro")
-        st.caption("Non tiene conto di ferie, malattie e straordinari: inseriscili nelle ore disponibili.")
+            scarica_dossier("og", lambda n: ops_report.report_og(out, ris, ass, n, ab), "Organico", audit, "Organico e carico di lavoro")
+        st.caption("Le ore disponibili vengono dal calendario (lun-ven, senza festività e assenze inserite). Gli straordinari non sono considerati.")

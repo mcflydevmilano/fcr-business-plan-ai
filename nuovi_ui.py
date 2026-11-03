@@ -4,6 +4,7 @@ Archivio documenti (ad) e Margini per commessa (mc). Un solo motore comune per l
 """
 import datetime as dt
 import io
+import os
 import types
 
 import pandas as pd
@@ -20,7 +21,7 @@ import storage
 import theme
 import vr
 from core import fmt_num
-from ui_util import banner_esempio, blocco_tabella, colonna_cantiere, esempi_attivi, pannello_archivio, senza_esempi, sola_lettura, sostituisci_tabella
+from ui_util import azzera, banner_esempio, blocco_tabella, cantieri_rubrica, colonna_cantiere, esempi_attivi, nomi_rubrica, pannello_archivio, scelta_libera, senza_esempi, sola_lettura, sostituisci_tabella
 
 ss = st.session_state
 ICONE = {"ok": "🟢", "warn": "🟡", "bad": "🔴", "nd": "⚪"}
@@ -204,6 +205,67 @@ def _ris_sa(o):
         c2.success("Nessun documento in scadenza.")
 
 
+def _nomi_sa():
+    out = []
+    for k, c in (("sa_con", "Subappaltatore"), ("sa_sal", "Subappaltatore"), ("sa_doc", "Subappaltatore")):
+        if k in ss and c in ss[k].columns:
+            out += [str(x) for x in ss[k][c].tolist() if str(x).strip() and str(x) != "nan"]
+    out += nomi_rubrica()
+    visti, res = set(), []
+    for x in reversed(out):
+        if mt._n(x) not in visti:
+            visti.add(mt._n(x))
+            res.append(x)
+    return res
+
+
+def _rapido_sa(utente, audit):
+    """Inserimento veloce: scrivi «adam» e il programma propone «Adam Costruzioni»."""
+    with st.expander("⚡ Inserimento veloce (con suggerimenti)", expanded=False):
+        if ss.pop("sa_q_reset", False):
+            azzera("sa_q_sub", "sa_q_com")
+        cosa = st.radio("Cosa vuoi aggiungere", ["Contratto", "SAL ricevuto"], horizontal=True, key="sa_q_cosa")
+        con = sa.normalizza_contratti(ss["sa_con"].to_dict("records"))[0]
+        cant = [c["Cantiere"] for c in cantieri_rubrica(solo_vivi=True)]
+        comm_opz = cant + [c["Commessa"] for c in reversed(con)]
+        c1, c2 = st.columns(2)
+        with c1:
+            sub = scelta_libera("Subappaltatore", _nomi_sa(), "sa_q_sub", "Inizia a scrivere: es. «adam» propone «Adam Costruzioni».")
+        miei = [c for c in con if sub and mt._n(c["Subappaltatore"]) == mt._n(sub)]
+        with c2:
+            com = scelta_libera("Commessa", ([c["Commessa"] for c in reversed(miei)] if miei else []) + comm_opz, "sa_q_com",
+                                "Un subappaltatore può lavorare su più commesse: aggiungi una riga per ciascuna." if cosa == "Contratto" else None)
+        if miei:
+            st.caption("💡 Già sulle commesse: " + ", ".join(dict.fromkeys(c["Commessa"] for c in miei)))
+        ult = miei[-1] if miei else None
+        if cosa == "Contratto":
+            c3, c4, c5 = st.columns([2, 1, 1])
+            lav = c3.text_input("Lavorazione", key="sa_q_lav")
+            imp = c4.number_input("Importo contratto (€)", 0.0, 100_000_000.0, step=1000.0, key="sa_q_imp")
+            rit = c5.number_input("Ritenuta (%)", 0.0, 20.0, float(ult["Ritenuta_pct"]) if ult else 5.0, step=0.5, key="sa_q_rit")
+            ok = st.button("Aggiungi il contratto", type="primary", key="sa_q_ok", disabled=sola_lettura() or not sub or not com or imp <= 0)
+            if ok:
+                riga = pd.DataFrame([{"Subappaltatore": sub, "Commessa": com, "Lavorazione": lav, "Importo_contratto": imp, "Ritenuta_pct": rit}], columns=sa.COLONNE_CONTRATTI)
+                sostituisci_tabella("sa_con", pd.concat([ss["sa_con"], riga], ignore_index=True))
+                audit("sa_contratto_rapido", f"{sub} {com} {imp:g}")
+        else:
+            c3, c4, c5 = st.columns(3)
+            dat = c3.date_input("Data del SAL", value=dt.date.today(), key="sa_q_data")
+            imp = c4.number_input("Importo SAL lordo (€)", 0.0, 100_000_000.0, step=1000.0, key="sa_q_sal")
+            pag = c5.number_input("Già pagato (€)", 0.0, 100_000_000.0, step=500.0, key="sa_q_pag")
+            ok = st.button("Aggiungi il SAL", type="primary", key="sa_q_ok2", disabled=sola_lettura() or not sub or not com or imp <= 0)
+            if ok:
+                riga = pd.DataFrame([{"Subappaltatore": sub, "Commessa": com, "Data": dat.isoformat(), "Importo_SAL": imp, "Pagato": pag}], columns=sa.COLONNE_SAL)
+                sostituisci_tabella("sa_sal", pd.concat([ss["sa_sal"], riga], ignore_index=True))
+                audit("sa_sal_rapido", f"{sub} {com} {imp:g}")
+        if ok:
+            ss["sa_q_reset"] = True
+            ss["sa_q_msg"] = "Aggiunto. Ricorda «Salva e riapri»."
+            st.rerun()
+        if ss.get("sa_q_msg"):
+            st.success(ss.pop("sa_q_msg"))
+
+
 SPEC_SA = {
     "sigla": "sa", "titolo": "Subappalti e subappaltatori", "sottotitolo": "Contratti, SAL, ritenute e documenti obbligatori (DURC, polizze): sai chi puoi pagare e chi no.",
     "archivio": "i subappalti", "file": "subappalti", "unita": "subappalti", "vuoto": "Inserisci almeno un contratto con subappaltatore, commessa e importo.",
@@ -218,7 +280,7 @@ SPEC_SA = {
                         {"label": "SAL lordi", "value": EUR(o["kpi"]["sal_lordi"]), "sub": f"ritenute {EUR(o['kpi']['ritenute'])}", "tono": "info"},
                         {"label": "Da pagare", "value": EUR(o["kpi"]["da_pagare"]), "sub": "al netto delle ritenute", "tono": "warn" if o["kpi"]["da_pagare"] > 0 else "ok"},
                         {"label": "Documenti scaduti", "value": str(o["kpi"]["doc_scaduti"]), "sub": f"{o['kpi']['doc_in_arrivo']} in arrivo", "tono": "bad" if o["kpi"]["doc_scaduti"] else "ok"}],
-    "risultati": _ris_sa, "fogli": lambda o: {"Contratti": o["contratti"], "Per subappaltatore": sa.per_subappaltatore(o), "Documenti": o["documenti"], "Per commessa": o["commesse"]},
+    "risultati": _ris_sa, "rapido": _rapido_sa, "fogli": lambda o: {"Contratti": o["contratti"], "Per subappaltatore": sa.per_subappaltatore(o), "Documenti": o["documenti"], "Per commessa": o["commesse"]},
 }
 SPEC_SA["collegamenti"] = lambda out, dati, utente, audit: _coll_sal("sa", lambda o, d: sa.per_sl_costi(o, d[1]), lambda r: str(r.get("Descrizione")) == "SAL subappaltatore",
                                                                     "Porta i SAL dei subappaltatori tra i costi delle commesse di **SAL e contabilità lavori** (categoria «Subappalti»).")(out, dati, utente, audit)
@@ -229,13 +291,14 @@ SPEC_SA["collegamenti"] = lambda out, dati, utente, audit: _coll_sal("sa", lambd
 # ----------------------------------------------------------------------------
 @senza_esempi
 def _es_pr():
-    return (_mk(pr.COLONNE_PERSONE, [("Mario Bianchi", "Capocantiere", 32), ("Luca Verdi", "Operaio specializzato", 26), ("Anna Neri", "Geometra", 34)]),
+    return (_mk(pr.COLONNE_PERSONE, [("Mario Bianchi", "Capocantiere", 32, "", ""), ("Luca Verdi", "Operaio specializzato", 26, "", ""), ("Anna Neri", "Geometra", 34, "", "")]),
             _mk(pr.COLONNE_ORE, [("Mario Bianchi", g(-3), "Villa Lago", 8), ("Mario Bianchi", g(-2), "Villa Lago", 10), ("Luca Verdi", g(-3), "Scuola Elementare", 8), ("Luca Verdi", g(-2), "Villa Lago", 8), ("Anna Neri", g(-2), "Scuola Elementare", 6)]))
 
 
 def _cfg_pr():
     a, b = pr.ETICHETTE_PERSONE, pr.ETICHETTE_ORE
-    return ({"Persona": _t(a["Persona"], width="medium"), "Qualifica": _t(a["Qualifica"]), "Costo_orario": _n(a["Costo_orario"], min_value=0.0, step=1.0, format="%.1f")},
+    return ({"Persona": _t(a["Persona"], width="medium"), "Qualifica": _t(a["Qualifica"]), "Costo_orario": _n(a["Costo_orario"], min_value=0.0, step=1.0, format="%.1f"),
+             "Assunzione": _t(a["Assunzione"], help="AAAA-MM-GG o GG/MM/AAAA"), "Cessazione": _t(a["Cessazione"], help="Da questa data la persona non è più proposta nelle ore e non entra nella media del costo orario. Le ore passate restano.")},
             {"Persona": _t(b["Persona"], width="medium"), "Data": _t(b["Data"], help="AAAA-MM-GG o GG/MM/AAAA"), "Commessa": colonna_cantiere(b["Commessa"], (("pr_ore", "Commessa"),)), "Ore": _n(b["Ore"], min_value=0.0, max_value=1000.0, step=0.5, format="%.1f")})
 
 
@@ -247,7 +310,11 @@ def _leggi_pr():
 
 def _rapido_pr(utente, audit):
     """Inserimento veloce dal telefono: una riga alla volta, senza aprire la tabella."""
-    nomi = [str(x) for x in ss["pr_per"]["Persona"].dropna().tolist()] if len(ss["pr_per"]) else []
+    nomi = []
+    if len(ss["pr_per"]):
+        for _, rr in ss["pr_per"].iterrows():
+            if str(rr.get("Persona") or "").strip() and str(rr.get("Persona")) != "nan" and pr.in_forza({"Cessazione": rr.get("Cessazione")}):
+                nomi.append(str(rr["Persona"]))
     with st.expander("⚡ Registra le mie ore (veloce, dal telefono)", expanded=False):
         if not nomi:
             st.info("Prima inserisci le persone (con il costo orario) nella tabella qui sotto.")
@@ -298,7 +365,25 @@ def _importa_rapportini_pr(utente, audit):
             st.rerun()
 
 
+def _calcolatore_ral():
+    """Dalla RAL al costo orario aziendale (quello da scrivere nella tabella Persone)."""
+    with st.expander("🧮 Calcola il costo orario dalla RAL", expanded=False):
+        st.caption("Il costo orario aziendale non è la paga lorda: aggiunge contributi, INAIL, TFR e altri costi. Valori di partenza indicativi per l'edilizia: chiedi i tuoi percentuali al consulente del lavoro.")
+        c1, c2, c3 = st.columns(3)
+        ral = c1.number_input("RAL annua (€)", 0.0, 500000.0, 28000.0, step=500.0, key="calc_ral")
+        con = c2.number_input("Contributi INPS a carico azienda (%)", 0.0, 60.0, 32.0, step=0.5, key="calc_con")
+        ina = c3.number_input("INAIL (%)", 0.0, 30.0, 4.0, step=0.5, key="calc_ina")
+        c4, c5, c6 = st.columns(3)
+        tfr = c4.number_input("TFR (%)", 0.0, 15.0, 7.41, step=0.1, key="calc_tfr", help="Circa RAL / 13,5 = 7,41%.")
+        alt = c5.number_input("Altri costi annui (€)", 0.0, 100000.0, 0.0, step=100.0, key="calc_alt", help="DPI, formazione, visite mediche, mezzo aziendale, buoni pasto…")
+        ore = c6.number_input("Ore realmente lavorate all'anno", 800.0, 2400.0, 1720.0, step=10.0, key="calc_ore", help="40 ore x 52 settimane meno ferie, festività e permessi ≈ 1.720.")
+        r = pr.costo_orario_da_ral(ral, con, ina, tfr, alt, ore)
+        st.markdown(f"**Costo orario aziendale: {r['costo_orario']:.2f} €/h**  ·  paga lorda oraria {r['lordo_orario']:.2f} €/h  ·  costo annuo {EUR(r['costo_annuo'])}")
+        st.caption(f"Composizione annua: RAL {EUR(r['ral'])} + contributi {EUR(r['contributi'])} + INAIL {EUR(r['inail'])} + TFR {EUR(r['tfr'])} + altri {EUR(r['altri'])}. È una stima.")
+
+
 def _rapido_e_import_pr(utente, audit):
+    _calcolatore_ral()
     _rapido_pr(utente, audit)
     _importa_rapportini_pr(utente, audit)
 
@@ -345,7 +430,8 @@ SPEC_PR["collegamenti"] = lambda out, dati, utente, audit: _coll_sal("pr", lambd
 def _es_mt():
     return (_mk(mt.COLONNE_ORDINI, [("Calcestruzzo C25/30", "Beton Nord", "Villa Lago", 60, "mc", 120, g(-4), "no", ""), ("Ferro d'armatura", "Acciai Lombardi", "Villa Lago", 3000, "kg", 1.1, g(-20), "sì", g(-19), "DDT 412"),
                                    ("Laterizi", "Fornaci Est", "Scuola Elementare", 8000, "pz", 0.6, g(5), "no", ""), ("Tubi multistrato", "Idro Sud", "Scuola Elementare", 400, "m", 3.2, g(12), "no", "")]),
-            _mk(mt.COLONNE_MOV, [("Ferro d'armatura", "Villa Lago", g(-19), "Carico", 3000), ("Ferro d'armatura", "Villa Lago", g(-12), "Scarico", 1800), ("Ferro d'armatura", "Villa Lago", g(-3), "Scarico", 900)]))
+            _mk(mt.COLONNE_MOV, [("Ferro d'armatura", "Villa Lago", g(-19), "Carico", 3000, ""), ("Ferro d'armatura", "Villa Lago", g(-12), "Scarico", 1800, ""), ("Ferro d'armatura", "Villa Lago", g(-3), "Scarico", 900, "")]),
+            _mk(mt.COLONNE_ART, [("8001234500011", "Cemento 32,5", "sacchi", "Deposito", 20, 7.5), ("8001234500028", "Laterizi", "pz", "Deposito", 2000, 0.6)]))
 
 
 def _cfg_mt():
@@ -355,25 +441,166 @@ def _cfg_mt():
              "Consegnato": st.column_config.SelectboxColumn(a["Consegnato"], options=["no", "sì"]), "Data_consegna": _t(a["Data_consegna"], help="AAAA-MM-GG o GG/MM/AAAA"),
              "Ddt": _t(a["Ddt"], help="Numero del documento di trasporto scritto sulla bolla, per esempio 412 del 28/10")},
             {"Materiale": _t(b["Materiale"], width="medium"), "Commessa": colonna_cantiere(b["Commessa"], (("mt_mov", "Commessa"),)), "Data": _t(b["Data"], help="AAAA-MM-GG o GG/MM/AAAA"),
-             "Tipo": st.column_config.SelectboxColumn(b["Tipo"], options=mt.TIPI_MOV), "Quantita": _n(b["Quantita"], min_value=0.0, step=1.0)})
+             "Tipo": st.column_config.SelectboxColumn(b["Tipo"], options=mt.TIPI_MOV), "Quantita": _n(b["Quantita"], min_value=0.0, step=1.0), "Magazzino": _t(b["Magazzino"])},
+            {"Codice": _t(mt.ETICHETTE_ART["Codice"], help="Il numero sotto le barre dell'etichetta. Con la pistola: clicca nella casella e spara il codice."), "Materiale": _t(mt.ETICHETTE_ART["Materiale"], width="medium"),
+             "Um": _t(mt.ETICHETTE_ART["Um"], width="small"), "Magazzino": _t(mt.ETICHETTE_ART["Magazzino"]), "Scorta_min": _n(mt.ETICHETTE_ART["Scorta_min"], min_value=0.0, step=1.0, help="Sotto questa quantità compare l'avviso «da riordinare»."),
+             "Prezzo": _n(mt.ETICHETTE_ART["Prezzo"], min_value=0.0, step=0.1, format="%.2f")})
 
 
 def _leggi_mt():
     o, a1 = mt.normalizza_ordini(ss["mt_ord"].to_dict("records"))
     m, a2 = mt.normalizza_mov(ss["mt_mov"].to_dict("records"))
-    return (o, m), a1 + a2
+    if "mt_art" not in ss:
+        ss["mt_art"] = pd.DataFrame(columns=mt.COLONNE_ART)
+    art, a3 = mt.normalizza_articoli(ss["mt_art"].to_dict("records"))
+    return (o, m, art), a1 + a2 + a3
 
 
 def _ris_mt(o):
+    if o["sotto_scorta"]:
+        st.markdown("**🔻 Da riordinare (sotto scorta minima)**")
+        _tabella(o["sotto_scorta"])
     _tabella([{"": ICONE[r["Stato"]], "Materiale": r["Materiale"], "Commessa": r["Commessa"], "Fornitore": r["Fornitore"], "Quantità": r["Quantita"], "Um": r["Um"], "Importo": r["Importo"],
                "Consegna prevista": r["Consegna_prevista"], "Consegnato": r["Consegnato"], "Giorni": r["Giorni"]} for r in o["ordini"]])
     c1, c2 = st.columns(2)
-    c1.markdown("**Giacenze di cantiere**")
+    c1.markdown("**Giacenze per magazzino**")
     with c1:
-        _tabella(o["giacenze"])
+        _tabella(o["magazzini"])
     c2.markdown("**Costo dei materiali consegnati, per commessa**")
     with c2:
         _tabella(o["commesse"])
+
+
+def _dati_mt():
+    o = mt.normalizza_ordini(ss["mt_ord"].to_dict("records"))[0]
+    art = mt.normalizza_articoli(ss["mt_art"].to_dict("records"))[0] if "mt_art" in ss else []
+    return o, art
+
+
+def _rapido_ordine_mt(audit):
+    o, art = _dati_mt()
+    cant = [c["Cantiere"] for c in cantieri_rubrica(solo_vivi=True)]
+    sug = mt.suggerimenti(o, art, nomi_rubrica(), cant)
+    if ss.pop("mt_q_reset", False):
+        azzera("mt_q_mat", "mt_q_for", "mt_q_com")
+        ss["mt_q_sig"] = None
+        ss["mt_q_hint"] = ""
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        mat = scelta_libera("Materiale", sug["materiali"], "mt_q_mat", "Inizia a scrivere: es. «cem» propone «Cemento…».")
+    with c2:
+        forn = scelta_libera("Fornitore", sug["fornitori"], "mt_q_for")
+    with c3:
+        comm = scelta_libera("Commessa", sug["commesse"], "mt_q_com")
+    sig = (mt._n(mat), mt._n(forn))
+    if ss.get("mt_q_sig") != sig:
+        ss["mt_q_sig"] = sig
+        p = mt.ultimo_prezzo(o, mat, forn, art)
+        if p:
+            ss["mt_q_prz"], ss["mt_q_um"], ss["mt_q_hint"] = float(p[0]), p[1], p[2]
+        else:
+            ss["mt_q_hint"] = ""
+    ss.setdefault("mt_q_prz", 0.0)
+    ss.setdefault("mt_q_um", "pz")
+    ss.setdefault("mt_q_qta", 1.0)
+    c4, c5, c6, c7 = st.columns(4)
+    qta = c4.number_input("Quantità", 0.0, 10_000_000.0, step=1.0, key="mt_q_qta")
+    um = c5.text_input("Unità", key="mt_q_um")
+    prz = c6.number_input("Prezzo unitario (€)", 0.0, 1_000_000.0, step=0.1, format="%.2f", key="mt_q_prz")
+    cons = c7.date_input("Consegna prevista", value=None, key="mt_q_cons")
+    if ss.get("mt_q_hint"):
+        st.caption(f"💡 Prezzo proposto in automatico: {ss['mt_q_hint']}. Puoi modificarlo.")
+    if st.button("Aggiungi l'ordine", type="primary", key="mt_q_ok", disabled=sola_lettura() or not mat or qta <= 0):
+        riga = pd.DataFrame([{"Materiale": mat, "Fornitore": forn or "", "Commessa": comm or "", "Quantita": qta, "Um": um or "pz", "Prezzo_unit": prz,
+                              "Consegna_prevista": cons.isoformat() if cons else "", "Consegnato": "no", "Data_consegna": "", "Ddt": ""}], columns=mt.COLONNE_ORDINI)
+        sostituisci_tabella("mt_ord", pd.concat([ss["mt_ord"], riga], ignore_index=True))
+        audit("mt_ordine_rapido", f"{mat} {qta:g} {um}")
+        ss["mt_q_reset"] = True
+        ss["mt_q_msg"] = f"Ordine aggiunto: {mat}. Ricorda «Salva e riapri»."
+        st.rerun()
+    if ss.get("mt_q_msg"):
+        st.success(ss.pop("mt_q_msg"))
+
+
+def _focus_pistola():
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return
+    html = """<script>
+    const prova = () => { const p = window.parent.document; const el = p.querySelector('input[aria-label="Codice a barre (spara qui)"]'); if (el) { el.focus(); return true; } return false; };
+    let n = 0; const t = setInterval(() => { if (prova() || ++n > 20) clearInterval(t); }, 150);
+    </script>"""
+    if hasattr(st, "iframe"):
+        st.iframe(html, height=1)
+    else:
+        import streamlit.components.v1 as components
+        components.html(html, height=0)
+
+
+def _rapido_pistola_mt(audit):
+    """Lettore di codici a barre (pistola): si comporta come una tastiera, scrive il codice e preme Invio."""
+    if "mt_art" not in ss:
+        ss["mt_art"] = pd.DataFrame(columns=mt.COLONNE_ART)
+    art = mt.normalizza_articoli(ss["mt_art"].to_dict("records"))[0]
+    mov_n = mt.normalizza_mov(ss["mt_mov"].to_dict("records"))[0]
+    mags = [mt.DEPOSITO] + [a["Magazzino"] for a in art if a["Magazzino"]] + [c["Cantiere"] for c in cantieri_rubrica(solo_vivi=True)] + [m["Magazzino"] for m in mov_n if m["Magazzino"]]
+    st.caption("Clicca nella casella «Codice a barre» e spara l'etichetta con la pistola: scrive il codice e preme Invio da sola, il movimento viene registrato subito. "
+               "Per più pezzi uguali aumenta la quantità prima di sparare.")
+    c1, c2, c3 = st.columns([1, 2, 1])
+    tipo = c1.radio("Operazione", mt.TIPI_MOV, horizontal=True, key="mt_p_tipo")
+    with c2:
+        mag = scelta_libera("Magazzino / cantiere", mags, "mt_p_mag", "Dove entra o da dove esce. Vuoto = Deposito.")
+    qta = c3.number_input("Quantità per lettura", 0.0, 1_000_000.0, 1.0, step=1.0, key="mt_p_qta")
+    fuoco = st.toggle("Cursore automatico sul codice dopo ogni lettura", value=True, key="mt_p_fuoco")
+    if ss.get("mt_p_msg"):
+        (st.success if ss["mt_p_msg"][0] == "ok" else st.warning)(ss["mt_p_msg"][1])
+    nuovo = ss.get("mt_p_nuovo")
+    if nuovo:
+        st.warning(f"Il codice **{nuovo}** non è in anagrafica. Dai un nome all'articolo e lo registro subito.")
+        with st.form("mt_p_form_nuovo", clear_on_submit=True):
+            a, b = st.columns([3, 1])
+            nome = a.text_input("Nome del materiale")
+            um = b.text_input("Unità", value="pz")
+            ok = st.form_submit_button("Crea articolo e registra", type="primary", disabled=sola_lettura())
+        if ok and nome.strip():
+            riga = pd.DataFrame([{"Codice": nuovo, "Materiale": nome.strip(), "Um": um.strip() or "pz", "Magazzino": mag or "", "Scorta_min": 0.0, "Prezzo": 0.0}], columns=mt.COLONNE_ART)
+            sostituisci_tabella("mt_art", pd.concat([ss["mt_art"], riga], ignore_index=True))
+            _registra_mov_pistola(nome.strip(), tipo, qta, mag, audit, nuovo)
+            ss.pop("mt_p_nuovo", None)
+            st.rerun()
+        if st.button("Annulla questo codice", key="mt_p_annulla"):
+            ss.pop("mt_p_nuovo", None)
+            st.rerun()
+        return
+    with st.form("mt_p_form", clear_on_submit=True):
+        cod = st.text_input("Codice a barre (spara qui)", key="mt_p_cod", placeholder="Spara il codice con la pistola")
+        inv = st.form_submit_button("Registra", disabled=sola_lettura())
+    if fuoco:
+        _focus_pistola()
+    if inv and cod.strip():
+        a = mt.cerca_codice(art, cod)
+        if not a:
+            ss["mt_p_nuovo"] = cod.strip()
+            ss["mt_p_msg"] = ("no", f"Codice {cod.strip()} sconosciuto.")
+            st.rerun()
+        _registra_mov_pistola(a["Materiale"], tipo, qta, mag or a["Magazzino"], audit, cod.strip())
+        st.rerun()
+
+
+def _registra_mov_pistola(materiale, tipo, qta, mag, audit, cod):
+    riga = pd.DataFrame([{"Materiale": materiale, "Commessa": "", "Data": dt.date.today().isoformat(), "Tipo": tipo, "Quantita": qta, "Magazzino": mag or mt.DEPOSITO}], columns=mt.COLONNE_MOV)
+    sostituisci_tabella("mt_mov", pd.concat([ss["mt_mov"], riga], ignore_index=True))
+    _, art = _dati_mt()
+    out = mt.calcola_mt([], mt.normalizza_mov(ss["mt_mov"].to_dict("records"))[0], None, art)
+    ora = next((m["Giacenza"] for m in out["magazzini"] if mt._n(m["Materiale"]) == mt._n(materiale) and m["Magazzino"] == (mag or mt.DEPOSITO)), 0.0)
+    audit("mt_pistola", f"{tipo} {qta:g} {materiale} {mag or mt.DEPOSITO} ({cod})")
+    ss["mt_p_msg"] = ("ok", f"✅ {tipo}: {qta:g} × {materiale} → {mag or mt.DEPOSITO}. Giacenza ora: {ora:g}. (Ricorda «Salva e riapri».)")
+
+
+def _rapido_mt(utente, audit):
+    with st.expander("⚡ Nuovo ordine veloce (con suggerimenti e prezzo automatico)", expanded=False):
+        _rapido_ordine_mt(audit)
+    with st.expander("🔫 Magazzino con la pistola dei codici a barre", expanded=False):
+        _rapido_pistola_mt(audit)
 
 
 SPEC_MT = {
@@ -381,15 +608,18 @@ SPEC_MT = {
     "archivio": "i materiali", "file": "materiali", "unita": "problemi", "vuoto": "Inserisci almeno un ordine con materiale e quantità.",
     "tabelle": [{"chiave": "mt_ord", "titolo": "Ordini e consegne", "nota": "Segna «sì» in «Consegnato» quando arriva e scrivi il numero del DDT della bolla. L'importo è quantità × prezzo unitario, IVA esclusa.", "colonne": mt.COLONNE_ORDINI, "etichette": mt.ETICHETTE_ORDINI,
                  "cfg": lambda: _cfg_mt()[0], "altezza": 280},
-                {"chiave": "mt_mov", "titolo": "Carichi e scarichi di magazzino", "nota": "Carico = arriva in cantiere; Scarico = usato o spostato. La giacenza è la differenza.", "colonne": mt.COLONNE_MOV, "etichette": mt.ETICHETTE_MOV,
-                 "cfg": lambda: _cfg_mt()[1]}],
-    "esempio": _es_mt, "leggi": _leggi_mt, "calcola": lambda d, p: mt.calcola_mt(*d, p), "ha_dati": lambda d: bool(d[0]),
+                {"chiave": "mt_mov", "titolo": "Carichi e scarichi di magazzino", "nota": "Carico = arriva; Scarico = usato o spostato. La giacenza è la differenza, per magazzino. Con la pistola le righe si aggiungono da sole.", "colonne": mt.COLONNE_MOV, "etichette": mt.ETICHETTE_MOV,
+                 "cfg": lambda: _cfg_mt()[1]},
+                {"chiave": "mt_art", "titolo": "Articoli e codici a barre", "nota": "Anagrafica dei materiali: codice a barre, unità, magazzino abituale, scorta minima e prezzo di listino. Serve alla pistola e al prezzo automatico.", "colonne": mt.COLONNE_ART, "etichette": mt.ETICHETTE_ART,
+                 "cfg": lambda: _cfg_mt()[2], "altezza": 220}],
+    "esempio": _es_mt, "leggi": _leggi_mt, "calcola": lambda d, p: mt.calcola_mt(d[0], d[1], p, d[2]), "ha_dati": lambda d: bool(d[0]) or bool(d[1]),
     "param": [{"k": "preavviso_gg", "label": "Preavviso consegne (giorni)", "kind": "int", "min": 0, "max": 60, "step": 1, "default": 7}],
     "strip": lambda o: [{"label": "Ordinato", "value": EUR(o["kpi"]["ordinato"]), "sub": f"{o['kpi']['n_ordini']} ordini", "tono": "info"},
                         {"label": "Consegnato", "value": EUR(o["kpi"]["consegnato"]), "sub": "costo sostenuto", "tono": "info"},
                         {"label": "In ritardo", "value": str(o["kpi"]["in_ritardo"]), "sub": f"{o['kpi']['in_arrivo']} in arrivo", "tono": "bad" if o["kpi"]["in_ritardo"] else "ok"},
                         {"label": "Giacenze negative", "value": str(o["kpi"]["giacenze_negative"]), "sub": "da controllare", "tono": "warn" if o["kpi"]["giacenze_negative"] else "ok"}],
-    "risultati": _ris_mt, "fogli": lambda o: {"Ordini": o["ordini"], "Giacenze": o["giacenze"], "Commesse": o["commesse"]},
+    "risultati": _ris_mt, "rapido": lambda utente, audit: _rapido_mt(utente, audit),
+    "fogli": lambda o: {"Ordini": o["ordini"], "Giacenze": o["giacenze"], "Per magazzino": o["magazzini"], "Sotto scorta": o["sotto_scorta"], "Commesse": o["commesse"]},
 }
 SPEC_MT["tab_extra"] = ("📎 5. Bolle (DDT)", lambda out, dati, utente, audit: __import__("ddt_ui").render(out, dati, utente, audit))
 SPEC_MT["collegamenti"] = lambda out, dati, utente, audit: _coll_sal("mt", lambda o, d: mt.per_sl_costi(o), lambda r: str(r.get("Descrizione")).endswith("(da Materiali)"),

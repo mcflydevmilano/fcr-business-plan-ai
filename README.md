@@ -240,6 +240,16 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.14.0
+- **Organico dal calendario** (`og.py`, `og_ui.py`): capacità = giorni lun-ven del mese meno festività nazionali (`gt.festivita_italiane`, Pasquetta inclusa), festa del patrono (parametro GG/MM) e assenze/chiusure (tabella «Ferie, malattie, chiusure», risorsa o «Tutti»), per `Ore_giorno` (default 8). `Ore_mese` resta come valore fisso facoltativo, ridotto in proporzione ai giorni in forza. Nuove colonne `Assunzione`/`Cessazione`: chi è cessato prima del periodo esce da capacità, costi e previsioni (avviso con l'elenco). `calcola_og(ris, ass, p, assenze)`; payload con la chiave `abs`.
+- **Presenze** (`pr.py`): colonne `Assunzione`/`Cessazione` (avviso se ci sono ore fuori periodo; i cessati non entrano nella media del costo orario di squadra né nell'elenco di «Registra le mie ore»). Calcolatore `costo_orario_da_ral` (RAL + INPS 32% + INAIL 4% + TFR 7,41% + altri, su 1.720 h).
+- **Materiali** (`mt.py`, `nuovi_ui.py`): tabella `mt_art` (codice a barre, materiale, unità, magazzino, scorta minima, prezzo), colonna `Magazzino` nei movimenti, giacenza per magazzino (`magazzini`), `sotto_scorta`, `ultimo_prezzo` (ultimo prezzo a quel fornitore, poi ultimo qualunque, poi listino), `suggerimenti`. Inserimento veloce con `ui_util.scelta_libera` (selectbox con nuove voci) e blocco «pistola» (form con Invio; la pistola è una tastiera). Payload con la chiave `art`.
+- **Subappalti**: inserimento veloce di contratti e SAL con suggerimenti da contratti, SAL, documenti e Rubrica.
+- **Bolle con IA** (`ddt.py`, `ddt_ui.py`): `PROMPT_BOLLA`, `normalizza_ai`, `abbina_ordini` (somiglianza del materiale + fornitore + quantità), `conferma_consegne`. L'IA arriva ai moduli tramite `ss["_ia"] = (ai_generate, chiave)` impostato in `app.py`. Nulla si applica senza la conferma dell'utente.
+- **Somiglianza testi** (`simil.py`) e **unione voci dei preventivi** (`fo.gruppi_simili`, `gruppi_da_risposta_ia`, `applica_gruppi`).
+- Chat: reazioni in un contenitore orizzontale che va a capo.
+- `blocco_tabella` porta a testo le colonne di testo rimaste vuote nei salvataggi vecchi (niente più errori di tipo).
+
 ## Novità 3.13.0
 - **Scheda cantiere** (`sk.py`, `sk_ui.py`): vista unica per cantiere. Non ha dati propri: legge Rubrica, Scadenzario, SAL, Subappalti, Presenze, Materiali, Mezzi e Rapportini (stesso motore di «Margini per commessa», senza doppio conteggio). Il cantiere di ogni riga si riconosce da nome, codice CAN-… o «codice in altro sistema», senza badare a maiuscole; i nomi che non tornano finiscono in «Non in Rubrica». Cantieri vivi = «In preparazione» e «In corso» (`ru.STATI_VIVI`).
 - **Rapportini** (`rp_ui.py`): con cantieri nella Rubrica si sceglie solo tra i vivi (niente più nome libero). Senza Rubrica funziona come prima.

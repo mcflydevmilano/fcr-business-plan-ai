@@ -15,6 +15,17 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.14.0", "data": "2026-11-03", "titolo": "Organico dal calendario, magazzino con pistola, suggerimenti mentre scrivi, bolle lette dall'IA",
+     "voci": ["Organico: le ore disponibili ora si calcolano dal calendario vero, dal lunedì al venerdì, senza festività (Pasquetta compresa), festa del patrono, ferie, malattie e chiusure che inserisci.",
+              "Organico e Presenze: colonne «Assunto dal» e «Cessato il». Chi è cessato esce da solo da capacità, costi e previsioni; le ore passate restano.",
+              "Presenze: calcolatore del costo orario aziendale a partire dalla RAL (con contributi, INAIL, TFR e altri costi).",
+              "Materiali: scrivi «cem» e propone «Cemento». Scelto materiale e fornitore, il prezzo unitario si compila da solo con l'ultimo pagato a quel fornitore. Vale anche per fornitore e commessa.",
+              "Materiali: nuovo magazzino con più sedi (deposito, cantieri), giacenza per magazzino, scorta minima con avviso «da riordinare» e uso della pistola dei codici a barre: sparo, e carico o scarico si registra da solo.",
+              "Subappalti: inserimento veloce con suggerimenti («adam» propone «Adam Costruzioni») per contratti e SAL.",
+              "Bolle (DDT): il pulsante «Leggi la bolla con l'IA» compila numero, data e fornitore e abbina le righe agli ordini aperti: tu confermi e diventano «Consegnato: sì» con data e DDT.",
+              "Fornitori: nel confronto preventivi la suite propone di unire le voci scritte in modo diverso ma uguali (es. «Intonaco civile 2 mani» e «Intonacatura civile a due strati»). Decidi tu quali unire.",
+              "Chat: sistemate le icone delle reazioni, anche da telefono."],
+     "strumenti": ["Organico", "Presenze", "Materiali", "Subappalti", "Fornitori", "Chat"]},
     {"id": "3.13.0", "data": "2026-11-03", "titolo": "Scheda cantiere: i conti di ogni cantiere in un posto solo",
      "voci": ["Nuovo strumento «Scheda cantiere»: scegli un cantiere e vedi fatturato, incassato, costi (materiali, ore, mezzi, subappalti), SAL, margine e cassa.",
               "Mostra le fatture ai clienti e dei fornitori di quel cantiere, con quello che è scaduto, e i suoi rapportini e segnalazioni aperte.",

@@ -107,3 +107,76 @@ def calcola_fo(docs, contratti, offerte, p=None):
            "forn_critici": sum(1 for f in forn if f["Stato"] == "bad"), "impegnato": sum(x["Importo"] for x in contratti), "fatturato": sum(x["Fatturato"] for x in contratti),
            "residuo": sum(x["Residuo"] for x in contr), "da_pagare": sum(x["Da pagare"] for x in contr), "sovrafatturati": sum(1 for x in contr if x["Sovrafatturato"]), "risparmio_potenziale": risp}
     return {"params": {"oggi": oggi, "preavviso_gg": prev}, "documenti": righe_doc, "fornitori": forn, "contratti": contr, "confronto": conf, "kpi": kpi, "avvisi": avvisi}
+
+
+# ----------------------------------------------------------------------------
+# Voci dei preventivi scritte in modo diverso: raggruppamento suggerito (poi confermato dall'utente)
+# ----------------------------------------------------------------------------
+PROMPT_VOCI = (
+    "Sei un computista di un'impresa edile italiana. Ti do un elenco numerato di voci di preventivo ricevute da fornitori diversi, scritte in modo diverso. "
+    "Raggruppa insieme SOLO le voci che indicano la stessa identica lavorazione o fornitura (stesso lavoro, stessi spessori, misure e materiali). "
+    "Voci con misure, spessori o materiali diversi NON vanno unite. Rispondi SOLO con un JSON del tipo "
+    '{"gruppi": [[1, 4], [2, 7, 9]]} contenente solo i gruppi con almeno due voci (numeri come nell\'elenco).'
+)
+
+
+def _gruppi_da_indici(righe_off, voci, gruppi_idx):
+    """Costruisce i gruppi proposti a partire da liste di indici sulle voci uniche."""
+    from collections import Counter
+    freq = Counter(o["Voce"] for o in righe_off)
+    out = []
+    for g in gruppi_idx:
+        g = sorted({i for i in g if isinstance(i, int) and 0 <= i < len(voci)})
+        if len(g) < 2:
+            continue
+        v = [voci[i] for i in g]
+        canonica = sorted(v, key=lambda x: (-freq[x], len(x)))[0]
+        forn = sorted({o["Fornitore"] for o in righe_off if o["Voce"] in v})
+        out.append({"voci": v, "canonica": canonica, "fornitori": forn, "offerte": sum(freq[x] for x in v)})
+    return out
+
+
+def voci_uniche(offerte):
+    visti, voci = set(), []
+    for o in offerte:
+        if o["Voce"] not in visti:
+            visti.add(o["Voce"])
+            voci.append(o["Voce"])
+    return voci
+
+
+def gruppi_simili(offerte, soglia=0.62):
+    """Gruppi di voci che sembrano la stessa lavorazione (somiglianza dei testi). Solo gruppi con piu' di una scrittura diversa."""
+    import simil
+    voci = voci_uniche(offerte)
+    return _gruppi_da_indici(offerte, voci, simil.raggruppa(voci, soglia))
+
+
+def gruppi_da_risposta_ia(offerte, risposta):
+    """`risposta`: JSON dell'IA con {'gruppi': [[1,4],...]} (numeri da 1). Risposte malformate -> nessun gruppo."""
+    import json
+    voci = voci_uniche(offerte)
+    try:
+        d = json.loads(risposta) if isinstance(risposta, str) else risposta
+        idx = [[int(x) - 1 for x in g] for g in (d.get("gruppi") or []) if isinstance(g, list)]
+    except Exception:
+        return []
+    return _gruppi_da_indici(offerte, voci, idx)
+
+
+def elenco_per_ia(offerte):
+    return PROMPT_VOCI, "\n".join(f"{i}. {v}" for i, v in enumerate(voci_uniche(offerte), start=1))
+
+
+def applica_gruppi(righe, gruppi):
+    """Rinomina nelle righe delle offerte le voci dei gruppi confermati con la voce canonica. Restituisce (righe, n_cambiate)."""
+    mappa = {v: g["canonica"] for g in gruppi for v in g["voci"]}
+    out, n = [], 0
+    for r in righe:
+        r = dict(r)
+        nuova = mappa.get(str(r.get("Voce") or "").strip())
+        if nuova and nuova != str(r.get("Voce")).strip():
+            r["Voce"] = nuova
+            n += 1
+        out.append(r)
+    return out, n

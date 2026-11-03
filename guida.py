@@ -76,7 +76,7 @@ PASSI = {
         ("Inserisci i documenti", "Nella scheda «1. Dati» scrivi per ogni fornitore DURC, assicurazioni e SOA con la data di scadenza.", "dati:fo_doc"),
         ("Aggiungi contratti e offerte", "Sotto trovi i contratti aperti e le offerte ricevute per la stessa fornitura.", None),
         ("Guarda cosa scade", "Nella scheda «2. Controllo» vedi i documenti scaduti o in scadenza e i fornitori da non usare.", None),
-        ("Confronta i preventivi", "Nella scheda «3. Confronto preventivi» vedi l'offerta più bassa tra i fornitori in regola.", None),
+        ("Confronta i preventivi", "Nella scheda «3. Confronto preventivi» vedi l'offerta più bassa tra i fornitori in regola. Se due fornitori hanno scritto la stessa lavorazione in modo diverso, la suite propone di unirle: spunta e conferma.", None),
         ("Salva", "Apri «💾 Salva e riapri i fornitori» in alto e premi Salva.", "salvato"),
     ], "Un fornitore con documenti scaduti non dovrebbe entrare in cantiere: controlla il rosso prima di assegnare lavori."),
     "sx": ("Verificare formazioni, idoneità mediche e documenti obbligatori di ogni cantiere.", [
@@ -97,7 +97,8 @@ PASSI = {
     ], "Se un mezzo ha poche ore di uso, il costo orario sale: è un segnale, non un errore."),
     "og": ("Capire se in certi mesi mancano o avanzano persone rispetto ai cantieri.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:og_demo"),
-        ("Inserisci le risorse", "Nella scheda «1. Risorse e Assegnazioni» scrivi persone o squadre con costo orario e ore disponibili al mese.", "dati:og_ris"),
+        ("Inserisci le risorse", "Nella scheda «1. Risorse e Assegnazioni» scrivi persone o squadre con costo orario e ore al giorno (una squadra di 3 = 24). Le ore del mese si calcolano dal calendario, senza sabati, domeniche e festivi. Se qualcuno viene assunto o cessa, scrivi la data: esce da solo dai conti.", "dati:og_ris"),
+        ("Ferie e chiusure", "Nella tabella «Ferie, malattie, chiusure» scrivi i giorni di assenza; con «Tutti» valgono per tutta l'azienda. In «Ipotesi» puoi indicare la festa del patrono.", None),
         ("Assegna ai cantieri", "Nella seconda tabella scrivi chi lavora a quale cantiere, da quando a quando, con le ore al mese.", None),
         ("Guarda il carico", "Nella scheda «2. Carico di lavoro» vedi i mesi in sovraccarico (serve più gente) o scarichi (ore ferme).", None),
         ("Scarica il dossier", "Nella scheda «3. Dossier» premi il pulsante per PDF ed Excel.", "dossier"),
@@ -128,14 +129,14 @@ PASSI = {
     "sa": ("Sapere quanto devi ancora pagare a ogni subappaltatore e se i suoi documenti sono in regola.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:sa_demo"),
         ("Inserisci i contratti", "Nella scheda «1. Dati» scrivi subappaltatore, commessa, importo e ritenuta.", "dati:sa_con"),
-        ("Registra i SAL e i pagamenti", "Aggiungi ogni SAL ricevuto con l'importo lordo e quanto hai già pagato.", None),
+        ("Registra i SAL e i pagamenti", "Aggiungi ogni SAL ricevuto con l'importo lordo e quanto hai già pagato. Con «Inserimento veloce» scrivi poche lettere del nome («adam») e scegli dai suggerimenti.", None),
         ("Registra i documenti", "DURC, polizze e idoneità con la data di scadenza.", None),
         ("Leggi i risultati", "Nella scheda «2. Risultati» vedi cosa devi pagare e chi ha documenti scaduti: non pagarlo finché non li rinnova.", None),
         ("Salva", "Apri «💾 Salva e riapri i subappalti» in alto e premi Salva.", "salvato"),
     ], "L'avviso sui pagamenti è un promemoria: la valutazione legale resta all'ufficio o al consulente."),
     "pr": ("Registrare le ore di ognuno per commessa e vedere il costo della manodopera.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:pr_demo"),
-        ("Inserisci le persone", "Nella scheda «1. Dati» scrivi nome, qualifica e costo orario aziendale.", "dati:pr_per"),
+        ("Inserisci le persone", "Nella scheda «1. Dati» scrivi nome, qualifica e costo orario aziendale (se hai solo la RAL usa «Calcola il costo orario dalla RAL»). Con «Cessato il» la persona non viene più proposta.", "dati:pr_per"),
         ("Registra le ore", "Dal telefono usa «Registra le mie ore»: scegli il giorno, la commessa e le ore, poi premi Registra.", None),
         ("Leggi i risultati", "Nella scheda «2. Risultati» vedi ore, straordinari e costo per commessa.", None),
         ("Salva", "Apri «💾 Salva e riapri le presenze» in alto e premi Salva.", "salvato"),
@@ -144,8 +145,9 @@ PASSI = {
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:mt_demo"),
         ("Inserisci gli ordini", "Nella scheda «1. Dati» scrivi materiale, fornitore, commessa, quantità, prezzo e data di consegna prevista.", "dati:mt_ord"),
         ("Segna le consegne", "Quando arriva scrivi «sì» in «Consegnato», la data e il numero del DDT.", None),
-        ("Archivia le bolle", "Nella scheda «5. Bolle (DDT)» carica il PDF, la foto o l'Excel della bolla: la suite propone numero e data, tu controlli. Da Excel puoi anche aggiungere le righe agli ordini.", None),
-        ("Registra carichi e scarichi", "Nella seconda tabella segna cosa entra e cosa esce dal cantiere: la giacenza si calcola da sola.", None),
+        ("Archivia le bolle", "Nella scheda «5. Bolle (DDT)» carica il PDF, la foto o l'Excel della bolla: la suite propone numero e data, tu controlli. Con «Leggi la bolla con l'IA» compila anche le righe e le abbina agli ordini aperti: tu confermi e diventano consegnati. Da Excel puoi anche aggiungere le righe agli ordini.", None),
+        ("Registra carichi e scarichi", "Nella seconda tabella segna cosa entra e cosa esce: la giacenza si calcola da sola, per magazzino. Con «Magazzino con la pistola dei codici a barre» spari l'etichetta e il movimento si registra da solo; i codici si scrivono nella tabella «Articoli e codici a barre», dove puoi anche fissare la scorta minima.", None),
+        ("Ordine veloce", "Apri «Nuovo ordine veloce»: scrivi poche lettere e scegli dai suggerimenti. Scelti materiale e fornitore il prezzo si compila da solo con l'ultimo pagato.", None),
         ("Salva", "Apri «💾 Salva e riapri i materiali» in alto e premi Salva.", "salvato"),
     ], "Un ritardo si vede in rosso: controlla prima il fornitore."),
     "vr": ("Non perdere le decisioni delle riunioni: ogni azione ha un responsabile e una scadenza.", [

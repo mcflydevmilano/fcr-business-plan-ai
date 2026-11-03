@@ -96,18 +96,18 @@ def _azioni(m, utente, audit, sel, utenti_noti):
     """Reazioni, rispondi, modifica, compito, elimina di un messaggio."""
     mio = m["autore"] == utente["username"]
     scrive = chat.puo_scrivere(utente)
-    righe = st.columns(min(len(chat.EMOJI) + 1, 6), gap="small")
+    riga = st.container(horizontal=True, gap="xsmall", vertical_alignment="center", key=f"chrow_{m['id']}")   # una riga compatta a sinistra, anche da telefono
     for k, em in enumerate(chat.EMOJI):
         gia = m["reazioni"].get(em, [])
         etichetta = f"{em} {len(gia)}" if gia else em
-        if righe[k].button(etichetta, key=f"chr_{m['id']}_{k}", type="primary" if utente["username"] in gia else "tertiary",
-                           help=(", ".join(gia) or "Reagisci"), disabled=False):
+        if riga.button(etichetta, key=f"chr_{m['id']}_{k}", type="primary" if utente["username"] in gia else "tertiary", width="content",
+                       help=(", ".join(gia) or "Reagisci"), disabled=False):
             try:
                 chat.reagisci(m["id"], utente["username"], em)
             except (ValueError, PermissionError) as e:
                 st.error(str(e))
             _rerun()
-    with righe[-1].popover("⋯", help="Rispondi, modifica, crea un compito"):
+    with riga.popover("⋯", help="Rispondi, modifica, crea un compito", width="content"):
         if scrive and st.button("↩ Rispondi", key=f"chq_{m['id']}"):
             ss["chat_risposta"] = m["id"]
             _rerun()

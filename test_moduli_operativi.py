@@ -78,3 +78,46 @@ def test_organico_sovraccarico_e_ore_libere():
     assert o["kpi"]["mesi_sovraccarico"] == 1 and o["kpi"]["ore_extra_picco"] == 60
     assert nov["Costo assegnato"] == pytest.approx(220 * 30)
     assert o["commesse"][0]["Commessa"] == "Scuola"
+
+
+def test_organico_calendario_cessazione_e_assenze():
+    import datetime as dt
+    import og
+    # novembre 2026: 21 giorni lun-ven, 1 nov domenica (Ognissanti), nessun festivo infrasettimanale
+    ris, _ = og.normalizza_ris([{"Risorsa": "A", "Costo_orario": 30}, {"Risorsa": "B", "Costo_orario": 30, "Cessazione": "2026-11-15"},
+                                {"Risorsa": "C", "Costo_orario": 30, "Cessazione": "2026-10-01"}])
+    ab, _ = og.normalizza_assenze([{"Risorsa": "Tutti", "Dal": "2026-11-23", "Al": "2026-11-24", "Motivo": "ponte"}], [r["Risorsa"] for r in ris])
+    out = og.calcola_og(ris, [], {"oggi": dt.date(2026, 11, 3), "mesi": 2}, ab)
+    nov, dic = out["mesi"]
+    assert out["kpi"]["n_risorse"] == 2 and out["kpi"]["n_usciti"] == 1   # C e' gia' uscito
+    # nov: giorni lun-ven = 21; meno 2 di chiusura = 19 -> A 152 ore; B fino al 15 (11 giorni lav. 2-13 = 10, meno 0 chiusura) = 80
+    assert nov["Giorni lavorativi"] == 21
+    assert round(nov["Capacità ore"]) == 152 + 80
+    # dicembre: 8 e 25-26 festivi (25 venerdi', 26 sabato): 23 lun-ven - 8/12(mar) - 25/12 = 21 giorni, B non c'e' piu'
+    assert dic["Giorni lavorativi"] == 21 and round(dic["Capacità ore"]) == 168
+    # patrono
+    out2 = og.calcola_og(ris, [], {"oggi": dt.date(2026, 11, 3), "mesi": 1, "patrono": "04/11"}, [])
+    assert out2["mesi"][0]["Giorni lavorativi"] == 20
+
+
+def test_materiali_prezzo_automatico_magazzino_e_scorta():
+    import mt
+    ordini, _ = mt.normalizza_ordini([
+        {"Materiale": "Cemento 32,5", "Fornitore": "Beton Nord", "Quantita": 10, "Um": "sacchi", "Prezzo_unit": 7.0},
+        {"Materiale": "Cemento 32,5", "Fornitore": "Edil Sud", "Quantita": 10, "Um": "sacchi", "Prezzo_unit": 6.5},
+        {"Materiale": "cemento 32,5", "Fornitore": "beton  nord", "Quantita": 5, "Um": "sacchi", "Prezzo_unit": 7.4}])
+    assert mt.ultimo_prezzo(ordini, "CEMENTO 32,5", "Beton Nord")[0] == 7.4        # ultimo a quel fornitore
+    assert mt.ultimo_prezzo(ordini, "Cemento 32,5", "Edil Sud")[0] == 6.5
+    p = mt.ultimo_prezzo(ordini, "Cemento 32,5", "Nuovo srl")                      # altro fornitore: ultimo prezzo pagato
+    assert p[0] == 7.4 and "ultimo prezzo" in p[2]
+    assert mt.ultimo_prezzo(ordini, "Sabbia", "x") is None
+    art, _ = mt.normalizza_articoli([{"Codice": "111", "Materiale": "Cemento 32,5", "Um": "sacchi", "Magazzino": "Deposito", "Scorta_min": 20, "Prezzo": 7.5},
+                                     {"Codice": "111", "Materiale": "Doppio"}])
+    assert len(art) == 1 and mt.cerca_codice(art, "111")["Materiale"] == "Cemento 32,5" and mt.cerca_codice(art, "999") is None
+    mov, _ = mt.normalizza_mov([{"Materiale": "Cemento 32,5", "Tipo": "Carico", "Quantita": 30, "Magazzino": "Deposito"},
+                                {"Materiale": "cemento 32,5", "Tipo": "Scarico", "Quantita": 15, "Magazzino": "Deposito", "Commessa": "Villa Lago"}])
+    o = mt.calcola_mt([], mov, None, art)
+    assert o["magazzini"] == [{"Magazzino": "Deposito", "Materiale": "Cemento 32,5", "Giacenza": 15.0}]
+    assert o["kpi"]["sotto_scorta"] == 1 and o["sotto_scorta"][0]["Da ordinare"] == 5 and o["kpi"]["giacenze_negative"] == 0
+    s = mt.suggerimenti(ordini, art, ["Adam Costruzioni"], [])
+    assert "cemento 32,5" in [x.lower() for x in s["materiali"]] and len(s["materiali"]) == 1 and "Adam Costruzioni" in s["fornitori"]

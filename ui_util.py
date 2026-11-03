@@ -327,6 +327,15 @@ def blocco_tabella(chiave, titolo, nota, campi, etichette, cfg, esempio_df, sigl
     st.subheader(titolo)
     if nota:
         st.caption(nota)
+    # colonne di testo rimaste vuote (salvataggi vecchi senza quelle colonne) sarebbero float: le porto a testo
+    try:
+        d_ = ss.get(chiave)
+        if d_ is not None and hasattr(d_, "columns"):
+            for c_, v_ in (cfg or {}).items():
+                if c_ in d_.columns and d_[c_].dtype != object and (v_ or {}).get("type_config", {}).get("type") == "text":
+                    d_[c_] = d_[c_].astype(object).where(d_[c_].notna(), "")
+    except Exception:
+        pass
     tabella_modificabile(chiave, esempio_df, cfg, altezza=altezza)
     with st.expander(f"Importa da Excel/CSV: {titolo}"):
         st.download_button("📥 Modello Excel", modello_excel(campi, etichette, esempio_df.head(3).to_dict("records")), file_name=f"modello_{sigla}_{idx}.xlsx",
@@ -394,3 +403,34 @@ def colonna_cantiere(label, fonti=(), **k):
         if chiave in ss and col in ss[chiave].columns:
             usati += [str(v).strip() for v in ss[chiave][col].tolist() if str(v or "").strip() and str(v) != "nan"]
     return st.column_config.SelectboxColumn(label, options=sorted(set(vivi) | set(usati)), **k)
+
+
+def nomi_rubrica():
+    """Nomi dei contatti della Rubrica (fornitori, subappaltatori...): dalla sessione o dall'ultimo salvataggio."""
+    try:
+        import ru
+        import storage
+        if "ru_cont" in ss and not ss.get("ru_demo"):
+            righe = ss["ru_cont"].to_dict("records")
+        else:
+            el = storage.elenca_pratiche(modulo="ru")
+            righe = (storage.carica_pratica(el[0]["nome"], modulo="ru") or {}).get("contatti", []) if el else []
+        return [c["Nome"] for c in ru.normalizza_contatti(righe)[0] if c.get("Nome")]
+    except Exception:
+        return []
+
+
+def scelta_libera(label, opzioni, key, help=None, placeholder="Scrivi per cercare o aggiungere"):
+    """Casella con suggerimenti mentre scrivi (es. «cem» -> «Cemento»); accetta anche una voce nuova."""
+    opz = []
+    for o in opzioni:
+        o = str(o or "").strip()
+        if o and o not in opz:
+            opz.append(o)
+    return st.selectbox(label, opz, index=None, key=key, accept_new_options=True, placeholder=placeholder, help=help)
+
+
+def azzera(*chiavi):
+    """Svuota delle caselle (da chiamare PRIMA di crearle, nell'esecuzione successiva a un inserimento)."""
+    for k in chiavi:
+        ss[k] = None

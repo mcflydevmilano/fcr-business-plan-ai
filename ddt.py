@@ -473,3 +473,89 @@ def controlli(ordini, path=None):
             for n in sorted(con_file - nelle_righe):
                 orfani += [_riga(r) for r in c.execute(f"SELECT {_SEL} FROM ddt_file WHERE ddt_numero=? ORDER BY creato", (n,)).fetchall()]
     return {"senza_file": senza_file, "senza_numero": senza_numero, "file_orfani": orfani}
+
+
+# ----------------------------------------------------------------------------
+# Lettura della bolla con l'IA e abbinamento agli ordini aperti
+# ----------------------------------------------------------------------------
+PROMPT_BOLLA = (
+    "Sei un assistente di un'impresa edile italiana. Ti viene data una bolla di consegna (DDT, documento di trasporto), come testo o immagine. "
+    "Estrai i dati e rispondi SOLO con un JSON di questo tipo, senza testo aggiuntivo:\n"
+    '{"numero": "numero del DDT come scritto", "data": "AAAA-MM-GG", "fornitore": "ragione sociale di chi consegna (mittente)", '
+    '"destinazione": "cantiere o indirizzo di consegna se indicato", "righe": [{"descrizione": "materiale", "quantita": numero, "um": "unità", "prezzo_unit": numero o null}]}\n'
+    "Regole: usa null o stringa vuota se un dato non c'è; non inventare nulla; le quantità sono numeri con il punto decimale; "
+    "non includere righe di trasporto, imballo o note; la data va in formato AAAA-MM-GG."
+)
+
+
+def normalizza_ai(d):
+    """Ripulisce la risposta dell'IA (che puo' sbagliare formato): restituisce {'numero','data','fornitore','destinazione','righe':[...]}."""
+    import datetime as dt
+    from core import to_float
+    if not isinstance(d, dict):
+        return {"numero": "", "data": "", "fornitore": "", "destinazione": "", "righe": []}
+    data = ""
+    m = re.match(r"^\s*(\d{4})-(\d{1,2})-(\d{1,2})", str(d.get("data") or ""))
+    if m:
+        try:
+            data = dt.date(int(m.group(1)), int(m.group(2)), int(m.group(3))).isoformat()
+        except ValueError:
+            data = ""
+    elif d.get("data"):
+        m2 = _DATA.search(str(d["data"]))
+        if m2:
+            try:
+                a = int(m2.group(3))
+                data = dt.date(a + (2000 if a < 100 else 0), int(m2.group(2)), int(m2.group(1))).isoformat()
+            except ValueError:
+                data = ""
+    righe = []
+    for r in (d.get("righe") or [])[:200]:
+        if not isinstance(r, dict):
+            continue
+        desc, q = _s(r.get("descrizione") or r.get("materiale")), to_float(r.get("quantita"), 0.0)
+        if desc and q > 0:
+            righe.append({"Materiale": desc, "Quantita": q, "Um": _s(r.get("um"), 20) or "pz", "Prezzo_unit": max(0.0, to_float(r.get("prezzo_unit"), 0.0))})
+    return {"numero": normalizza_numero(d.get("numero") or ""), "data": data, "fornitore": _s(d.get("fornitore")), "destinazione": _s(d.get("destinazione")), "righe": righe}
+
+
+def abbina_ordini(righe_bolla, ordini, fornitore="", soglia=0.55):
+    """Per ogni riga della bolla propone l'ordine APERTO (non consegnato) piu' simile. Non modifica nulla.
+    Punteggio = somiglianza del materiale (peso maggiore), piu' bonus se il fornitore coincide e se la quantita' e' vicina.
+    Restituisce [{'riga': riga bolla, 'indice': posizione in `ordini` o None, 'punteggio': 0..1, 'motivo': testo}]."""
+    import simil
+    usati, out = set(), []
+    for r in righe_bolla:
+        best, bi = 0.0, None
+        for i, o in enumerate(ordini):
+            if o.get("Consegnato") == "sì" or i in usati:
+                continue
+            s = simil.similarita(r["Materiale"], o["Materiale"])
+            if s < soglia - 0.1:
+                continue
+            if fornitore and o.get("Fornitore"):
+                s = min(1.0, s + 0.1) if simil.similarita(fornitore, o["Fornitore"]) >= 0.6 else s * 0.8
+            if o["Quantita"] and abs(o["Quantita"] - r["Quantita"]) / o["Quantita"] <= 0.1:
+                s = min(1.0, s + 0.05)
+            if s > best:
+                best, bi = s, i
+        if bi is not None and best >= soglia:
+            usati.add(bi)
+            o = ordini[bi]
+            mot = f"ordine «{o['Materiale']}» ({o['Commessa']}), {o['Quantita']:g} {o['Um']}" + (f", {o['Fornitore']}" if o["Fornitore"] else "")
+            if abs(o["Quantita"] - r["Quantita"]) > 1e-9:
+                mot += f" · ATTENZIONE: quantità ordinata {o['Quantita']:g}, in bolla {r['Quantita']:g}"
+            out.append({"riga": r, "indice": bi, "punteggio": round(best, 2), "motivo": mot})
+        else:
+            out.append({"riga": r, "indice": None, "punteggio": round(best, 2), "motivo": "nessun ordine aperto simile"})
+    return out
+
+
+def conferma_consegne(ordini, scelte, numero, data):
+    """Applica le consegne confermate: `scelte` = lista di indici in `ordini`. Segna Consegnato=sì, Data_consegna e Ddt. Restituisce (nuovi ordini, n)."""
+    out, n = [dict(o) for o in ordini], 0
+    for i in scelte:
+        if 0 <= i < len(out) and out[i].get("Consegnato") != "sì":
+            out[i]["Consegnato"], out[i]["Data_consegna"], out[i]["Ddt"] = "sì", data or out[i].get("Data_consegna", ""), numero or out[i].get("Ddt", "")
+            n += 1
+    return out, n

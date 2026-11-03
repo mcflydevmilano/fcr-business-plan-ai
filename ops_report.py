@@ -145,7 +145,7 @@ def report_mz(out, mezzi, nome=""):
 
 
 # ----------------------------------------------------------------------------- ORGANICO
-def report_og(out, ris, ass, nome=""):
+def report_og(out, ris, ass, nome="", assenze=None):
     k, q = out["kpi"], out["params"]
     ctx = rep_gen.costruisci_ctx("Organico e carico di lavoro", "Capacità e assegnazioni", nome, {"k": k, "n": nome, "o": str(q["oggi"])})
     mesi = out["mesi"]
@@ -157,14 +157,14 @@ def report_og(out, ris, ass, nome=""):
            {"titolo": "Costo del personale per commessa (€)", "tabella": (["Commessa"] + lab[:6] + ["Totale"], [(c["Commessa"][:22],) + tuple(N(c[m]) for m in lab[:6]) + (N(c["Totale"]),) for c in out["commesse"]])},
            {"titolo": "Punti di attenzione", "testo": ["- " + a for a in _finale(out, "")]},
            {"titolo": "Metodo e limiti", "testo": ["Ogni assegnazione pesa con le sue ore mensili in tutti i mesi tra Dal e Al. Saturazione = ore assegnate / ore disponibili. «Ore extra» = ore oltre la capacità di una risorsa; "
-                                                "«ore libere» = capacità non assegnata. Il costo delle ore inattive è una stima con il costo orario inserito. Non tiene conto di ferie, malattie e straordinari."]}]
+                                                "«ore libere» = capacità non assegnata. Il costo delle ore inattive è una stima con il costo orario inserito. La capacità è calcolata dal calendario (lun-ven, senza festività, chiusure e assenze, dall'assunzione alla cessazione); gli straordinari non sono considerati."]}]
     pdf = rep_gen.genera_pdf(ctx, "Organico e carico di lavoro", "Capacità e assegnazioni", f"Previsione dal {q['oggi'].strftime('%d/%m/%Y')} per {q['mesi']} mesi", [("RISORSE", str(k["n_risorse"])), ("MESI", str(q["mesi"]))],
                              [("Saturazione media", N(k["saturazione_media"], 0) + "%", f"picco {N(k['picco_saturazione'], 0)}%", "info"), ("Mesi in sovraccarico", str(k["mesi_sovraccarico"]), f"{N(k['ore_extra_picco'])} ore extra al picco", "bad" if k["mesi_sovraccarico"] else "ok"),
                               ("Mesi con poco lavoro", str(k["mesi_scarico"]), "sotto la saturazione minima", "warn" if k["mesi_scarico"] else "ok"), ("Costo ore inattive", EUR(k["costo_inattivo"]), "stima sul periodo", "warn" if k["costo_inattivo"] > 0 else "ok")],
                              _esito(k["mesi_sovraccarico"], k["mesi_scarico"], max(1, q["mesi"]), "mesi"), sez)
     righe_m = [[m["Mese"], m["Capacità ore"], m["Ore assegnate"], "=IF(B{r}=0,0,C{r}/B{r}*100)", m["Ore extra necessarie"], m["Ore libere"], m["Costo assegnato"], m["Costo ore inattive"]] for m in mesi]
     x = rep_gen.genera_excel([{"nome": "Carico mensile", "intest": ["Mese", "Capacità ore", "Ore assegnate", "Saturazione %", "Ore extra", "Ore libere", "Costo assegnato", "Costo ore inattive"], "righe": righe_m, "totali": [1, 2, 4, 5, 6, 7], "formati": {3: "pct"}},
-                              {"nome": "Risorse", "intest": ["Risorsa", "Ruolo", "Costo orario", "Ore al mese"], "righe": [[r["Risorsa"], r["Ruolo"], r["Costo_orario"], r["Ore_mese"]] for r in ris]},
+                              {"nome": "Risorse", "intest": ["Risorsa", "Ruolo", "Costo orario", "Ore al giorno", "Ore al mese fisse", "Assunzione", "Cessazione"], "righe": [[r["Risorsa"], r["Ruolo"], r["Costo_orario"], r["Ore_giorno"] or None, r["Ore_mese"] or None, r["Assunzione"] or None, r["Cessazione"] or None] for r in ris]},
                               {"nome": "Assegnazioni", "intest": ["Risorsa", "Commessa", "Dal", "Al", "Ore al mese"], "righe": [[a["Risorsa"], a["Commessa"], a["Dal"], a["Al"] or None, a["Ore_mese"]] for a in ass]}])
     return pdf, x, ctx["report_id"]
 
