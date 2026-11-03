@@ -122,3 +122,18 @@ def per_sl_costi(out, sal):
     """Righe per la tabella Costi di SAL e contabilita' lavori (fornitore = il subappaltatore)."""
     return [{"Commessa": x["Commessa"], "Data": x["Data"], "Fornitore": x["Subappaltatore"], "Descrizione": "SAL subappaltatore", "Categoria": "Subappalti",
              "Importo": round(x["Importo_SAL"], 2), "Pagato": round(x["Pagato"], 2)} for x in sal]
+
+
+def per_subappaltatore(out):
+    """Un subappaltatore puo' lavorare su piu' cantieri: una riga per subappaltatore con i totali di tutti i suoi contratti e l'elenco dei cantieri."""
+    r = {}
+    for d in out["contratti"]:
+        x = r.setdefault(d["Subappaltatore"], {"Subappaltatore": d["Subappaltatore"], "Cantieri": [], "Contratti": 0.0, "SAL lordi": 0.0, "Ritenute": 0.0, "Pagato": 0.0, "Da pagare": 0.0,
+                                               "Documenti": d["Documenti"], "Stato": d["Stato"]})
+        x["Cantieri"].append(d["Commessa"])
+        for k in ("Contratti", "SAL lordi", "Ritenute", "Pagato", "Da pagare"):
+            x[k] += d["Contratto" if k == "Contratti" else k]
+    for x in r.values():
+        x["N. cantieri"] = len(x["Cantieri"])
+        x["Cantieri"] = ", ".join(x["Cantieri"])
+    return sorted(r.values(), key=lambda x: x["Subappaltatore"].lower())

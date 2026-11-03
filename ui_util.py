@@ -360,3 +360,37 @@ def scarica_dossier(sigla, genera, nome_file, audit, titolo_nome):
         c1.download_button("📥 Scarica il dossier PDF", rep["pdf"], file_name=f"{nome_file}_{rep['id']}.pdf", mime="application/pdf", width="stretch", key=f"dlp_{sigla}")
         c2.download_button("📥 Scarica l'Excel con formule", rep["xlsx"], file_name=f"{nome_file}_{rep['id']}.xlsx",
                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", width="stretch", key=f"dlx_{sigla}")
+
+
+def cantieri_rubrica(solo_vivi=False):
+    """Cantieri della Rubrica (dicts puliti, con Codice e Stato): dalla sessione o dall'ultimo salvataggio. Vuoto se la Rubrica non ha cantieri."""
+    try:
+        import ru
+        import storage
+        if "ru_can" in ss and not ss.get("ru_demo"):
+            righe = ss["ru_can"].to_dict("records")
+        else:
+            el = storage.elenca_pratiche(modulo="ru")
+            righe = (storage.carica_pratica(el[0]["nome"], modulo="ru") or {}).get("cantieri", []) if el else []
+        c = ru.normalizza_cantieri(righe)[0]
+        return ru.cantieri_vivi(c) if solo_vivi else c
+    except Exception:
+        return []
+
+
+def cantieri_vivi_rubrica():
+    """Nomi dei cantieri vivi (in preparazione o in corso) della Rubrica."""
+    return [c["Cantiere"] for c in cantieri_rubrica(solo_vivi=True)]
+
+
+def colonna_cantiere(label, fonti=(), **k):
+    """Colonna «cantiere» di una tabella: scelta tra i cantieri vivi della Rubrica (piu' quelli gia' scritti nella tabella, cosi' nessun dato si perde).
+    Se la Rubrica non ha cantieri resta una colonna di testo libero. `fonti`: [(chiave della tabella in sessione, nome colonna)]."""
+    vivi = cantieri_vivi_rubrica()
+    if not vivi:
+        return st.column_config.TextColumn(label, **k)
+    usati = []
+    for chiave, col in fonti:
+        if chiave in ss and col in ss[chiave].columns:
+            usati += [str(v).strip() for v in ss[chiave][col].tolist() if str(v or "").strip() and str(v) != "nan"]
+    return st.column_config.SelectboxColumn(label, options=sorted(set(vivi) | set(usati)), **k)

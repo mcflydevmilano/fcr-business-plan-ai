@@ -11,7 +11,7 @@ import ops_report
 import rp
 import storage
 import theme
-from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
+from ui_util import cantieri_vivi_rubrica, esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
 
 ss = st.session_state
 NOME = "Rapportini"                     # salvataggio condiviso: tutti i capicantiere scrivono qui
@@ -186,20 +186,20 @@ def _mostra_allegati(id_, al):
 
 
 def _cantieri_rubrica():
-    """Cantieri della Rubrica (sessione o ultimo salvataggio): cosi' il rapportino li propone gia' scritti giusti."""
-    try:
-        if "ru_can" in ss and not ss.get("ru_demo"):
-            return [c.get("Cantiere") for c in ss["ru_can"].to_dict("records") if c.get("Cantiere")]
-        elenco = storage.elenca_pratiche(modulo="ru")
-        if elenco:
-            return [c.get("Cantiere") for c in (storage.carica_pratica(elenco[0]["nome"], modulo="ru") or {}).get("cantieri", []) if c.get("Cantiere")]
-    except Exception:
-        pass
-    return []
+    """Cantieri VIVI della Rubrica (in preparazione o in corso): il rapportino propone solo quelli, scritti giusti."""
+    return cantieri_vivi_rubrica()
 
 
 def _cantieri():
-    return sorted({r["Cantiere"] for r in _records("rp_rapp") + _records("rp_segn") if r.get("Cantiere")} | set(_cantieri_rubrica()))
+    """Se la Rubrica ha cantieri vivi si sceglie solo tra quelli (un cantiere nuovo si aggiunge prima nella Rubrica); altrimenti vale l'elenco dei rapportini gia' scritti."""
+    vivi = _cantieri_rubrica()
+    if vivi:
+        return sorted(vivi)
+    return sorted({r["Cantiere"] for r in _records("rp_rapp") + _records("rp_segn") if r.get("Cantiere")})
+
+
+def _solo_da_rubrica():
+    return bool(_cantieri_rubrica())
 
 
 def _scelta_cantiere(sel, nuovo):
@@ -216,8 +216,10 @@ def _tab_rapportino(utente, audit):
         if png_firma:
             st.success("Firma acquisita: verrà allegata al rapportino.")
     with st.form("form_rapp", clear_on_submit=True):
-        sel = st.selectbox("Cantiere", cant + [NUOVO] if cant else [NUOVO], key="nr_cantiere")
-        nuovo = st.text_input("Se è un cantiere nuovo, scrivi qui il nome", key="nr_nuovo")
+        solo = _solo_da_rubrica()
+        sel = st.selectbox("Cantiere (solo cantieri vivi)" if solo else "Cantiere", cant if solo else (cant + [NUOVO] if cant else [NUOVO]), key="nr_cantiere",
+                           help="L'elenco viene dalla Rubrica e cantieri: compaiono i cantieri «In corso» e «In preparazione». Per un cantiere nuovo aggiungilo prima lì." if solo else None)
+        nuovo = "" if solo else st.text_input("Se è un cantiere nuovo, scrivi qui il nome", key="nr_nuovo")
         a, b = st.columns(2)
         data = a.date_input("Data", value=rp.oggi_italia(), key="nr_data", format="DD/MM/YYYY")
         meteo = b.selectbox("Meteo", rp.METEO, key="nr_meteo")
@@ -256,8 +258,10 @@ def _tab_segnalazioni(utente, audit, out):
     st.markdown("##### Nuova segnalazione")
     cant = _cantieri()
     with st.form("form_segn", clear_on_submit=True):
-        sel = st.selectbox("Cantiere", cant + [NUOVO] if cant else [NUOVO], key="ns_cantiere")
-        nuovo = st.text_input("Se è un cantiere nuovo, scrivi qui il nome", key="ns_nuovo")
+        solo = _solo_da_rubrica()
+        sel = st.selectbox("Cantiere (solo cantieri vivi)" if solo else "Cantiere", cant if solo else (cant + [NUOVO] if cant else [NUOVO]), key="ns_cantiere",
+                           help="L'elenco viene dalla Rubrica e cantieri: compaiono i cantieri «In corso» e «In preparazione». Per un cantiere nuovo aggiungilo prima lì." if solo else None)
+        nuovo = "" if solo else st.text_input("Se è un cantiere nuovo, scrivi qui il nome", key="ns_nuovo")
         a, b = st.columns(2)
         tipo = a.selectbox("Tipo", rp.TIPI_SEGN, key="ns_tipo")
         grav = b.selectbox("Gravità", rp.GRAVITA, index=1, key="ns_grav")

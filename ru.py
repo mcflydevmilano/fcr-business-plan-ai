@@ -14,6 +14,7 @@ ETICHETTE_CONTATTI = {"Nome": "Ragione sociale", "Ruolo": "Tipo", "Referente": "
 SINONIMI_CONTATTI = {"Nome": ("Ragione sociale", "Anagrafica", "Fornitore", "Cliente", "Nominativo"), "Telefono": ("Tel", "Cellulare", "cell", "Telefono / cellulare"),
                      "Email": ("Mail", "E-mail", "PEC"), "Referente": ("Contatto", "Persona di riferimento"), "Ruolo": ("Funzione", "Tipo"), "Note": ("Indirizzo",)}
 STATI_CANTIERE = ["In preparazione", "In corso", "Sospeso", "Concluso"]
+STATI_VIVI = ("In preparazione", "In corso")             # cantieri «vivi»: quelli su cui si lavora o si sta per lavorare
 COLONNE_CANTIERI = ["Codice", "Cantiere", "Cliente", "Indirizzo", "Responsabile", "Stato", "Esterno"]
 ETICHETTE_CANTIERI = {"Codice": "Codice unico", "Cantiere": "Nome del cantiere", "Cliente": "Cliente", "Indirizzo": "Indirizzo", "Responsabile": "Responsabile",
                       "Stato": "Stato", "Esterno": "Codice in altro sistema (se esiste)"}
@@ -215,3 +216,8 @@ def calcola_ru(contatti, cantieri):
     kpi = {"contatti": len(contatti), "cantieri": len(cantieri), "in_corso": sum(1 for c in cantieri if c["Stato"] == "In corso"), "senza_recapito": len(senza_rec),
            "per_ruolo": {r: sum(1 for c in contatti if c["Ruolo"] == r) for r in RUOLI if any(c["Ruolo"] == r for c in contatti)}, "senza_codice_esterno": len(senza_ext)}
     return {"kpi": kpi, "avvisi": avvisi}
+
+
+def cantieri_vivi(cantieri):
+    """Solo i cantieri vivi (in preparazione o in corso), gia' puliti da normalizza_cantieri."""
+    return [c for c in (cantieri or []) if c.get("Stato") in STATI_VIVI]

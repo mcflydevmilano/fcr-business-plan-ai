@@ -4,6 +4,7 @@ import datetime as dt
 import pandas as pd
 import streamlit as st
 import guida
+import sk
 
 import charts
 import sc
@@ -11,7 +12,7 @@ import fatture
 import sc_report
 import theme
 from core import fmt_num
-from ui_util import esempi_attivi, senza_esempi, importa_dati, sola_lettura, modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile
+from ui_util import cantieri_rubrica, colonna_cantiere, esempi_attivi, senza_esempi, importa_dati, sola_lettura, modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile
 
 ss = st.session_state
 
@@ -38,7 +39,7 @@ def _esempio():
 def _cfg():
     e, n = sc.ETICHETTE_DOC, st.column_config.NumberColumn
     return {"Tipo": st.column_config.SelectboxColumn(e["Tipo"], options=list(sc.TIPI), required=True),
-            "Controparte": st.column_config.TextColumn(e["Controparte"], width="medium"), "Cantiere": st.column_config.TextColumn(e["Cantiere"]),
+            "Controparte": st.column_config.TextColumn(e["Controparte"], width="medium"), "Cantiere": colonna_cantiere(e["Cantiere"], (("sc_df", "Cantiere"),)),
             "Documento": st.column_config.TextColumn(e["Documento"]), "Data_doc": st.column_config.TextColumn(e["Data_doc"], help="AAAA-MM-GG o GG/MM/AAAA"),
             "Scadenza": st.column_config.TextColumn(e["Scadenza"], help="AAAA-MM-GG o GG/MM/AAAA"),
             "Importo": n(e["Importo"], min_value=0.0, step=100.0, format="%.2f"), "Saldato": n(e["Saldato"], min_value=0.0, step=100.0, format="%.2f")}
@@ -120,6 +121,43 @@ def _df(df):
     st.dataframe(df, hide_index=True, width="stretch")
 
 
+def _per_cantiere():
+    """Prima schermata: lo Scadenzario diviso per cantiere, con il totale in fondo. Le fatture si modificano nella scheda «Documenti» (che mostra il totale)."""
+    docs, _ = sc.normalizza_documenti(ss["sc_df"].to_dict("records"))
+    cant = cantieri_rubrica()
+    r = sk.riepilogo_documenti(docs, cant)
+    T = r["totale"]
+    EUR = lambda x: f"{fmt_num(x)} €"
+    st.markdown(theme.stat_strip([
+        {"label": "Da incassare (tutti i cantieri)", "value": EUR(T["Da incassare"]), "sub": f"di cui scaduto {EUR(T['Di cui scaduto'])}", "tono": "bad" if T["Di cui scaduto"] > 0 else "info"},
+        {"label": "Da pagare (tutti i cantieri)", "value": EUR(T["Da pagare"]), "sub": f"di cui scaduto {EUR(T['Pagamenti scaduti'])}", "tono": "bad" if T["Pagamenti scaduti"] > 0 else "info"},
+        {"label": "Saldo netto", "value": EUR(T["Saldo netto"]), "sub": "da incassare − da pagare", "tono": "bad" if T["Saldo netto"] < 0 else "ok"},
+        {"label": "Fatture", "value": str(int(T["Fatture"])), "sub": "in totale", "tono": "info"}]), unsafe_allow_html=True)
+    if not r["righe"]:
+        st.info("Nessuna fattura. Inseriscile nella scheda «2. Documenti e Ipotesi»: nella colonna «Cantiere» scegli il cantiere della Rubrica.")
+        return
+    st.markdown("##### Cantiere per cantiere")
+    righe = r["righe"] + [{"Cantiere": "TOTALE", "Stato": "", **T}]
+    df = pd.DataFrame(righe)
+    st.dataframe(df[["Cantiere", "Stato", "Fatture", "Da incassare", "Di cui scaduto", "Da pagare", "Pagamenti scaduti", "Saldo netto"]].round(0), hide_index=True, width="stretch")
+    nsc = next((x for x in r["righe"] if x["Cantiere"] == "(senza cantiere)"), None)
+    if nsc:
+        st.warning(f"{nsc['Fatture']} fatture non hanno il cantiere: nella scheda «2. Documenti» scegli il cantiere per ognuna, così ogni euro è al suo posto.")
+    if any(x["Stato"] == "Non in Rubrica" for x in r["righe"]):
+        st.caption("⚠️ «Non in Rubrica» = il cantiere è scritto in modo diverso dalla Rubrica o non c'è: correggi il nome nella tabella dei documenti.")
+    scelte = ["Tutti i cantieri (totale)"] + [x["Cantiere"] for x in r["righe"]]
+    sel = st.selectbox("Vedi le fatture di", scelte, key="sc_sel_cantiere")
+    if sel.startswith("Tutti"):
+        elenco = docs
+    else:
+        elenco = r["docs"].get(sel, [])
+    if elenco:
+        d = pd.DataFrame(elenco)
+        d["Residuo"] = d["Importo"] - d["Saldato"]
+        st.dataframe(d[["Tipo", "Controparte", "Cantiere", "Documento", "Data_doc", "Scadenza", "Importo", "Saldato", "Residuo"]], hide_index=True, width="stretch")
+    st.caption("Qui si guarda soltanto. Per modificare o aggiungere fatture vai alla scheda «2. Documenti e Ipotesi (totale)», che mostra tutto insieme.")
+
+
 def render(fcr_uri, audit=None, utente=""):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Scadenzario incassi e pagamenti",
@@ -132,7 +170,10 @@ def render(fcr_uri, audit=None, utente=""):
         ss.setdefault("sc_cassa0", 20_000.0 if esempi_attivi() else 0.0)       # valori di esempio: il fido e il saldo reali vanno inseriti dall'utente
         ss.setdefault("sc_fido", 50_000.0 if esempi_attivi() else 0.0)
     pannello_archivio("sc", "lo scadenzario", _raccogli, _applica, audit, utente)
-    t1, t2, t3, t4 = st.tabs(["🧾 1. Documenti e Ipotesi", "📅 2. Cassa settimanale", "📨 3. Solleciti", "📄 4. Dossier"])
+    t0, t1, t2, t3, t4 = st.tabs(["🏗️ 1. Per cantiere", "🧾 2. Documenti e Ipotesi (totale)", "📅 3. Cassa settimanale", "📨 4. Solleciti", "📄 5. Dossier"])
+
+    with t0:
+        _per_cantiere()
 
     with t1:
         if ss.get("sc_demo"):

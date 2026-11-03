@@ -11,7 +11,7 @@ import ops_report
 import sl
 import theme
 from core import fmt_num
-from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella, sola_lettura
+from ui_util import colonna_cantiere, esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella, sola_lettura
 
 ss = st.session_state
 ICONE = {"ok": "🟢", "warn": "🟡", "bad": "🔴", "nd": "⚪"}
@@ -34,7 +34,7 @@ def _cfg():
     a, b, c = mz.ETICHETTE_MEZZI, mz.ETICHETTE_USO, mz.ETICHETTE_SCAD
     return ({"Mezzo": t(a["Mezzo"], width="medium"), "Tipo": t(a["Tipo"]), "Costo_fisso_annuo": n(a["Costo_fisso_annuo"], min_value=0.0, step=500.0, format="%.0f"),
              "Costo_var_orario": n(a["Costo_var_orario"], min_value=0.0, step=1.0, format="%.1f"), "Ore_annue_prev": n(a["Ore_annue_prev"], min_value=1.0, step=50.0, format="%.0f")},
-            {"Mezzo": t(b["Mezzo"], width="medium"), "Commessa": t(b["Commessa"]), "Data": t(b["Data"], help="AAAA-MM-GG o GG/MM/AAAA"), "Ore": n(b["Ore"], min_value=0.0, step=1.0, format="%.1f")},
+            {"Mezzo": t(b["Mezzo"], width="medium"), "Commessa": colonna_cantiere(b["Commessa"], (("mz_uso", "Commessa"),)), "Data": t(b["Data"], help="AAAA-MM-GG o GG/MM/AAAA"), "Ore": n(b["Ore"], min_value=0.0, step=1.0, format="%.1f")},
             {"Mezzo": t(c["Mezzo"], width="medium"), "Documento": t(c["Documento"]), "Scadenza": t(c["Scadenza"], help="AAAA-MM-GG o GG/MM/AAAA")})
 
 

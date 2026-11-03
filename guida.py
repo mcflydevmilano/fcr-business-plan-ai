@@ -160,6 +160,12 @@ PASSI = {
         ("Cerca", "Scrivi una parola (per esempio «bolle» o «compiti») o scegli uno strumento per vedere solo le novità che lo riguardano.", None),
         ("Aggiungi una novità (amministratori)", "In fondo alla pagina scrivi titolo e voci in parole semplici e premi «Pubblica».", None),
     ], "Se una novità riguarda il tuo lavoro, provala subito: ogni strumento ha il suo riquadro «Come si usa»."),
+    "sk": ("Vedere in un posto solo i conti e l'andamento di ogni cantiere.", [
+        ("Prima la Rubrica", "In «Rubrica e cantieri» scrivi i cantieri con il loro codice e lo stato. «In corso» e «In preparazione» sono i cantieri vivi.", None),
+        ("Scrivi il cantiere sempre uguale", "Negli altri strumenti (Scadenzario, SAL, Presenze, Materiali, Subappalti, Mezzi, Rapportini) usa lo stesso nome o lo stesso codice della Rubrica.", None),
+        ("Scegli il cantiere", "Nella Scheda cantiere scegli il cantiere: vedi fatturato, incassato, costi, margine e cassa. Le schede dicono da dove arriva ogni numero.", None),
+        ("Sistema i nomi", "Se compare «Non in Rubrica», un nome è scritto diverso: correggilo nello strumento o aggiungi il cantiere alla Rubrica.", None),
+    ], "Qui non inserisci nulla: la scheda legge i dati degli altri strumenti, quindi non si scrive niente due volte."),
     "ta": ("Sapere cosa c'è da fare, chi se ne occupa e per quando, tutto in un posto solo.", [
         ("Aggiungi un compito", "Nella scheda «2. Nuovo e tabella» scrivi cosa fare, il responsabile, la scadenza e la commessa.", None),
         ("Muovi i compiti", "Nella bacheca premi ◀ e ▶ per spostare un compito tra Da fare, In corso, In attesa e Fatto.", None),

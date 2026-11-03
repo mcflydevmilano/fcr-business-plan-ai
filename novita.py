@@ -15,6 +15,14 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.13.0", "data": "2026-11-03", "titolo": "Scheda cantiere: i conti di ogni cantiere in un posto solo",
+     "voci": ["Nuovo strumento «Scheda cantiere»: scegli un cantiere e vedi fatturato, incassato, costi (materiali, ore, mezzi, subappalti), SAL, margine e cassa.",
+              "Mostra le fatture ai clienti e dei fornitori di quel cantiere, con quello che è scaduto, e i suoi rapportini e segnalazioni aperte.",
+              "Non si scrive nulla due volte: la scheda legge i dati degli altri strumenti. L'importante è scrivere il cantiere sempre con lo stesso nome o codice della Rubrica.",
+              "I rapportini ora propongono solo i cantieri vivi (in corso o in preparazione) presi dalla Rubrica e cantieri: un cantiere nuovo si aggiunge prima lì.",
+              "In Scadenzario, Presenze, Materiali, Subappalti e Parco mezzi la colonna del cantiere diventa una scelta da elenco.",
+              "Se un nome non corrisponde a nessun cantiere della Rubrica, la scheda lo segnala come «Non in Rubrica» così lo correggi."],
+     "strumenti": ["Scheda cantiere", "Rapportini", "Rubrica e cantieri"]},
     {"id": "3.12.4", "data": "2026-11-02", "titolo": "Via ogni riferimento a monday",
      "voci": ["In «Compiti e attività» non c'è più la scheda «Importa da monday»: i compiti si scrivono direttamente nella suite.",
               "Tolti anche i richiami a monday da guide, esempi e descrizioni degli strumenti."],

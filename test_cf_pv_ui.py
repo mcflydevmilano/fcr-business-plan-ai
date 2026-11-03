@@ -104,7 +104,7 @@ def test_hub_sei_strumenti_e_nuovi_moduli(monkeypatch):
     t = " ".join(m.value for m in at.markdown)
     assert "Scadenzario incassi" in t and "Cruscotto di direzione" in t
     _btn(at, "Apri Scadenzario").click().run()
-    assert not at.exception and len(at.tabs) == 4
+    assert not at.exception and len(at.tabs) == 5
     assert any("Sì, questa settimana" in m.value or "va in negativo" in m.value or "Attenzione" in m.value for m in list(at.success) + list(at.warning) + list(at.error))
     _btn(at, "Torna all'Hub").click().run()
     _btn(at, "Apri Cruscotto").click().run()

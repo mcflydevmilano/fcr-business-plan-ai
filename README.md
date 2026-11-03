@@ -240,6 +240,12 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.13.0
+- **Scheda cantiere** (`sk.py`, `sk_ui.py`): vista unica per cantiere. Non ha dati propri: legge Rubrica, Scadenzario, SAL, Subappalti, Presenze, Materiali, Mezzi e Rapportini (stesso motore di «Margini per commessa», senza doppio conteggio). Il cantiere di ogni riga si riconosce da nome, codice CAN-… o «codice in altro sistema», senza badare a maiuscole; i nomi che non tornano finiscono in «Non in Rubrica». Cantieri vivi = «In preparazione» e «In corso» (`ru.STATI_VIVI`).
+- **Rapportini** (`rp_ui.py`): con cantieri nella Rubrica si sceglie solo tra i vivi (niente più nome libero). Senza Rubrica funziona come prima.
+- **Colonna cantiere a scelta** (`ui_util.colonna_cantiere`): Scadenzario, Presenze, Materiali, Subappalti, Mezzi propongono i cantieri vivi della Rubrica più quelli già scritti nella tabella (nessun dato perso). Senza Rubrica resta testo libero.
+- Permessi: nuovo strumento `sk` (profilo amministrazione e direzione; agli altri profili si assegna da «Persone e ruoli»).
+
 ## Novità 3.12.4
 - Rimosso ogni collegamento a monday: niente più import dall'Excel di monday in «Compiti e attività» (`ta.da_excel`, `importa_excel`, `unisci`, scheda UI), testi, guide ed esempi ripuliti.
 

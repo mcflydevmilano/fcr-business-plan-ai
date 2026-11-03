@@ -68,6 +68,7 @@ import rc
 import rc_ui
 import fc_ui
 import ta_ui
+import sk_ui
 import novita
 import novita_ui
 import of_ui
@@ -627,7 +628,7 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",), "ch": ("chat_",), "mc": ("mc_",), "sa": ("sa_",), "pr": ("pr_",), "mt": ("mt_",), "vr": ("vr_",), "ad": ("ad_",), "fc": ("fc_",), "ta": ("ta_",), "nv": ("nv_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",), "ch": ("chat_",), "mc": ("mc_",), "sa": ("sa_",), "pr": ("pr_",), "mt": ("mt_",), "vr": ("vr_",), "ad": ("ad_",), "fc": ("fc_",), "ta": ("ta_",), "sk": ("sk_",), "nv": ("nv_",)}
 
 
 pwa.inietta()
@@ -894,7 +895,7 @@ if MODULO == "sl":
     sl_ui.render(FCR_URI, audit, ss["utente"]["username"])
     st.stop()
 
-for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og", og_ui), ("rp", rp_ui), ("gt", gt_ui), ("ru", ru_ui), ("lg", lg_ui), ("bk", bk_ui), ("oa", oa_ui), ("pz", pz_ui), ("rc", rc_ui), ("of", of_ui), ("mc", nuovi_ui.mc_ui), ("sa", nuovi_ui.sa_ui), ("pr", nuovi_ui.pr_ui), ("mt", nuovi_ui.mt_ui), ("vr", nuovi_ui.vr_ui), ("ad", nuovi_ui.ad_ui), ("fc", fc_ui), ("ta", ta_ui), ("nv", novita_ui)):
+for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og", og_ui), ("rp", rp_ui), ("gt", gt_ui), ("ru", ru_ui), ("lg", lg_ui), ("bk", bk_ui), ("oa", oa_ui), ("pz", pz_ui), ("rc", rc_ui), ("of", of_ui), ("mc", nuovi_ui.mc_ui), ("sa", nuovi_ui.sa_ui), ("pr", nuovi_ui.pr_ui), ("mt", nuovi_ui.mt_ui), ("vr", nuovi_ui.vr_ui), ("ad", nuovi_ui.ad_ui), ("fc", fc_ui), ("ta", ta_ui), ("sk", sk_ui), ("nv", novita_ui)):
     if MODULO == _m:
         _ui.render(FCR_URI, audit, ss["utente"]["username"])
         st.stop()

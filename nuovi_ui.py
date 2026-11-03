@@ -20,7 +20,7 @@ import storage
 import theme
 import vr
 from core import fmt_num
-from ui_util import banner_esempio, blocco_tabella, esempi_attivi, pannello_archivio, senza_esempi, sola_lettura, sostituisci_tabella
+from ui_util import banner_esempio, blocco_tabella, colonna_cantiere, esempi_attivi, pannello_archivio, senza_esempi, sola_lettura, sostituisci_tabella
 
 ss = st.session_state
 ICONE = {"ok": "🟢", "warn": "🟡", "bad": "🔴", "nd": "⚪"}
@@ -171,9 +171,9 @@ def _es_sa():
 
 def _cfg_sa():
     a, b, c = sa.ETICHETTE_CONTRATTI, sa.ETICHETTE_SAL, sa.ETICHETTE_DOC
-    return ({"Subappaltatore": _t(a["Subappaltatore"], width="medium"), "Commessa": _t(a["Commessa"]), "Lavorazione": _t(a["Lavorazione"]), "Importo_contratto": _n(a["Importo_contratto"], min_value=0.0, step=1000.0, format="%.0f"),
+    return ({"Subappaltatore": _t(a["Subappaltatore"], width="medium"), "Commessa": colonna_cantiere(a["Commessa"], (("sa_con", "Commessa"),)), "Lavorazione": _t(a["Lavorazione"]), "Importo_contratto": _n(a["Importo_contratto"], min_value=0.0, step=1000.0, format="%.0f"),
              "Ritenuta_pct": _n(a["Ritenuta_pct"], min_value=0.0, max_value=20.0, step=0.5, format="%.1f")},
-            {"Subappaltatore": _t(b["Subappaltatore"], width="medium"), "Commessa": _t(b["Commessa"]), "Data": _t(b["Data"], help="AAAA-MM-GG o GG/MM/AAAA"), "Importo_SAL": _n(b["Importo_SAL"], min_value=0.0, step=500.0, format="%.0f"),
+            {"Subappaltatore": _t(b["Subappaltatore"], width="medium"), "Commessa": colonna_cantiere(b["Commessa"], (("sa_sal", "Commessa"),)), "Data": _t(b["Data"], help="AAAA-MM-GG o GG/MM/AAAA"), "Importo_SAL": _n(b["Importo_SAL"], min_value=0.0, step=500.0, format="%.0f"),
              "Pagato": _n(b["Pagato"], min_value=0.0, step=500.0, format="%.0f")},
             {"Subappaltatore": _t(c["Subappaltatore"], width="medium"), "Documento": st.column_config.SelectboxColumn(c["Documento"], options=sa.DOCUMENTI), "Scadenza": _t(c["Scadenza"], help="AAAA-MM-GG o GG/MM/AAAA")})
 
@@ -188,6 +188,9 @@ def _leggi_sa():
 def _ris_sa(o):
     _tabella([{"Subappaltatore": d["Subappaltatore"], "Commessa": d["Commessa"], "Stato": ICONE[d["Stato"]], "Contratto": d["Contratto"], "SAL lordi": d["SAL lordi"], "Avanz. %": d["Avanzamento %"],
                "Ritenute": d["Ritenute"], "Pagato": d["Pagato"], "Da pagare": d["Da pagare"], "Documenti": ICONE[d["Documenti"]]} for d in o["contratti"]])
+    st.markdown("**Per subappaltatore (su tutti i cantieri in cui lavora)**")
+    _tabella([{"Subappaltatore": x["Subappaltatore"], "N. cantieri": x["N. cantieri"], "Cantieri": x["Cantieri"], "Contratti": x["Contratti"], "SAL lordi": x["SAL lordi"], "Ritenute": x["Ritenute"],
+               "Pagato": x["Pagato"], "Da pagare": x["Da pagare"], "Documenti": ICONE[x["Documenti"]]} for x in sa.per_subappaltatore(o)])
     c1, c2 = st.columns(2)
     c1.markdown("**Subappalti per commessa**")
     with c1:
@@ -215,7 +218,7 @@ SPEC_SA = {
                         {"label": "SAL lordi", "value": EUR(o["kpi"]["sal_lordi"]), "sub": f"ritenute {EUR(o['kpi']['ritenute'])}", "tono": "info"},
                         {"label": "Da pagare", "value": EUR(o["kpi"]["da_pagare"]), "sub": "al netto delle ritenute", "tono": "warn" if o["kpi"]["da_pagare"] > 0 else "ok"},
                         {"label": "Documenti scaduti", "value": str(o["kpi"]["doc_scaduti"]), "sub": f"{o['kpi']['doc_in_arrivo']} in arrivo", "tono": "bad" if o["kpi"]["doc_scaduti"] else "ok"}],
-    "risultati": _ris_sa, "fogli": lambda o: {"Contratti": o["contratti"], "Documenti": o["documenti"], "Per commessa": o["commesse"]},
+    "risultati": _ris_sa, "fogli": lambda o: {"Contratti": o["contratti"], "Per subappaltatore": sa.per_subappaltatore(o), "Documenti": o["documenti"], "Per commessa": o["commesse"]},
 }
 SPEC_SA["collegamenti"] = lambda out, dati, utente, audit: _coll_sal("sa", lambda o, d: sa.per_sl_costi(o, d[1]), lambda r: str(r.get("Descrizione")) == "SAL subappaltatore",
                                                                     "Porta i SAL dei subappaltatori tra i costi delle commesse di **SAL e contabilità lavori** (categoria «Subappalti»).")(out, dati, utente, audit)
@@ -233,7 +236,7 @@ def _es_pr():
 def _cfg_pr():
     a, b = pr.ETICHETTE_PERSONE, pr.ETICHETTE_ORE
     return ({"Persona": _t(a["Persona"], width="medium"), "Qualifica": _t(a["Qualifica"]), "Costo_orario": _n(a["Costo_orario"], min_value=0.0, step=1.0, format="%.1f")},
-            {"Persona": _t(b["Persona"], width="medium"), "Data": _t(b["Data"], help="AAAA-MM-GG o GG/MM/AAAA"), "Commessa": _t(b["Commessa"]), "Ore": _n(b["Ore"], min_value=0.0, max_value=1000.0, step=0.5, format="%.1f")})
+            {"Persona": _t(b["Persona"], width="medium"), "Data": _t(b["Data"], help="AAAA-MM-GG o GG/MM/AAAA"), "Commessa": colonna_cantiere(b["Commessa"], (("pr_ore", "Commessa"),)), "Ore": _n(b["Ore"], min_value=0.0, max_value=1000.0, step=0.5, format="%.1f")})
 
 
 def _leggi_pr():
@@ -347,11 +350,11 @@ def _es_mt():
 
 def _cfg_mt():
     a, b = mt.ETICHETTE_ORDINI, mt.ETICHETTE_MOV
-    return ({"Materiale": _t(a["Materiale"], width="medium"), "Fornitore": _t(a["Fornitore"]), "Commessa": _t(a["Commessa"]), "Quantita": _n(a["Quantita"], min_value=0.0, step=1.0), "Um": _t(a["Um"], width="small"),
+    return ({"Materiale": _t(a["Materiale"], width="medium"), "Fornitore": _t(a["Fornitore"]), "Commessa": colonna_cantiere(a["Commessa"], (("mt_ord", "Commessa"),)), "Quantita": _n(a["Quantita"], min_value=0.0, step=1.0), "Um": _t(a["Um"], width="small"),
              "Prezzo_unit": _n(a["Prezzo_unit"], min_value=0.0, step=0.1, format="%.2f"), "Consegna_prevista": _t(a["Consegna_prevista"], help="AAAA-MM-GG o GG/MM/AAAA"),
              "Consegnato": st.column_config.SelectboxColumn(a["Consegnato"], options=["no", "sì"]), "Data_consegna": _t(a["Data_consegna"], help="AAAA-MM-GG o GG/MM/AAAA"),
              "Ddt": _t(a["Ddt"], help="Numero del documento di trasporto scritto sulla bolla, per esempio 412 del 28/10")},
-            {"Materiale": _t(b["Materiale"], width="medium"), "Commessa": _t(b["Commessa"]), "Data": _t(b["Data"], help="AAAA-MM-GG o GG/MM/AAAA"),
+            {"Materiale": _t(b["Materiale"], width="medium"), "Commessa": colonna_cantiere(b["Commessa"], (("mt_mov", "Commessa"),)), "Data": _t(b["Data"], help="AAAA-MM-GG o GG/MM/AAAA"),
              "Tipo": st.column_config.SelectboxColumn(b["Tipo"], options=mt.TIPI_MOV), "Quantita": _n(b["Quantita"], min_value=0.0, step=1.0)})
 
 
