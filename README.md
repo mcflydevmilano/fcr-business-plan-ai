@@ -240,6 +240,9 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.15.3
+- **Video corsi** (`video.py`): link per strumento (sigla) o per passo dei Primi passi (`pp_<id>`, con riserva sul primo strumento), salvati come `cfg` («video_corsi»); solo https. Pulsante in `guida.mostra` e in `hub._primi_passi`; editor in Admin → «🎬 Video». Senza link non compare nulla.
+
 ## Novità 3.15.2
 - **Segnalazioni** (`assistenza.registra_segnalazione`, `elenco_segnalazioni`): ogni messaggio del pulsante di assistenza è salvato nel registro attivita' (azione `segnalazione`: tipo ‖ strumento ‖ dispositivo ‖ versione ‖ testo); Slack resta facoltativo. Elenco in Admin → «📨 Segnalazioni».
 - **Conflitto di salvataggio** (`ui_util.conflitto_salvataggio`): ora in ora italiana, con indicazione di cosa fare. La protezione (`atteso`) esisteva già in `salva_protetto`.

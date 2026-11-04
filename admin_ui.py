@@ -23,7 +23,9 @@ def render(utente, utenti_secrets, audit):
         _segn = assistenza.elenco_segnalazioni()
     except Exception:
         _segn = []
-    t1, t2, t3, t4, t5, t6 = st.tabs(["Utenti", "Registro attività", "Backup", "🔒 Permessi", "💾 Spazio", f"📨 Segnalazioni ({len(_segn)})" if _segn else "📨 Segnalazioni"])
+    t1, t2, t3, t4, t5, t6, t7 = st.tabs(["Utenti", "Registro attività", "Backup", "🔒 Permessi", "💾 Spazio", f"📨 Segnalazioni ({len(_segn)})" if _segn else "📨 Segnalazioni", "🎬 Video"])
+    with t7:
+        _video_admin(utente, audit)
     with t6:
         st.markdown("#### Segnalazioni dei colleghi")
         st.caption("Arrivano dal pulsante con la tua foto, in basso a destra. Ogni riga dice chi scrive, in quale strumento si trovava, da telefono o computer e con quale versione.")
@@ -166,6 +168,30 @@ def render(utente, utenti_secrets, audit):
 
     with t5:
         _spazio()
+
+
+def _video_admin(utente, audit):
+    import video
+    import percorso
+    import permessi
+    st.markdown("#### Video corsi")
+    st.caption("Incolla il link di ogni video (YouTube «non in elenco», Vimeo…, deve cominciare con https://). Dove c'è un link compare il pulsante «🎬 Guarda il video» "
+               "nello strumento; dove manca non compare nulla. I passi dei Primi passi usano, se non hanno un video proprio, quello del primo strumento.")
+    attuali = video.carica()
+    righe = [{"Dove": "Passo · " + p["titolo"], "Chiave": f"pp_{p['id']}", "Link": attuali.get(f"pp_{p['id']}", "")} for p in percorso.PASSI]
+    righe += [{"Dove": "Strumento · " + str(n), "Chiave": s, "Link": attuali.get(s, "")} for s, n in permessi.NOMI.items()]
+    ed = st.data_editor(pd.DataFrame(righe), hide_index=True, width="stretch", key="adm_video", disabled=["Dove", "Chiave"],
+                        column_config={"Chiave": None, "Link": st.column_config.LinkColumn("Link del video", help="https://…")})
+    if st.button("Salva i link dei video", type="primary", key="adm_video_salva"):
+        nuovi = {r["Chiave"]: r["Link"] for _, r in ed.iterrows() if str(r["Link"] or "").strip()}
+        scartati = [k for k, v in nuovi.items() if not video.url_valido(v)]
+        video.salva(nuovi, utente.get("username", ""))
+        storage.svuota_cache()
+        audit("video_salvati", f"{len(nuovi) - len(scartati)} link")
+        if scartati:
+            st.warning(f"{len(scartati)} link non validi sono stati ignorati (devono cominciare con https://).")
+        else:
+            st.success("Salvato.")
 
 
 def _permessi(utente, utenti_secrets, audit):

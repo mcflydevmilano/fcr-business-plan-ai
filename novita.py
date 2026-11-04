@@ -15,6 +15,10 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.15.3", "data": "2026-11-05", "titolo": "Video corsi: pulsante «Guarda il video»",
+     "voci": ["Dove c'è un video, nello strumento e nei Primi passi compare il pulsante «🎬 Guarda il video». Dove non c'è ancora non si vede nulla.",
+              "Gli amministratori incollano i link in Amministrazione → «🎬 Video»."],
+     "strumenti": ["Hub", "Amministrazione"]},
     {"id": "3.15.2", "data": "2026-11-04", "titolo": "Segnala un problema, avviso di modifica più chiaro",
      "voci": ["Il pulsante con la foto di Lorenzo (in basso a destra) ora salva ogni segnalazione dentro la suite, con lo strumento in cui eri e se scrivi da telefono o da computer. Funziona sempre, anche senza Slack.",
               "Le segnalazioni si leggono in Amministrazione → «📨 Segnalazioni».",

@@ -403,6 +403,11 @@ def _primi_passi(vai_a, consentiti=None, aggiornati=None):
                             f"<span style='font-size:.88rem;opacity:.75'>{html.escape(p['perche'])}</span>  \n"
                             f"<span style='font-size:.8rem;opacity:.6'>📍 {html.escape(p['dove'])}</span>", unsafe_allow_html=True)
                 with c2:
+                    try:
+                        import video
+                        video.pulsante(f"pp_{p['id']}", p["sigle"], key=f"pp_vid_{p['id']}", width="stretch")
+                    except Exception:
+                        pass
                     for s in p["sigle"]:
                         etichetta = CARDS[s]["bottone"]
                         if st.button(f"Apri {etichetta}  →", key=f"pp_{p['id']}_{s}", width="stretch", type="primary" if p["stato"] == "adesso" else "secondary"):

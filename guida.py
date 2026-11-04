@@ -307,6 +307,11 @@ def stato(sigla):
 
 def mostra(sigla):
     """Riquadro «Come si usa» da mettere subito sotto il titolo dello strumento."""
+    try:
+        import video
+        video.pulsante(sigla, key=f"vid_{sigla}")
+    except Exception:
+        pass
     if sigla not in PASSI:
         return
     serve, _, attenzione = PASSI[sigla]
