@@ -247,7 +247,7 @@ def _archivio(utente, audit):
     with st.container(border=True):
         st.download_button(f"⬇️ Scarica {meta['nome_file']} ({_kb(meta['dimensione'])})", dati, file_name=meta["nome_file"], mime=meta["mime"], key=f"ddt_dl_{meta['id']}")
         if meta["mime"] == "image/jpeg":
-            st.image(dati, width=420)
+            st.image(dati, width="content")
         elif meta["mime"] == "application/pdf":
             st.caption("Il PDF si apre con il pulsante «Scarica».")
         if not sola_lettura():
