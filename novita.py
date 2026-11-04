@@ -15,6 +15,11 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.15.2", "data": "2026-11-04", "titolo": "Segnala un problema, avviso di modifica più chiaro",
+     "voci": ["Il pulsante con la foto di Lorenzo (in basso a destra) ora salva ogni segnalazione dentro la suite, con lo strumento in cui eri e se scrivi da telefono o da computer. Funziona sempre, anche senza Slack.",
+              "Le segnalazioni si leggono in Amministrazione → «📨 Segnalazioni».",
+              "Se un collega modifica lo stesso salvataggio prima di te, l'avviso ora dice chi, quando (ora italiana) e cosa conviene fare: Annulla, riapri e rifai la modifica."],
+     "strumenti": ["Amministrazione"]},
     {"id": "3.15.1", "data": "2026-11-04", "titolo": "Chat: foto intere con «Scarica» e pulsante «Compito» ben visibile",
      "voci": ["Le foto ricevute nella Chat ora si adattano alla larghezza dello schermo (prima sul telefono uscivano tagliate).",
               "Sotto ogni foto c'è il pulsante «⬇️ Scarica la foto»."],

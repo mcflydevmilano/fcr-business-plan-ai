@@ -58,6 +58,39 @@ def costruisci_messaggio(tipo, testo, utente="", strumento="", quando=None):
             f"_Da: {utente or 'utente non indicato'}" + (f" · strumento: {strumento}" if strumento else "") + f" · {quando.strftime('%d/%m/%Y %H:%M')}_")
 
 
+AZIONE_SEGNALAZIONE = "segnalazione"
+MAX_TESTO = 900
+
+
+def dispositivo():
+    """«telefono» o «computer», dal browser di chi scrive (serve a capire dove si vede il problema)."""
+    try:
+        ua = str(st.context.headers.get("User-Agent", "")).lower()
+    except Exception:
+        return ""
+    if not ua:
+        return ""
+    return "telefono" if any(k in ua for k in ("android", "iphone", "ipad", "mobile")) else "computer"
+
+
+def registra_segnalazione(tipo, testo, utente="", strumento="", versione="", disp="", path=None):
+    """Salva la segnalazione nella suite (registro attivita'), cosi' non si perde anche se Slack non e' configurato."""
+    import storage
+    dettaglio = " ‖ ".join([tipo, strumento or "-", disp or "-", f"v{versione}" if versione else "-", " ".join(str(testo).split())[:MAX_TESTO]])
+    storage.log_evento(utente, AZIONE_SEGNALAZIONE, dettaglio, path)
+
+
+def elenco_segnalazioni(limite=200, path=None):
+    """Segnalazioni dal piu' recente: lista di dict {Data (UTC), Da, Tipo, Strumento, Dispositivo, Versione, Messaggio}."""
+    import storage
+    out = []
+    for e in storage.elenca_eventi(limite, azione=AZIONE_SEGNALAZIONE, path=path):
+        p = [x.strip() for x in str(e["Dettaglio"]).split("‖", 4)]
+        p += ["-"] * (5 - len(p))
+        out.append({"Data (UTC)": e["Data (UTC)"], "Da": e["Utente"], "Tipo": p[0], "Strumento": p[1], "Dispositivo": p[2], "Versione": p[3], "Messaggio": p[4]})
+    return out
+
+
 def invia_slack(testo, url):
     if not url.startswith("https://hooks.slack.com/"):
         raise RuntimeError("SLACK_ASSISTENZA_WEBHOOK_URL mancante o non valido.")
@@ -183,13 +216,23 @@ def render(utente="", strumento=""):
             if inv:
                 if not testo.strip():
                     st.warning("Scrivi prima il messaggio.")
-                elif not url:
-                    st.error("L'invio non è ancora attivo: chiedi a Lorenzo di configurare il canale Slack." + (" Intanto puoi scrivergli direttamente sotto." if dm else ""))
                 else:
                     try:
-                        invia_slack(costruisci_messaggio(tipo, testo, utente, strumento), url)
-                        st.success("Messaggio inviato. Grazie! 🙏")
-                    except Exception as e:
-                        st.error(f"Invio non riuscito: {e}")
+                        import versione
+                        registra_segnalazione(tipo, testo, utente, strumento, versione.VERSIONE, dispositivo())
+                        salvata = True
+                    except Exception:
+                        salvata = False
+                    inviata = False
+                    if url:
+                        try:
+                            invia_slack(costruisci_messaggio(tipo, testo, utente, strumento), url)
+                            inviata = True
+                        except Exception:
+                            pass
+                    if salvata or inviata:
+                        st.success("Messaggio inviato. Grazie! 🙏 Lo leggo appena posso.")
+                    else:
+                        st.error("Invio non riuscito: riprova tra poco o scrivimi a voce.")
             if dm:
                 st.link_button("Apri la chat Slack", dm, width="stretch")

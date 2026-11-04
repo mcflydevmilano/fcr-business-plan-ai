@@ -81,6 +81,17 @@ def sostituisci_tabella(chiave, df):
     ss[chiave + "_v"] = ss.get(chiave + "_v", 0) + 1
 
 
+def _ora_it(ts):
+    """'2026-11-04 14:32:10' (UTC) -> '14/11 15:32' ora italiana."""
+    import datetime as dt
+    try:
+        d = dt.datetime.strptime(str(ts)[:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=dt.timezone.utc)
+        from zoneinfo import ZoneInfo
+        return d.astimezone(ZoneInfo("Europe/Rome")).strftime("%d/%m alle %H:%M")
+    except Exception:
+        return f"alle {str(ts)[11:16]} (UTC)"
+
+
 def salva_protetto(modulo, nome, payload, utente, audit):
     """Salva controllando che nessun altro abbia modificato lo stesso salvataggio dopo che lo hai aperto. Restituisce True se ha salvato."""
     import storage
@@ -105,9 +116,9 @@ def conflitto_salvataggio(modulo, utente, audit):
         return
     chi = f"da {c['autore']} " if c["autore"] else ""
     if c["aperto"]:
-        st.warning(f"⚠️ «{c['nome']}» è stato modificato {chi}alle {c['agg'][11:16]} (UTC) dopo che l'avevi aperto. Salvando ora sostituiresti il suo lavoro.")
+        st.warning(f"⚠️ «{c['nome']}» è stato modificato {chi}il {_ora_it(c['agg'])} dopo che l'avevi aperto. Se salvi ora, il suo lavoro viene sostituito dal tuo: scegli «Annulla», riapri il salvataggio e rifai la tua modifica sulla versione nuova.")
     else:
-        st.warning(f"⚠️ Esiste già un salvataggio «{c['nome']}» (ultima modifica {chi}alle {c['agg'][11:16]} UTC) che non hai aperto. Salvando lo sostituiresti.")
+        st.warning(f"⚠️ Esiste già un salvataggio «{c['nome']}» (ultima modifica {chi}il {_ora_it(c['agg'])}) che non hai aperto. Salvando lo sostituiresti.")
     a, b = st.columns(2)
     if a.button("Sovrascrivi comunque", key=f"sv_forza_{modulo}", width="stretch"):
         agg = storage.salva_pratica(c["nome"], c["payload"], autore=utente, modulo=modulo)

@@ -18,7 +18,19 @@ def render(utente, utenti_secrets, audit):
         return
     for frase in spazio.avvisi():
         st.warning("💾 " + frase + " Vedi la scheda «Spazio».")
-    t1, t2, t3, t4, t5 = st.tabs(["Utenti", "Registro attività", "Backup", "🔒 Permessi", "💾 Spazio"])
+    try:
+        import assistenza
+        _segn = assistenza.elenco_segnalazioni()
+    except Exception:
+        _segn = []
+    t1, t2, t3, t4, t5, t6 = st.tabs(["Utenti", "Registro attività", "Backup", "🔒 Permessi", "💾 Spazio", f"📨 Segnalazioni ({len(_segn)})" if _segn else "📨 Segnalazioni"])
+    with t6:
+        st.markdown("#### Segnalazioni dei colleghi")
+        st.caption("Arrivano dal pulsante con la tua foto, in basso a destra. Ogni riga dice chi scrive, in quale strumento si trovava, da telefono o computer e con quale versione.")
+        if _segn:
+            st.dataframe(pd.DataFrame(_segn), width="stretch", hide_index=True)
+        else:
+            st.info("Nessuna segnalazione per ora.")
 
     with t1:
         st.markdown("#### Utenti configurati nei secrets")

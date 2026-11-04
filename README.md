@@ -240,6 +240,10 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.15.2
+- **Segnalazioni** (`assistenza.registra_segnalazione`, `elenco_segnalazioni`): ogni messaggio del pulsante di assistenza è salvato nel registro attivita' (azione `segnalazione`: tipo ‖ strumento ‖ dispositivo ‖ versione ‖ testo); Slack resta facoltativo. Elenco in Admin → «📨 Segnalazioni».
+- **Conflitto di salvataggio** (`ui_util.conflitto_salvataggio`): ora in ora italiana, con indicazione di cosa fare. La protezione (`atteso`) esisteva già in `salva_protetto`.
+
 ## Novità 3.15.0
 - **Primi passi** (`percorso.py`, `hub._primi_passi`): elenco guidato in ordine (cantieri → contatti → persone → contratti → subappalti → fatture → banche → quotidiano → controllo). Lo stato «fatto» viene dai salvataggi veri (`storage.ultimi_aggiornamenti`), mai dagli esempi; filtrato sugli strumenti consentiti. Contatore in barra laterale (`ss["_pp_stato"]`).
 - **Menu riordinato** (`hub.GRUPPI`): gruppi numerati nell'ordine di lavoro. CSS delle linguette aggiornato per Streamlit 1.66 (`theme.py`).
