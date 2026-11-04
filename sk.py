@@ -35,7 +35,7 @@ def indice(cantieri):
 
 
 def _scheda(c, in_rubrica=True):
-    return {"Codice": c.get("Codice", ""), "Cantiere": c.get("Cantiere", ""), "Cliente": c.get("Cliente", ""), "Responsabile": c.get("Responsabile", ""),
+    return {"Codice": c.get("Codice", ""), "Esterno": c.get("Esterno", ""), "Cantiere": c.get("Cantiere", ""), "Cliente": c.get("Cliente", ""), "Responsabile": c.get("Responsabile", ""),
             "Stato": c.get("Stato", "") if in_rubrica else "Non in Rubrica", "in_rubrica": in_rubrica,
             "attive": [], "passive": [], "costi": {}, "sal": {"emessi": 0, "incassato": 0.0}, "contratto": None,
             "subappalti": [], "conti": [], "rapporti": 0, "ore": 0.0, "ultimo_rapporto": None, "segnalazioni_aperte": 0, "da": set()}

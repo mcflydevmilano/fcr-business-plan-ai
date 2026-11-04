@@ -15,6 +15,13 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.14.1", "data": "2026-11-04", "titolo": "Cartelle del NAS collegate ai cantieri",
+     "voci": ["Nella «Scheda cantiere» c'è la nuova scheda «📁 Cartelle»: per ogni cantiere mostra dove stanno i suoi file sul NAS (Progetti, CME, Contratti, Contabilità, Sicurezza, Foto e Drone...).",
+              "Basta copiare il percorso (icona a destra) e incollarlo nella barra di Esplora file di Windows, dall'ufficio.",
+              "La cartella di ogni cantiere si chiama «CODICE - Nome», per esempio «F100 - Villa Lago». Il codice è quello della Rubrica (campo «codice in altro sistema») o, se manca, CAN-….",
+              "Quando il NAS sarà collegato al server, un pulsante creerà da solo le cartelle mancanti del cantiere.",
+              "La scheda spiega anche la struttura delle cartelle e chi può usarle."],
+     "strumenti": ["Scheda cantiere"]},
     {"id": "3.14.0", "data": "2026-11-03", "titolo": "Organico dal calendario, magazzino con pistola, suggerimenti mentre scrivi, bolle lette dall'IA",
      "voci": ["Organico: le ore disponibili ora si calcolano dal calendario vero, dal lunedì al venerdì, senza festività (Pasquetta compresa), festa del patrono, ferie, malattie e chiusure che inserisci.",
               "Organico e Presenze: colonne «Assunto dal» e «Cessato il». Chi è cessato esce da solo da capacità, costi e previsioni; le ore passate restano.",

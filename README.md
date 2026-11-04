@@ -240,6 +240,9 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.14.1
+- **Cartelle del NAS** (`archivio.py`, scheda «📁 Cartelle» in `sk_ui.py`): struttura per funzione (01 Commerciale … 10 Foto e Drone, 90 Archivio storico, 99 Backup suite) con una cartella per cantiere «CODICE - Nome» (campo `Esterno` della Rubrica, altrimenti il codice CAN-…). Mostra i percorsi UNC (`FCR_NAS_UNC`, predefinito `\\\\192.168.1.240\\fcr`) da incollare in Esplora file; con la share montata (`FCR_NAS_PATH`, predefinito `/mnt/nas`) segna ✅/➖ e crea le cartelle mancanti (mai fuori dalla radice, nomi ripuliti). Il browser non può aprire cartelle di rete da un sito web: per questo si copia il percorso.
+
 ## Novità 3.14.0
 - **Organico dal calendario** (`og.py`, `og_ui.py`): capacità = giorni lun-ven del mese meno festività nazionali (`gt.festivita_italiane`, Pasquetta inclusa), festa del patrono (parametro GG/MM) e assenze/chiusure (tabella «Ferie, malattie, chiusure», risorsa o «Tutti»), per `Ore_giorno` (default 8). `Ore_mese` resta come valore fisso facoltativo, ridotto in proporzione ai giorni in forza. Nuove colonne `Assunzione`/`Cessazione`: chi è cessato prima del periodo esce da capacità, costi e previsioni (avviso con l'elenco). `calcola_og(ris, ass, p, assenze)`; payload con la chiave `abs`.
 - **Presenze** (`pr.py`): colonne `Assunzione`/`Cessazione` (avviso se ci sono ore fuori periodo; i cessati non entrano nella media del costo orario di squadra né nell'elenco di «Registra le mie ore»). Calcolatore `costo_orario_da_ral` (RAL + INPS 32% + INAIL 4% + TFR 7,41% + altri, su 1.720 h).

@@ -4,6 +4,7 @@ import datetime as dt
 import pandas as pd
 import streamlit as st
 
+import archivio
 import bk_ui
 import guida
 import mc
@@ -136,6 +137,36 @@ def _tab_rapportini(s):
         {"label": "Segnalazioni aperte", "value": str(s["segnalazioni_aperte"]), "sub": "", "tono": "bad" if s["segnalazioni_aperte"] else "ok"}]), unsafe_allow_html=True)
 
 
+def _tab_cartelle(s):
+    """Dove stanno i file di questo cantiere sul NAS, con il percorso da incollare in Esplora file."""
+    ps = archivio.percorsi(s)
+    if not ps:
+        st.info("Manca il nome del cantiere.")
+        return
+    st.caption(f"Cartelle del cantiere **{archivio.nome_cantiere(s)}** sul NAS. Copia il percorso (icona a destra) e incollalo nella barra di Esplora file di Windows: "
+               "funziona dal computer dell'ufficio, collegato alla rete aziendale.")
+    for p in ps:
+        c1, c2 = st.columns([1, 4])
+        stato = "" if p["esiste"] is None else (" ✅" if p["esiste"] else " ➖ da creare")
+        c1.markdown(f"**{p['area']}**{stato}  \n<span style='font-size:.8rem;opacity:.7'>{p['chi']}</span>", unsafe_allow_html=True)
+        c2.code(p["unc"], language=None)
+    if archivio.montato():
+        mancanti = [p for p in ps if not p["esiste"]]
+        if st.button(f"Crea le {len(mancanti)} cartelle mancanti", key="sk_crea_cartelle", disabled=not mancanti):
+            try:
+                n, v = archivio.crea_cartelle(s)
+                st.success(f"Create {n} cartelle ({v} già c'erano).")
+                st.rerun()
+            except OSError as e:
+                st.error(str(e))
+    else:
+        st.caption("Le cartelle si creano a mano in File Station con questo nome. Quando il NAS sarà collegato al server, qui comparirà il pulsante per crearle in automatico.")
+    with st.expander("📋 La struttura delle cartelle e le regole"):
+        st.markdown("**Regole**: massimo 3 livelli (area → cantiere → file). La cartella di ogni cantiere si chiama **`CODICE - Nome`**, "
+                    "con il codice usato in azienda (campo «codice in altro sistema» della Rubrica) o, se manca, quello della Rubrica.")
+        st.dataframe(pd.DataFrame([{"Cartella": archivio.NOME_AREA[a[0]], "Una per cantiere": "sì" if a[2] else "no", "Chi": a[3], "Cosa ci va": a[4]} for a in archivio.AREE]), hide_index=True, width="stretch")
+
+
 def _tutti(schede):
     righe = [{"Codice": s["Codice"], "Cantiere": s["Cantiere"], "Stato": s["Stato"], "Fatturato": round(s["fatturato"]), "Incassato": round(s["entrate"]["regolato"]),
               "Da incassare": round(s["entrate"]["residuo"]), "Costi": round(s["costi_totali"]), "Margine corrente": round(s["margine_corrente"]), "Cassa": round(s["cassa"]),
@@ -177,7 +208,7 @@ def render(fcr_uri, audit=None, utente=""):
         {"label": "Costi sostenuti", "value": EUR(s["costi_totali"]), "sub": "materiali, ore, mezzi, subappalti", "tono": "info"},
         {"label": "Margine corrente", "value": EUR(s["margine_corrente"]), "sub": "fatturato − costi", "tono": "bad" if s["margine_corrente"] < 0 else "ok"},
         {"label": "Contratto", "value": EUR(t["contratto"]) if t else "—", "sub": f"avanzamento {fmt_num(t['avanzamento'], 1)}%" if t else "non in SAL", "tono": "info"}]), unsafe_allow_html=True)
-    t1, t2, t3, t5, t6, t4 = st.tabs(["💶 Entrate e uscite", "🧱 Costi", "📋 SAL e margine", "🤝 Subappaltatori", "🏦 Conti correnti", "✍️ Rapportini"])
+    t1, t2, t3, t5, t6, t4, t7 = st.tabs(["💶 Entrate e uscite", "🧱 Costi", "📋 SAL e margine", "🤝 Subappaltatori", "🏦 Conti correnti", "✍️ Rapportini", "📁 Cartelle"])
     with t1:
         _tab_conti(s)
     with t2:
@@ -190,6 +221,8 @@ def render(fcr_uri, audit=None, utente=""):
         _tab_conti_correnti(s)
     with t4:
         _tab_rapportini(s)
+    with t7:
+        _tab_cartelle(s)
     st.subheader("Tutti i cantieri a confronto")
     righe = _tutti(schede)
     st.dataframe(pd.DataFrame(righe), hide_index=True, width="stretch")
