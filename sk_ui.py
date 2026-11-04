@@ -143,19 +143,14 @@ def _tab_cartelle(s):
     if not ps:
         st.info("Manca il nome del cantiere.")
         return
-    st.caption(f"Cartelle del cantiere **{archivio.nome_cantiere(s)}** sul NAS. Copia il percorso (icona a destra) e incollalo nella barra di Esplora file di Windows: "
-               "funziona dal computer dell'ufficio, collegato alla rete aziendale.")
+    st.caption(f"Cartelle del cantiere **{archivio.nome_cantiere(s)}** sul NAS. Premi **Apri** per vederle nel browser (File Station), oppure copia il percorso e incollalo nella barra di Esplora file di Windows. "
+               "Funziona dalla rete dell'ufficio, con il proprio utente del NAS.")
     for p in ps:
         c1, c2, c3 = st.columns([2, 5, 1])
         stato = "" if p["esiste"] is None else (" ✅" if p["esiste"] else " ➖ da creare")
         c1.markdown(f"**{p['area']}**{stato}  \n<span style='font-size:.8rem;opacity:.7'>{p['chi']}</span>", unsafe_allow_html=True)
         c2.code(p["unc"], language=None)
-        c3.link_button("📂 Apri", p["link"], help="Apre la cartella in Esplora file (serve l'attivazione, una volta per computer)")
-    with st.expander("🔧 Il pulsante «Apri» non fa niente? Attivalo (una volta sola per computer)"):
-        st.markdown("1. Scarica il file qui sotto.\n2. Fai doppio clic sul file e conferma («Sì» / «Continua»). Non servono diritti di amministratore.\n"
-                    "3. Torna qui e premi **Apri**: il browser chiede di aprire «Cartelle FCR», spunta «Consenti sempre» e conferma.\n\n"
-                    "Funziona solo dai computer Windows nella rete dell'ufficio. In alternativa copia il percorso e incollalo in Esplora file.")
-        st.download_button("📥 Scarica il file di attivazione (Windows)", archivio.file_attivazione().encode("utf-16"), file_name="attiva_cartelle_fcr.reg", mime="application/octet-stream", key="dl_reg_fcr")
+        c3.link_button("📂 Apri", p["link"], help="Apre la cartella nel browser, in File Station. Serve essere nella rete dell'ufficio e accedere con il proprio utente del NAS.")
     if archivio.montato():
         mancanti = [p for p in ps if not p["esiste"]]
         if st.button(f"Crea le {len(mancanti)} cartelle mancanti", key="sk_crea_cartelle", disabled=not mancanti):

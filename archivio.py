@@ -92,22 +92,13 @@ def crea_cartelle(c, radice=None):
     return nuove, vecchie
 
 
-SCHEMA = "fcrnas"
+def base_web():
+    """Indirizzo dell'interfaccia web del NAS (DSM), visibile dalla rete dell'ufficio."""
+    return (os.environ.get("FCR_NAS_WEB", "").strip() or "http://192.168.1.240:5000").rstrip("/")
 
 
-def link_apri(relativo):
-    """Link «fcrnas:03%20Progetti/F100%20-%20Villa%20Lago»: il PC lo gira a Esplora file (serve il file di attivazione, una volta per PC).
-    Nel link c'e' solo il percorso dentro `fcr`: la parte iniziale (il NAS) sta nel file di attivazione, cosi' il link non puo' aprire altro."""
-    return f"{SCHEMA}:" + quote(str(relativo).replace("\\", "/"), safe="/")
-
-
-def file_attivazione():
-    """Testo del file .reg che insegna a Windows ad aprire i link `fcrnas:` in Esplora file. Si installa per utente (non servono diritti di amministratore)."""
-    base = base_unc()                                                      # \\\\192.168.1.240\\fcr
-    ps = ("$p=[uri]::UnescapeDataString(('%1').Substring(" + str(len(SCHEMA) + 1) + ")).Trim('/'); "
-          "if($p -notmatch '(^|[\\\\/])\\.\\.([\\\\/]|$)'){ Start-Process explorer.exe ('" + base.replace("'", "''") + "\\' + ($p -replace '/','\\')) }")
-    comando = f'powershell.exe -NoProfile -WindowStyle Hidden -Command "{ps}"'
-    esc = comando.replace("\\", "\\\\").replace('"', '\\"')
-    return ("Windows Registry Editor Version 5.00\r\n\r\n"
-            f"[HKEY_CURRENT_USER\\Software\\Classes\\{SCHEMA}]\r\n@=\"URL:Cartelle FCR\"\r\n\"URL Protocol\"=\"\"\r\n\r\n"
-            f"[HKEY_CURRENT_USER\\Software\\Classes\\{SCHEMA}\\shell\\open\\command]\r\n@=\"{esc}\"\r\n")
+def link_apri(relativo, condivisa="fcr"):
+    """Link che apre la cartella in File Station (nel browser, senza installare nulla): serve l'accesso a DSM per l'utente.
+    Se il file/cartella non esiste File Station apre comunque la cartella superiore piu' vicina o la radice."""
+    percorso = "/" + condivisa + "/" + str(relativo).replace("\\", "/").strip("/")
+    return f"{base_web()}/?launchApp=SYNO.SDS.App.FileStation3.Instance&launchParam=" + quote("openfile=" + percorso, safe="")

@@ -320,27 +320,27 @@ CARDS = {'credit': {'icona': '📊',
 
 # (titolo sezione, sottotitolo, [sigle])  -  ogni gruppo ha un numero pari di schede, tranne l'ultimo (a tutta larghezza)
 GRUPPI = [
-    ("Parte finanziaria", "Dott. Claudio Arosio",
-     ["credit", "bp", "cf", "sc", "bk"]),
-    ("Offerte e commesse", "Dalla gara al preventivo, fino all'avanzamento lavori",
-     ["rc", "of", "ga", "pv", "pz", "sl", "gt", "sk", "mc"]),
-    ("Cantiere e risorse", "Rapportini, sicurezza, mezzi e persone",
-     ["rp", "sx", "mz", "og", "pr", "mt"]),
-    ("Fornitori, acquisti e scadenze", "Contatti, ordini approvati, documenti dei fornitori e calendario unico",
-     ["ru", "fo", "oa", "ca", "sa", "ad"]),
-    ("Flusso e compiti", "Lo schema delle commesse passo per passo e le cose da fare",
-     ["fc", "ta"]),
+    ("1 · Si parte da qui", "I cantieri e le persone con cui lavori: prima di tutto si scrivono qui",
+     ["ru", "fo"]),
+    ("2 · Dalla gara al contratto", "Opportunità, gare, preventivi e prezziario",
+     ["rc", "ga", "pv", "pz", "of"]),
+    ("3 · Il cantiere in corso", "Avanzamento lavori, subappalti, ordini, documenti, sicurezza e mezzi",
+     ["gt", "sl", "sa", "oa", "ad", "sx", "mz"]),
+    ("4 · Ogni giorno in cantiere", "Rapportini, ore, materiali e organico: da fare dal telefono",
+     ["rp", "pr", "mt", "og"]),
+    ("5 · I soldi", "Dott. Claudio Arosio: fatture e scadenze, banche, cassa, rating e business plan",
+     ["sc", "bk", "cf", "credit", "bp"]),
+    ("6 · Controllo e cose da fare", "La situazione di ogni cantiere, le scadenze, il flusso delle commesse e i compiti",
+     ["sk", "mc", "ca", "dd", "fc", "ta"]),
     ("Studio legale", "Riserve, contratti e passaggio dei crediti allo studio",
      ["lg"]),
-    ("Direzione e persone", "La sintesi di tutta l'azienda e chi ci lavora",
-     ["pe", "dd"]),
-    ("Comunicazione", "Parlarsi senza uscire dalla suite",
-     ["ch", "vr", "nv"]),
+    ("Persone e comunicazione", "Utenti e permessi, chat, verbali e novità",
+     ["pe", "ch", "vr", "nv"]),
 ]
 
 
-ICONE_GRUPPO = {"Parte finanziaria": "💰", "Offerte e commesse": "🏗️", "Cantiere e risorse": "👷",
-                "Fornitori, acquisti e scadenze": "📦", "Studio legale": "⚖️", "Direzione e persone": "📊", "Comunicazione": "💬", "Flusso e compiti": "🧭"}
+ICONE_GRUPPO = {"1 · Si parte da qui": "🚀", "2 · Dalla gara al contratto": "📝", "3 · Il cantiere in corso": "🏗️", "4 · Ogni giorno in cantiere": "👷",
+                "5 · I soldi": "💰", "6 · Controllo e cose da fare": "📊", "Studio legale": "⚖️", "Persone e comunicazione": "💬"}
 
 
 def numero(sigla):
@@ -380,8 +380,37 @@ def _ia_spiegata():
         ia_info.spiegazione()
 
 
+def _primi_passi(vai_a, consentiti=None, aggiornati=None):
+    """La strada guidata per chi comincia: un passo dopo l'altro, dal cantiere in avanti, con lo stato di ciascuno."""
+    import percorso
+    try:
+        passi, fatti, tot = percorso.valuta(aggiornati, consentiti)
+    except Exception:
+        return
+    if not passi:
+        return
+    st.session_state["_pp_stato"] = (fatti, tot)
+    completo = tot > 0 and fatti >= tot
+    with st.expander(f"🚀 Primi passi: da dove cominciare e come proseguire  ·  {fatti} di {tot} fatti", expanded=not completo):
+        st.caption("Segui i passi in ordine: ognuno prepara i dati per il successivo. Il passo con la freccia è quello da fare adesso. "
+                   "I passi si segnano «fatti» da soli quando salvi i dati veri (gli esempi non contano).")
+        st.progress(fatti / tot if tot else 0.0)
+        for p in passi:
+            icona = {"fatto": "✅", "adesso": "👉", "dopo": "⚪"}[p["stato"]]
+            with st.container(border=(p["stato"] == "adesso"), key=f"pp_{p['id']}"):
+                c1, c2 = st.columns([5, 2], vertical_alignment="center")
+                c1.markdown(f"{icona} **Passo {p['n']} · {p['titolo']}**  \n"
+                            f"<span style='font-size:.88rem;opacity:.75'>{html.escape(p['perche'])}</span>  \n"
+                            f"<span style='font-size:.8rem;opacity:.6'>📍 {html.escape(p['dove'])}</span>", unsafe_allow_html=True)
+                with c2:
+                    for s in p["sigle"]:
+                        etichetta = CARDS[s]["bottone"]
+                        if st.button(f"Apri {etichetta}  →", key=f"pp_{p['id']}_{s}", width="stretch", type="primary" if p["stato"] == "adesso" else "secondary"):
+                            vai_a(s)
+
+
 def _da_dove_comincio(vai_a, consentiti=None):
-    with st.expander("🚀 Da dove comincio? Scegli chi sei", expanded=True):
+    with st.expander("🙋 Preferisci partire da quello che fai? Scegli chi sei", expanded=False):
         st.caption("Ogni strumento ha in alto il riquadro «🧭 Come si usa»: ti dice cosa fare, passo per passo. Gli esempi che vedi sono finti: li togli con «Svuota l'esempio».")
         percorsi = [(t, x, [(s, e) for s, e in b if consentiti is None or s in consentiti]) for t, x, b in PERCORSI]
         percorsi = [p for p in percorsi if p[2]]
@@ -526,7 +555,7 @@ def _ricerca(vai_a, consentiti):
     return True
 
 
-def render(vai_a, consentiti=None, freschezza_righe=None, non_letti_chat=0, giornata=None, novita=None):
+def render(vai_a, consentiti=None, freschezza_righe=None, non_letti_chat=0, giornata=None, novita=None, aggiornati=None):
     """consentiti: insieme di sigle visibili a chi guarda (None = tutte). I gruppi rimasti vuoti spariscono."""
     if _ricerca(vai_a, consentiti):
         return
@@ -546,6 +575,7 @@ def render(vai_a, consentiti=None, freschezza_righe=None, non_letti_chat=0, gior
                         (f"  \n🔴 **{non_letti_chat} messaggi da leggere**" if non_letti_chat else ""))
             if c2.button("Apri la chat", key="hub_chat_apri", type="primary", width="stretch"):
                 vai_a("ch")
+    _primi_passi(vai_a, consentiti, aggiornati)
     _da_dove_comincio(vai_a, consentiti)
     _ia_spiegata()
     _freschezza(freschezza_righe or [])
@@ -553,7 +583,7 @@ def render(vai_a, consentiti=None, freschezza_righe=None, non_letti_chat=0, gior
         sigle = [s for s in sigle if consentiti is None or s in consentiti]
         if not sigle:
             continue
-        finanziaria = n == 0
+        finanziaria = "credit" in sigle
         icona = ICONE_GRUPPO.get(titolo, "📁")
         with st.expander(f"{icona}  {titolo}  ·  {len(sigle)} " + ("strumento" if len(sigle) == 1 else "strumenti"),
                          expanded=(n == 0)):

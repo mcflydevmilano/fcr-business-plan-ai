@@ -690,6 +690,10 @@ def _nav_strumenti():
             if st.button("💬  Chat interna" + (f"   🔴 {_nl}" if _nl else ""), key="nav_ch", width="stretch",
                          type="primary" if MODULO == "ch" else "secondary"):
                 vai_a("ch")
+        _pp = ss.get("_pp_stato")
+        if _pp and MODULO is not None:
+            if st.button(f"🚀  Primi passi  ({_pp[0]} di {_pp[1]})", key="nav_pp", width="stretch", help="Torna all'elenco dei passi da fare, in ordine"):
+                vai_a(None)
         st.markdown("<div class='sb-label'>Strumenti</div>", unsafe_allow_html=True)
         for titolo, _sotto, sigle in hub.GRUPPI:
             sigle = [x for x in sigle if x in CONSENTITI and x != "ch"]
@@ -863,7 +867,11 @@ assistenza.render((ss.get("utente") or {}).get("username", ""), MODULO or "Hub")
 if MODULO is None:
     st.markdown(theme.hub_header(FCR_URI, len([c for c in hub.CARDS if c in CONSENTITI])), unsafe_allow_html=True)
     try:
-        _fresc = freschezza.valuta(storage.ultimi_aggiornamenti(), moduli=CONSENTITI)
+        _agg = storage.ultimi_aggiornamenti()
+    except Exception:
+        _agg = {}
+    try:
+        _fresc = freschezza.valuta(_agg, moduli=CONSENTITI)
         if "pz" in CONSENTITI:
             _fresc.append(pz.stato_validita(pz.carica_indice()))        # il prezziario scade a una data, non dopo N giorni
     except Exception:
@@ -876,7 +884,7 @@ if MODULO is None:
         _nov = novita.da_leggere(ss["utente"]["username"]) if "nv" in CONSENTITI else None
     except Exception:
         _nov = None
-    hub.render(vai_a, CONSENTITI, _fresc, _non_letti_chat() if "ch" in CONSENTITI else 0, (ss["utente"], PROFILO, _compiti_miei, audit), _nov)
+    hub.render(vai_a, CONSENTITI, _fresc, _non_letti_chat() if "ch" in CONSENTITI else 0, (ss["utente"], PROFILO, _compiti_miei, audit), _nov, _agg)
     st.stop()
 
 if MODULO == "bp":

@@ -327,9 +327,21 @@ hr { border-color: var(--line); }
   height: auto !important; min-height: 2.5rem; white-space: normal !important; overflow-wrap: anywhere; line-height: 1.25; padding-top: .45rem; padding-bottom: .45rem;
 }
 .stButton > button p, .stDownloadButton > button p, .stFormSubmitButton > button p { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; overflow-wrap: anywhere; line-height: 1.25; }
+/* schede (tabs) di Streamlit 1.4x+: il tab e' un div con data-testid="stTab" */
+.stTabs [role="tablist"] { gap: 8px; border-bottom: 2px solid var(--line); padding-bottom: 0; flex-wrap: wrap; }
+.stTabs [data-testid="stTab"] { background: var(--panel) !important; border: 1px solid var(--line) !important; border-bottom: none !important;
+  border-radius: 12px 12px 0 0 !important; color: var(--ink) !important; padding: 12px 22px !important; height: auto !important; cursor: pointer;
+  transition: background .2s ease, color .2s ease, transform .2s ease; }
+.stTabs [data-testid="stTab"] p { color: inherit !important; font-weight: 700 !important; font-size: 1.02rem !important; }
+.stTabs [data-testid="stTab"]:hover { background: var(--accsoft) !important; color: var(--acc) !important; transform: translateY(-2px); }
+.stTabs [data-testid="stTab"][aria-selected="true"] { background: var(--acc) !important; color: #fff !important; border-color: var(--acc) !important; box-shadow: 0 6px 16px rgba(30,64,175,.28); }
+.stTabs [data-testid="stTab"][aria-selected="true"] p { color: #fff !important; }
+.stTabs .react-aria-SelectionIndicator { background: var(--acc2) !important; height: 3px !important; border-radius: 3px; }
+
 @media (max-width: 640px) {
   .stButton > button, .stDownloadButton > button, .stFormSubmitButton > button { font-size: .88rem; padding-left: .55rem; padding-right: .55rem; }
-  .stTabs [data-baseweb="tab"] { padding-left: 10px; padding-right: 10px; }
+  .stTabs [data-baseweb="tab"], .stTabs [data-testid="stTab"] { padding: 10px 12px !important; }
+  .stTabs [data-testid="stTab"] p { font-size: .92rem !important; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

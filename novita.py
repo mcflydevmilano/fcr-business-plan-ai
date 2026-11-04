@@ -15,10 +15,16 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.15.0", "data": "2026-11-04", "titolo": "Primi passi guidati, menu riordinato, scorciatoia alle cartelle",
+     "voci": ["Nell'Hub c'è «🚀 Primi passi»: i passi in ordine, dal cantiere in avanti (cantieri, contatti, persone, contratti, subappalti, fatture, banche, lavoro quotidiano, controllo). Il passo da fare adesso è evidenziato e ha il pulsante per aprire lo strumento giusto.",
+              "I passi si segnano «fatti» da soli quando salvi dati veri (gli esempi non contano). La barra a sinistra mostra «Primi passi (x di y)».",
+              "Il menu a sinistra è riordinato nello stesso ordine di lavoro: «1 · Si parte da qui» (Rubrica e cantieri), poi persone, spese, soldi, controllo.",
+              "Le linguette (come quelle della Scheda cantiere) ora si leggono bene: la linguetta scelta è evidente.",
+              "Scheda cantiere → Cartelle: «📂 Apri» apre la cartella nel NAS (File Station); serve l'accesso al portale del NAS per le persone."],
+     "strumenti": ["Hub", "Scheda cantiere"]},
     {"id": "3.14.2", "data": "2026-11-04", "titolo": "Pulsante «Apri» per le cartelle dei cantieri",
-     "voci": ["Nella scheda «📁 Cartelle» della Scheda cantiere, accanto a ogni percorso c'è il pulsante «📂 Apri»: apre la cartella direttamente in Esplora file.",
-              "La prima volta su ogni computer Windows scarica e apri il file di attivazione (un solo doppio clic, senza diritti di amministratore).",
-              "Funziona dai computer dell'ufficio, nella rete aziendale. Il pulsante di copia del percorso resta come alternativa."],
+     "voci": ["Nella scheda «📁 Cartelle» della Scheda cantiere, accanto a ogni percorso c'è il pulsante «📂 Apri»: apre la cartella nel NAS (File Station).",
+              "Il pulsante di copia del percorso resta come alternativa per Esplora file."],
      "strumenti": ["Scheda cantiere"]},
     {"id": "3.14.1", "data": "2026-11-04", "titolo": "Cartelle del NAS collegate ai cantieri",
      "voci": ["Nella «Scheda cantiere» c'è la nuova scheda «📁 Cartelle»: per ogni cantiere mostra dove stanno i suoi file sul NAS (Progetti, CME, Contratti, Contabilità, Sicurezza, Foto e Drone...).",

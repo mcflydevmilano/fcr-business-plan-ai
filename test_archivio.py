@@ -37,11 +37,10 @@ def test_senza_nas_collegato():
         pass
 
 
-def test_link_apri_e_file_di_attivazione():
-    assert archivio.link_apri("03 Progetti/F100 - Villa Lago") == "fcrnas:03%20Progetti/F100%20-%20Villa%20Lago"
-    assert "%27" in archivio.link_apri("D'Amico") and '"' not in archivio.link_apri('a"b') and "&" not in archivio.link_apri("a&b")
+def test_link_file_station():
+    l = archivio.link_apri("03 Progetti/F100 - Villa Lago")
+    assert l.startswith("http://192.168.1.240:5000/?launchApp=SYNO.SDS.App.FileStation3.Instance&launchParam=")
+    assert l.endswith("openfile%3D%2Ffcr%2F03%20Progetti%2FF100%20-%20Villa%20Lago")
+    assert "&" not in l.split("launchParam=")[1] and '"' not in archivio.link_apri('a"b')
     ps = archivio.percorsi({"Esterno": "F100", "Cantiere": "Villa Lago"}, radice=None)
-    assert ps[1]["link"] == "fcrnas:03%20Progetti/F100%20-%20Villa%20Lago"
-    reg = archivio.file_attivazione()
-    assert reg.startswith("Windows Registry Editor Version 5.00") and "[HKEY_CURRENT_USER\\Software\\Classes\\fcrnas\\shell\\open\\command]" in reg
-    assert "192.168.1.240" in reg and "explorer.exe" in reg and "URL Protocol" in reg
+    assert ps[1]["link"] == l
