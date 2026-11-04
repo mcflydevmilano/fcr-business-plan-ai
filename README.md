@@ -240,6 +240,9 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.14.2
+- **Pulsante «Apri»** (`archivio.link_apri`, `archivio.file_attivazione`): link `fcrnas:<area>/<cartella>` (solo il percorso dentro `fcr`) + file `.reg` per utente (HKCU, niente amministratore) che registra il protocollo `fcrnas` e lancia `explorer.exe` su `FCR_NAS_UNC` + percorso, rifiutando i `..`. Il file va installato una volta per PC; Chrome chiede il permesso la prima volta. Il link passa intatto da `st.link_button`. Non testabile da Linux: provare su un PC Windows.
+
 ## Novità 3.14.1
 - **Cartelle del NAS** (`archivio.py`, scheda «📁 Cartelle» in `sk_ui.py`): struttura per funzione (01 Commerciale … 10 Foto e Drone, 90 Archivio storico, 99 Backup suite) con una cartella per cantiere «CODICE - Nome» (campo `Esterno` della Rubrica, altrimenti il codice CAN-…). Mostra i percorsi UNC (`FCR_NAS_UNC`, predefinito `\\\\192.168.1.240\\fcr`) da incollare in Esplora file; con la share montata (`FCR_NAS_PATH`, predefinito `/mnt/nas`) segna ✅/➖ e crea le cartelle mancanti (mai fuori dalla radice, nomi ripuliti). Il browser non può aprire cartelle di rete da un sito web: per questo si copia il percorso.
 

@@ -35,3 +35,13 @@ def test_senza_nas_collegato():
         assert False
     except OSError:
         pass
+
+
+def test_link_apri_e_file_di_attivazione():
+    assert archivio.link_apri("03 Progetti/F100 - Villa Lago") == "fcrnas:03%20Progetti/F100%20-%20Villa%20Lago"
+    assert "%27" in archivio.link_apri("D'Amico") and '"' not in archivio.link_apri('a"b') and "&" not in archivio.link_apri("a&b")
+    ps = archivio.percorsi({"Esterno": "F100", "Cantiere": "Villa Lago"}, radice=None)
+    assert ps[1]["link"] == "fcrnas:03%20Progetti/F100%20-%20Villa%20Lago"
+    reg = archivio.file_attivazione()
+    assert reg.startswith("Windows Registry Editor Version 5.00") and "[HKEY_CURRENT_USER\\Software\\Classes\\fcrnas\\shell\\open\\command]" in reg
+    assert "192.168.1.240" in reg and "explorer.exe" in reg and "URL Protocol" in reg

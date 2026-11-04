@@ -7,6 +7,7 @@ Variabili d'ambiente: FCR_NAS_UNC (percorso che vedono i colleghi in Windows, pr
 """
 import os
 import re
+from urllib.parse import quote
 
 # (numero, nome cartella, una cartella per cantiere?, chi la usa, descrizione)
 AREE = [
@@ -64,7 +65,8 @@ def percorsi(c, radice=None):
                 esiste = os.path.isdir(os.path.join(d, nc)) or bool(cod) and any(x.lower().startswith(cod.lower() + " ") and os.path.isdir(os.path.join(d, x)) for x in os.listdir(d))
             except OSError:
                 esiste = False
-        out.append({"numero": num, "area": area, "cartella": nc, "unc": f"{base_unc()}\\{area}\\{nc}", "esiste": esiste, "chi": chi})
+        out.append({"numero": num, "area": area, "cartella": nc, "unc": f"{base_unc()}\\{area}\\{nc}", "esiste": esiste, "chi": chi,
+                    "link": link_apri(f"{area}/{nc}")})
     return out
 
 
@@ -88,3 +90,24 @@ def crea_cartelle(c, radice=None):
             os.makedirs(d, exist_ok=True)
             nuove += 1
     return nuove, vecchie
+
+
+SCHEMA = "fcrnas"
+
+
+def link_apri(relativo):
+    """Link «fcrnas:03%20Progetti/F100%20-%20Villa%20Lago»: il PC lo gira a Esplora file (serve il file di attivazione, una volta per PC).
+    Nel link c'e' solo il percorso dentro `fcr`: la parte iniziale (il NAS) sta nel file di attivazione, cosi' il link non puo' aprire altro."""
+    return f"{SCHEMA}:" + quote(str(relativo).replace("\\", "/"), safe="/")
+
+
+def file_attivazione():
+    """Testo del file .reg che insegna a Windows ad aprire i link `fcrnas:` in Esplora file. Si installa per utente (non servono diritti di amministratore)."""
+    base = base_unc()                                                      # \\\\192.168.1.240\\fcr
+    ps = ("$p=[uri]::UnescapeDataString(('%1').Substring(" + str(len(SCHEMA) + 1) + ")).Trim('/'); "
+          "if($p -notmatch '(^|[\\\\/])\\.\\.([\\\\/]|$)'){ Start-Process explorer.exe ('" + base.replace("'", "''") + "\\' + ($p -replace '/','\\')) }")
+    comando = f'powershell.exe -NoProfile -WindowStyle Hidden -Command "{ps}"'
+    esc = comando.replace("\\", "\\\\").replace('"', '\\"')
+    return ("Windows Registry Editor Version 5.00\r\n\r\n"
+            f"[HKEY_CURRENT_USER\\Software\\Classes\\{SCHEMA}]\r\n@=\"URL:Cartelle FCR\"\r\n\"URL Protocol\"=\"\"\r\n\r\n"
+            f"[HKEY_CURRENT_USER\\Software\\Classes\\{SCHEMA}\\shell\\open\\command]\r\n@=\"{esc}\"\r\n")

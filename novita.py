@@ -15,6 +15,11 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.14.2", "data": "2026-11-04", "titolo": "Pulsante «Apri» per le cartelle dei cantieri",
+     "voci": ["Nella scheda «📁 Cartelle» della Scheda cantiere, accanto a ogni percorso c'è il pulsante «📂 Apri»: apre la cartella direttamente in Esplora file.",
+              "La prima volta su ogni computer Windows scarica e apri il file di attivazione (un solo doppio clic, senza diritti di amministratore).",
+              "Funziona dai computer dell'ufficio, nella rete aziendale. Il pulsante di copia del percorso resta come alternativa."],
+     "strumenti": ["Scheda cantiere"]},
     {"id": "3.14.1", "data": "2026-11-04", "titolo": "Cartelle del NAS collegate ai cantieri",
      "voci": ["Nella «Scheda cantiere» c'è la nuova scheda «📁 Cartelle»: per ogni cantiere mostra dove stanno i suoi file sul NAS (Progetti, CME, Contratti, Contabilità, Sicurezza, Foto e Drone...).",
               "Basta copiare il percorso (icona a destra) e incollarlo nella barra di Esplora file di Windows, dall'ufficio.",
