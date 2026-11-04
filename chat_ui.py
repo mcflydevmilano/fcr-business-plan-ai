@@ -503,7 +503,9 @@ def render(fcr_uri, audit=None, utente=None, utenti_secrets=None, consentiti=Non
     nomi = ["💬 Conversazioni", "🔎 Cerca", f"✅ Compiti ({n_comp})" if n_comp else "✅ Compiti", "📱 Avvisi sul telefono"] + (["⚙️ Gestione"] if gest else []) + ["🔒 Privacy"]
     tabs = st.tabs(nomi)
     with tabs[0]:
-        ca, cb, _ = st.columns([1, 2, 3])
+        ca, cb, cc = st.columns([1, 2, 2])
+        if not ss.get("_finestra_chat"):
+            cc.link_button("🗗 Chat in finestra separata", "?finestra=chat", help="Apre la chat in una nuova scheda: trascinala accanto alla suite e chatti mentre lavori.")
         ca.button("🔄 Aggiorna", key="chat_aggiorna", width="stretch", help="Mostra i messaggi nuovi")
         ss.setdefault("chat_auto", True)
         cb.toggle("Aggiorna da sola ogni 2 minuti", key="chat_auto", help="Per vedere subito i messaggi nuovi premi «Aggiorna».")
