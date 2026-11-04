@@ -649,6 +649,12 @@ except Exception:
     pass
 PERM = permessi.carica_config()
 CONSENTITI = permessi.moduli_consentiti(ss["utente"], PERM)
+if st.query_params.get("finestra") == "chat" and "ch" in CONSENTITI:     # chat in una finestra staccata: solo la chat, senza menu
+    ss["_finestra_chat"] = True
+    ss["active_module"] = "ch"
+    MODULO = "ch"
+if ss.get("_finestra_chat"):
+    st.markdown("<style>[data-testid='stSidebar'],[data-testid='stSidebarCollapsedControl'],[data-testid='stExpandSidebarButton']{display:none !important}</style>", unsafe_allow_html=True)
 PROFILO = "accesso completo" if ss["utente"].get("ruolo") == "admin" else permessi.profilo_di(ss["utente"], PERM)
 
 

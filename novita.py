@@ -15,6 +15,10 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.15.1", "data": "2026-11-04", "titolo": "Chat: foto intere con «Scarica» e pulsante «Compito» ben visibile",
+     "voci": ["Le foto ricevute nella Chat ora si adattano alla larghezza dello schermo (prima sul telefono uscivano tagliate).",
+              "Sotto ogni foto c'è il pulsante «⬇️ Scarica la foto»."],
+     "strumenti": ["Chat interna"]},
     {"id": "3.15.0", "data": "2026-11-04", "titolo": "Primi passi guidati, menu riordinato, scorciatoia alle cartelle",
      "voci": ["Nell'Hub c'è «🚀 Primi passi»: i passi in ordine, dal cantiere in avanti (cantieri, contatti, persone, contratti, subappalti, fatture, banche, lavoro quotidiano, controllo). Il passo da fare adesso è evidenziato e ha il pulsante per aprire lo strumento giusto.",
               "I passi si segnano «fatti» da soli quando salvi dati veri (gli esempi non contano). La barra a sinistra mostra «Primi passi (x di y)».",

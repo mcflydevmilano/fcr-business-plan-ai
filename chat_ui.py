@@ -107,15 +107,9 @@ def _azioni(m, utente, audit, sel, utenti_noti):
             except (ValueError, PermissionError) as e:
                 st.error(str(e))
             _rerun()
-    with riga.popover("⋯", help="Rispondi, modifica, crea un compito", width="content"):
-        if scrive and st.button("↩ Rispondi", key=f"chq_{m['id']}"):
-            ss["chat_risposta"] = m["id"]
-            _rerun()
-        if mio and st.button("✏️ Modifica", key=f"chm_{m['id']}"):
-            ss["chat_modifica"] = m["id"]
-            _rerun()
-        if scrive:
-            st.markdown("**📌 Crea un compito**")
+    if scrive:
+        with riga.popover("📌 Compito", help="Trasforma questo messaggio in un compito per qualcuno, con scadenza", width="content"):
+            st.markdown("**📌 Crea un compito da questo messaggio**")
             tit = st.text_input("Cosa c'è da fare", (m["testo"] or "")[:80], key=f"cht_{m['id']}")
             persone = _persone_canale(sel, utenti_noti)
             chi = st.selectbox("A chi", persone, index=persone.index(utente["username"]) if utente["username"] in persone else 0, key=f"chp_{m['id']}")
@@ -130,6 +124,14 @@ def _azioni(m, utente, audit, sel, utenti_noti):
                     _rerun()
                 except (ValueError, PermissionError) as e:
                     st.error(str(e))
+
+    with riga.popover("⋯", help="Rispondi, modifica, elimina", width="content"):
+        if scrive and st.button("↩ Rispondi", key=f"chq_{m['id']}"):
+            ss["chat_risposta"] = m["id"]
+            _rerun()
+        if mio and st.button("✏️ Modifica", key=f"chm_{m['id']}"):
+            ss["chat_modifica"] = m["id"]
+            _rerun()
         if mio and st.button("🗑 Elimina", key=f"chx_{m['id']}"):
             chat.elimina_messaggio(m["id"], utente)
             _rerun()
@@ -164,7 +166,9 @@ def _riga_messaggio(m, utente, audit, vai_a, consentiti, nomi_strumenti, foto=No
             st.markdown(html.escape(m["testo"]).replace("\n", "  \n"), unsafe_allow_html=True)
         if m["allegato"]:
             if (m["allegato_tipo"] or "").startswith("image/"):
-                st.image(m["allegato"], width=320, caption=m["allegato_nome"])
+                with st.container(key=f"chimg_{m['id']}"):
+                    st.image(m["allegato"], width="content", caption=m["allegato_nome"])
+                    st.download_button("⬇️ Scarica la foto", m["allegato"], file_name=m["allegato_nome"], mime=m["allegato_tipo"], key=f"chd_{m['id']}")
             else:
                 st.download_button(f"📄 {m['allegato_nome']}", m["allegato"], file_name=m["allegato_nome"], mime=m["allegato_tipo"], key=f"chd_{m['id']}")
         if m["link_modulo"]:
@@ -278,7 +282,10 @@ def _conversazioni_corpo(utente, utenti_noti, audit, vai_a, consentiti, nomi_str
             with c2:
                 strumenti = [s for s in consentiti if s in nomi_strumenti and s != "ch"]
                 sc = st.selectbox("Collega uno strumento (facoltativo)", strumenti, index=None, format_func=lambda s: nomi_strumenti[s],
-                                  placeholder="Nessuno", key="chat_link")
+                                  placeholder="Nessuno", key="chat_link",
+                                  help="Aggiunge sotto il messaggio un pulsante «Apri» che porta chi legge direttamente a quello strumento "
+                                       "(per esempio Scadenzario o Scheda cantiere). Se vuoi che un collega guardi una cosa precisa, scegli lo strumento: gli risparmi la ricerca nel menu.")
+            st.caption("💡 «Collega uno strumento» = sotto il messaggio compare un pulsante che apre quello strumento. Facoltativo.")
             imp = st.checkbox("❗ Importante: chiedi a chi legge di confermare", key="chat_importante")
             if st.form_submit_button("Invia", type="primary"):
                 try:
@@ -478,6 +485,10 @@ def render(fcr_uri, audit=None, utente=None, utenti_secrets=None, consentiti=Non
     nomi_strumenti = nomi_strumenti or {}
     vai_a = vai_a or (lambda m: None)
     st.markdown(theme.hero(fcr_uri, "Chat interna", "Canali per i temi comuni, chat dirette tra colleghi e avvisi sul telefono."), unsafe_allow_html=True)
+    if not ss.get("_finestra_chat"):
+        st.link_button("🗗  Apri la chat in una finestra separata", "?finestra=chat", help="Si apre in una nuova scheda del browser: trascinala accanto alla suite e chatti mentre lavori.")
+    else:
+        st.caption("Finestra della chat: puoi lasciarla accanto alla suite. Chiudila quando non ti serve.")
     guida.mostra("ch")
     noti = _utenti_noti(utenti_secrets)
     gest = chat.e_gestore(utente)
