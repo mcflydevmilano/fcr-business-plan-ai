@@ -7,6 +7,7 @@ import unicodedata
 
 # argomenti collegati a ogni strumento: chi cerca «fattura» deve trovare lo Scadenzario anche se il nome non lo dice
 SINONIMI = {
+    "ac": "accessi timbratura timbrare badge presenze entrata uscita pausa qr ore ritardi orari ufficio",
     "nv": "novita aggiornamenti cosa cambia versione modifiche release miglioramenti", "sk": "scheda cantiere entrate uscite costi fatture sal materiali rapportini margine cassa cantieri vivi conti commessa", "ta": "compiti attivita bacheca scadenze responsabile priorita da fare kanban promemoria", "fc": "flusso commessa schema procedure passaggi go nogo cda presidente assemblea codice madre approvazione iniziali chiusura", "mc": "margini margine commessa costi ricavi utile redditivita sal subappalti", "sa": "subappalti subappaltatori durc polizze ritenute sal pagamenti", "pr": "presenze ore straordinari manodopera timbrature costo orario", "mt": "materiali magazzino ordini consegne giacenze cantiere", "vr": "verbali riunioni decisioni azioni responsabili compiti", "ad": "archivio documenti link cartelle drive sharepoint commessa scadenze",
     "credit": "rating banca bilancio merito creditizio basilea fido comitato", "bp": "business plan piano industriale mutuo investimento capannone",
     "cf": "cash flow liquidita cassa previsione cantieri", "pv": "preventivo computo metrico offerta costi margine voci",

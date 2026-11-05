@@ -66,6 +66,8 @@ def _schema_pg(con):
         "attivo INTEGER NOT NULL DEFAULT 1, creato TEXT, ultimo_accesso TEXT, creato_da TEXT)",
         "CREATE TABLE IF NOT EXISTS audit_log (id SERIAL PRIMARY KEY, ts TEXT, utente TEXT, azione TEXT, dettaglio TEXT)",
         "CREATE TABLE IF NOT EXISTS pratiche_storico (id SERIAL PRIMARY KEY, nome TEXT, salvato TEXT, autore TEXT, payload TEXT)",
+        "CREATE TABLE IF NOT EXISTS timbrature (id SERIAL PRIMARY KEY, ts TEXT, utente TEXT, tipo TEXT, metodo TEXT, distanza_m INTEGER, "
+        "nota TEXT, autore TEXT, annullata INTEGER NOT NULL DEFAULT 0, motivo_annullo TEXT)",
     ):
         con.execute(ddl)
 
@@ -152,6 +154,11 @@ def _schema_sqlite(con):
     con.execute(
         "CREATE TABLE IF NOT EXISTS audit_log ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, utente TEXT, azione TEXT, dettaglio TEXT)"
+    )
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS timbrature ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, utente TEXT, tipo TEXT, metodo TEXT, distanza_m INTEGER, "
+        "nota TEXT, autore TEXT, annullata INTEGER NOT NULL DEFAULT 0, motivo_annullo TEXT)"
     )
     cols = [r[1] for r in con.execute("PRAGMA table_info(pratiche)")]
     if "autore" not in cols:
@@ -409,6 +416,48 @@ def elenco_report(pratica=None, limit=20, path=None):
 # ----------------------------------------------------------------------------
 # REGISTRO ATTIVITA' (audit log)
 # ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# Timbrature (accessi del personale): una riga per ogni Entrata / Pausa / Rientro / Uscita. Non si salvano coordinate GPS, solo la distanza dalla sede.
+# ----------------------------------------------------------------------------
+def aggiungi_timbratura(utente, tipo, metodo, distanza_m=None, nota="", autore="", ts=None, path=None):
+    """Aggiunge una timbratura (ts in UTC 'AAAA-MM-GG HH:MM:SS', adesso se manca). Restituisce l'id."""
+    with _db(path) as con:
+        if _url_db() and path is None:
+            r = con.execute("INSERT INTO timbrature (ts, utente, tipo, metodo, distanza_m, nota, autore) VALUES (?,?,?,?,?,?,?) RETURNING id",
+                            (ts or _now(), str(utente), tipo, metodo, distanza_m, nota, autore or str(utente))).fetchone()
+            return r[0]
+        cur = con.execute("INSERT INTO timbrature (ts, utente, tipo, metodo, distanza_m, nota, autore) VALUES (?,?,?,?,?,?,?)",
+                          (ts or _now(), str(utente), tipo, metodo, distanza_m, nota, autore or str(utente)))
+        return cur.lastrowid
+
+
+def elenca_timbrature(da=None, a=None, utente=None, con_annullate=False, path=None):
+    """Timbrature dalla piu' vecchia; da/a = 'AAAA-MM-GG HH:MM:SS' UTC (estremi inclusi)."""
+    q, par, cond = "SELECT id, ts, utente, tipo, metodo, distanza_m, nota, autore, annullata, motivo_annullo FROM timbrature", [], []
+    if utente:
+        cond.append("utente=?")
+        par.append(str(utente))
+    if da:
+        cond.append("ts>=?")
+        par.append(da)
+    if a:
+        cond.append("ts<=?")
+        par.append(a)
+    if not con_annullate:
+        cond.append("annullata=0")
+    if cond:
+        q += " WHERE " + " AND ".join(cond)
+    q += " ORDER BY ts, id"
+    with _db(path) as con:
+        return [dict(zip(("id", "ts", "utente", "tipo", "metodo", "distanza_m", "nota", "autore", "annullata", "motivo_annullo"), r)) for r in con.execute(q, par)]
+
+
+def annulla_timbratura(id_, motivo, autore="", path=None):
+    """Segna una timbratura come annullata (non si cancella: resta nel registro con il motivo)."""
+    with _db(path) as con:
+        con.execute("UPDATE timbrature SET annullata=1, motivo_annullo=? WHERE id=?", (f"{motivo} ({autore})", int(id_)))
+
+
 def log_evento(utente, azione, dettaglio="", path=None):
     """Registra chi ha fatto cosa. Non solleva mai eccezioni: il log non deve bloccare l'applicazione."""
     try:

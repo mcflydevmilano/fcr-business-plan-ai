@@ -68,6 +68,7 @@ import rc
 import rc_ui
 import fc_ui
 import ta_ui
+import ac_ui
 import sk_ui
 import novita
 import novita_ui
@@ -203,10 +204,67 @@ def _entra(utente, via):
     st.rerun()
 
 
+def _stazione_timbratura():
+    """Timbratura FUORI dalla suite (dal QR o dalla pagina di accesso): nome utente e password, senza aprire la suite. True se ha mostrato la pagina."""
+    if not (st.query_params.get("timbra") or ss.get("_timbra_solo")):
+        return False
+    u = ss.get("_tb_utente")
+    dalla_suite = False
+    if not u and ss.get("utente"):
+        u, dalla_suite = ss["utente"], True
+    if not u and not ss.get("_addio") and not ss.get("_cancella_cookie"):
+        _tok = sessione.cookie_corrente()
+        if _tok:
+            u = sessione.ripristina(_tok, CHIAVE_SESSIONE, UTENTI_SECRETS, APP_PASSWORD)
+            dalla_suite = bool(u)
+    if u and not auth.ancora_valido(u, UTENTI_SECRETS):
+        u, dalla_suite = None, False
+        ss.pop("_tb_utente", None)
+    if u:
+        st.markdown(theme.CSS, unsafe_allow_html=True)        # pagina chiara e leggibile, come la suite
+        def _apri():
+            ss["utente"] = u
+            ss.pop("_timbra_solo", None)
+            st.query_params.clear()
+            st.rerun()
+
+        def _esci():
+            ss.pop("_tb_utente", None)
+            st.rerun()
+        ac_ui.stazione(u, FCR_URI, _apri if dalla_suite else None, None if dalla_suite else _esci)
+        if not dalla_suite and st.button("Vai all'accesso della suite", key="ac_vai_login"):
+            ss.pop("_timbra_solo", None)
+            st.query_params.clear()
+            st.rerun()
+        return True
+    st.markdown(theme.LOGIN_CSS, unsafe_allow_html=True)
+    st.markdown(theme.login_header(FCR_URI), unsafe_allow_html=True)
+    with st.container(key="login_card"):
+        st.markdown("### ⏱️ Timbratura")
+        st.caption("Entra con il tuo nome utente e la tua password per registrare entrata, pausa o uscita. Non apre la suite.")
+        with st.form("timbra_login"):
+            nome = st.text_input("Nome utente", key="tb_user", autocomplete="username")
+            pw = st.text_input("Password", type="password", key="tb_pw", autocomplete="current-password")
+            invia = st.form_submit_button("Continua", type="primary", width="stretch")
+        if invia:
+            utente, errore = auth.autentica(nome, pw, UTENTI_SECRETS, APP_PASSWORD)
+            if utente:
+                ss["_tb_utente"] = utente
+                st.rerun()
+            st.error(errore)
+        if st.button("← Torna all'accesso della suite", key="tb_indietro"):
+            ss.pop("_timbra_solo", None)
+            st.query_params.clear()
+            st.rerun()
+    return True
+
+
 def check_login():
     if not UTENTI_SECRETS and not APP_PASSWORD:
         st.error("⚠️ Configurazione mancante: aggiungi almeno un utente nei secrets (sezione [users.nome] con hash e ruolo) "
                  "oppure, in modo transitorio, APP_PASSWORD.")
+        return False
+    if _stazione_timbratura():
         return False
     u = ss.get("utente")
     if u:
@@ -272,6 +330,9 @@ def check_login():
                 st.error(errore)
         if APP_PASSWORD and not UTENTI_SECRETS:
             st.caption("Modalita' compatibilita': accesso come utente `admin` con la password condivisa.")
+    if st.button("⏱️ Devi solo timbrare? Entra qui", key="login_timbra", width="stretch"):
+        ss["_timbra_solo"] = True
+        st.rerun()
     st.markdown(theme.login_piede(ORE_SESSIONE), unsafe_allow_html=True)
     return False
 
@@ -628,7 +689,7 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",), "ch": ("chat_",), "mc": ("mc_",), "sa": ("sa_",), "pr": ("pr_",), "mt": ("mt_",), "vr": ("vr_",), "ad": ("ad_",), "fc": ("fc_",), "ta": ("ta_",), "sk": ("sk_",), "nv": ("nv_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",), "ch": ("chat_",), "mc": ("mc_",), "sa": ("sa_",), "pr": ("pr_",), "mt": ("mt_",), "vr": ("vr_",), "ad": ("ad_",), "fc": ("fc_",), "ta": ("ta_",), "sk": ("sk_",), "nv": ("nv_",), "ac": ("ac_",)}
 
 
 pwa.inietta()
@@ -921,6 +982,10 @@ if MODULO == "pe":
 
 if MODULO == "ca":
     ca_ui.render(FCR_URI, audit, CONSENTITI)
+    st.stop()
+
+if MODULO == "ac":
+    ac_ui.render(FCR_URI, audit, ss["utente"], PROFILO, UTENTI_SECRETS)
     st.stop()
 
 if MODULO == "ch":

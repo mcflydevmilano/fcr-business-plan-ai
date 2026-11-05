@@ -15,6 +15,13 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.16.0", "data": "2026-11-05", "titolo": "Accessi del personale: timbratura con il QR",
+     "voci": ["Nuovo strumento «Accessi del personale»: entrata, inizio pausa, rientro e uscita con il telefono.",
+              "Si inquadra il QR all'ingresso e si entra con nome utente e password: la pagina di timbratura si apre senza entrare nella suite. C'è anche il pulsante «Devi solo timbrare?» nella pagina di accesso.",
+              "Entrata e uscita valgono dalla rete dell'ufficio oppure, da un'altra rete, solo se il telefono è vicino alla sede. La posizione si legge solo in quel momento e non viene salvata.",
+              "Ognuno vede le proprie ore. Direzione e amministrazione hanno il registro (chi è dentro, ore, pause, uscite dimenticate), le correzioni tracciate con il motivo e l'Excel per il consulente.",
+              "Prima di usarlo: impostare la sede e l'indirizzo di rete in «Sede e QR», stampare il foglio e comunicare ai dipendenti come funziona (c'è un modello di comunicazione)."],
+     "strumenti": ["Accessi del personale"]},
     {"id": "3.15.3", "data": "2026-11-05", "titolo": "Video corsi: pulsante «Guarda il video»",
      "voci": ["Dove c'è un video, nello strumento e nei Primi passi compare il pulsante «🎬 Guarda il video». Dove non c'è ancora non si vede nulla.",
               "Gli amministratori incollano i link in Amministrazione → «🎬 Video»."],
