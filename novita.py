@@ -15,11 +15,18 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.16.1", "data": "2026-11-06", "titolo": "Menu del telefono più comodo, pagina di timbratura più netta",
+     "voci": ["Sul telefono il menu laterale mostra subito gli strumenti, senza passare da logo, orologio e profilo.",
+              "Pulsante «Menu» grande e blu in alto a sinistra; voci e pulsanti più grandi da toccare.",
+              "Dopo aver scelto uno strumento il menu si chiude da solo e si vede subito la pagina.",
+              "La pagina aperta dal QR ora serve solo a timbrare: non c'è più il pulsante per entrare nella suite.",
+              "Il fumetto dell'assistente non copre più il menu sul telefono."],
+     "strumenti": ["Tutta la suite", "Accessi del personale"]},
     {"id": "3.16.0", "data": "2026-11-05", "titolo": "Accessi del personale: timbratura con il QR",
-     "voci": ["Nuovo strumento «Accessi del personale»: entrata, inizio pausa, rientro e uscita con il telefono.",
+     "voci": ["Nuovo strumento «Accessi del personale»: entrata e uscita con il telefono (le pause si possono attivare dalle impostazioni, ma di base non ci sono).",
               "Si inquadra il QR all'ingresso e si entra con nome utente e password: la pagina di timbratura si apre senza entrare nella suite. C'è anche il pulsante «Devi solo timbrare?» nella pagina di accesso.",
               "Entrata e uscita valgono dalla rete dell'ufficio oppure, da un'altra rete, solo se il telefono è vicino alla sede. La posizione si legge solo in quel momento e non viene salvata.",
-              "Ognuno vede le proprie ore. Direzione e amministrazione hanno il registro (chi è dentro, ore, pause, uscite dimenticate), le correzioni tracciate con il motivo e l'Excel per il consulente.",
+              "Ognuno vede le proprie ore. Direzione e amministrazione hanno il registro (chi è dentro, ore, uscite dimenticate), le correzioni tracciate con il motivo e l'Excel per il consulente.",
               "Prima di usarlo: impostare la sede e l'indirizzo di rete in «Sede e QR», stampare il foglio e comunicare ai dipendenti come funziona (c'è un modello di comunicazione)."],
      "strumenti": ["Accessi del personale"]},
     {"id": "3.15.3", "data": "2026-11-05", "titolo": "Video corsi: pulsante «Guarda il video»",

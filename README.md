@@ -240,6 +240,10 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.16.1
+- **Menu laterale su telefono** (`theme.SIDEBAR_CSS`, blocco `@media (max-width: 768px)`): `sb_nav` in cima via `order` sul wrapper (`stLayoutWrapper:has(> .st-key-sb_nav)`), pulsante `stExpandSidebarButton` grande con scritta «Menu», voci da 50 px, fumetto assistente nascosto. Chiusura automatica del menu dopo la scelta (`_JS_MENU_TELEFONO` in `app.py`, componente `st.components.v2`, clic su `.st-key-sb_nav button` con viewport ≤ 768 px).
+- **Pagina del QR** (`ac_ui.stazione`): senza pulsante «Apri la suite»; resta solo il link all'accesso per chi è arrivato dal pulsante della pagina di login.
+
 ## Novità 3.16.0
 - **Accessi del personale** (`acc.py`, `ac_ui.py`, tabella `timbrature` in `storage.py`): Entrata/Pausa/Rientro/Uscita. Stato dall'ultima timbratura (uscita dimenticata nel giorno prima = si riparte da «fuori», giorno vecchio segnalato). Entrata/Uscita: rete della sede (IP da `CF-Connecting-IP`, elenco in impostazioni) oppure posizione letta al momento (componente `st.components.v2` + `navigator.geolocation`) entro il raggio; si salvano solo metodo e distanza, mai le coordinate. Pausa/rientro senza controllo.
 - **Fuori dalla suite**: `?timbra=1` (QR) e pulsante nella pagina di accesso → `_stazione_timbratura()` in `app.py`: nome utente + password (senza 2FA, senza sessione suite).

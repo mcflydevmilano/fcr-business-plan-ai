@@ -76,7 +76,7 @@ def _blocco_timbra(nome, cfg, audit, chiave):
         testo += f" · ultima timbratura: {acc.ETICHETTE[ev[-1]['tipo']].lower()} alle {ultimo.strftime('%H:%M')} del {ultimo.strftime('%d/%m')}"
     st.markdown(testo)
     azioni = [{"id": t, "label": acc.ETICHETTE[t], "gps": (t in acc.CON_CONTROLLO and not in_sede), "principale": i == 0}
-              for i, t in enumerate(acc.azioni_consentite(s))]
+              for i, t in enumerate(acc.azioni_consentite(s, cfg.get("pause")))]
     msg = ss.pop(f"_ac_msg_{chiave}", None)
     if msg:
         (st.success if msg[0] else st.error)(msg[1])
@@ -102,7 +102,7 @@ def _blocco_timbra(nome, cfg, audit, chiave):
 
 def stazione(utente, fcr_uri, apri_suite=None, esci=None):
     """Pagina di timbratura indipendente dalla suite (dal QR o dalla pagina di accesso)."""
-    st.markdown(theme.hero(fcr_uri, "Timbratura", "Entrata, pausa e uscita dal telefono."), unsafe_allow_html=True)
+    st.markdown(theme.hero(fcr_uri, "Timbratura", "Entrata e uscita dal telefono."), unsafe_allow_html=True)
     cfg = acc.carica_cfg()
     nome = utente["username"]
     st.markdown(f"Ciao **{nome}**.")
@@ -114,9 +114,17 @@ def stazione(utente, fcr_uri, apri_suite=None, esci=None):
         esci()
 
 
+def _tabella_df(righe, senza_persona=False):
+    """Tabella da mostrare: niente colonne interne; la colonna Pausa solo se qualcuno ha davvero fatto pause."""
+    df = pd.DataFrame([{k: v for k, v in r.items() if not k.startswith("_") and not (senza_persona and k == "Persona")} for r in righe])
+    if "Pausa" in df and (df["Pausa"] == "0:00").all():
+        df = df.drop(columns=["Pausa"])
+    return df
+
+
 def _excel(righe):
     buf = io.BytesIO()
-    df = pd.DataFrame([{k: v for k, v in r.items() if not k.startswith("_")} for r in righe])
+    df = _tabella_df(righe)
     with pd.ExcelWriter(buf, engine="openpyxl") as w:
         df.to_excel(w, index=False, sheet_name="Presenze")
     return buf.getvalue()
@@ -153,7 +161,7 @@ def _foglio_qr(url, sede):
     qi = qi.resize((lato, lato), Image.NEAREST)
     im.paste(qi, ((W - lato) // 2, 420))
     y = 1300
-    for riga in ("1. Inquadra il codice con la fotocamera", "2. Accedi con nome utente e password", "3. Premi Entrata, Pausa, Rientro o Uscita"):
+    for riga in ("1. Inquadra il codice con la fotocamera", "2. Accedi con nome utente e password", "3. Premi Entrata o Uscita"):
         centrato(riga, y, font(44))
         y += 78
     centrato(f"Sede: {sede}", 1600, font(34), "#475569")
@@ -165,7 +173,7 @@ def _foglio_qr(url, sede):
 MODELLO_COMUNICAZIONE = """Oggetto: rilevazione delle presenze con QR code
 
 Da [data] le entrate e le uscite dall'ufficio si registrano con il telefono, inquadrando il QR code all'ingresso ed entrando con il proprio nome utente.
-Si registrano: nome, data e ora di Entrata, Inizio e Fine pausa, Uscita. Il sistema controlla che la timbratura avvenga dalla rete dell'ufficio oppure, da altra rete, che il telefono si trovi in sede: la posizione viene letta solo nel momento in cui si preme Entrata o Uscita, non viene seguita durante la giornata e non viene conservata (si conserva solo il fatto che la verifica sia andata a buon fine).
+Si registrano: nome, data e ora di Entrata e di Uscita. Il sistema controlla che la timbratura avvenga dalla rete dell'ufficio oppure, da altra rete, che il telefono si trovi in sede: la posizione viene letta solo nel momento in cui si preme Entrata o Uscita, non viene seguita durante la giornata e non viene conservata (si conserva solo il fatto che la verifica sia andata a buon fine).
 I dati servono alla rilevazione delle presenze e al calcolo delle ore, e sono visibili alla persona interessata, alla direzione e all'amministrazione. Sono conservati per [periodo] e inviati al consulente del lavoro per le buste paga.
 Le correzioni (per esempio una timbratura dimenticata) si chiedono alla direzione e restano registrate con il motivo.
 Per informazioni sul trattamento dei dati: [riferimento privacy]."""
@@ -176,7 +184,7 @@ def render(fcr_uri, audit, utente, profilo, utenti_secrets=None):
     nome = utente["username"]
     gestore = utente.get("ruolo") == "admin" or profilo in ("presidente", "direzione", "amministrazione", "accesso completo")
     impostazioni = utente.get("ruolo") == "admin" or profilo in ("presidente", "direzione", "accesso completo")
-    st.markdown(theme.hero(fcr_uri, "Accessi del personale", "Entrata, pause e uscita con il telefono, dal QR all'ingresso."), unsafe_allow_html=True)
+    st.markdown(theme.hero(fcr_uri, "Accessi del personale", "Entrata e uscita con il telefono, dal QR all'ingresso."), unsafe_allow_html=True)
     cfg = acc.carica_cfg()
     nomi = ["📲 Timbra", "🗓️ Le mie presenze"] + (["👥 Registro"] if gestore else []) + (["⚙️ Sede e QR"] if impostazioni else [])
     tabs = st.tabs(nomi)
@@ -209,7 +217,7 @@ def _mie(nome):
         st.info("Nessuna timbratura nel periodo.")
         return
     st.metric("Ore in ufficio nel periodo", acc.ore(sum(r["_min"] for r in righe)))
-    st.dataframe(pd.DataFrame([{k: v for k, v in r.items() if not k.startswith("_") and k != "Persona"} for r in righe]), width="stretch", hide_index=True,
+    st.dataframe(_tabella_df(righe, True), width="stretch", hide_index=True,
                  column_config={"Giorno": st.column_config.DateColumn("Giorno", format="DD/MM/YYYY")})
     st.caption("Se manca una timbratura (per esempio un'uscita dimenticata), chiedi alla direzione di correggerla.")
 
@@ -251,7 +259,7 @@ def _registro(utente, audit, utenti_secrets):
     ev = storage.elenca_timbrature(u0, u1, None if chi == "Tutte" else chi)
     righe = acc.tabella(ev, da, a)
     if righe:
-        st.dataframe(pd.DataFrame([{k: v for k, v in r.items() if not k.startswith("_")} for r in righe]), width="stretch", hide_index=True,
+        st.dataframe(_tabella_df(righe), width="stretch", hide_index=True,
                      column_config={"Giorno": st.column_config.DateColumn("Giorno", format="DD/MM/YYYY")})
         tot = {}
         for r in righe:
@@ -301,7 +309,7 @@ def _registro(utente, audit, utenti_secrets):
 
 def _impostazioni(cfg, utente, audit):
     st.markdown("#### Sede e controlli")
-    st.caption("La timbratura di Entrata e Uscita vale se il telefono è collegato alla rete dell'ufficio, oppure, da un'altra rete, se la posizione letta in quel momento è vicina alla sede. Pausa e rientro non chiedono posizione.")
+    st.caption("La timbratura di Entrata e Uscita vale se il telefono è collegato alla rete dell'ufficio, oppure, da un'altra rete, se la posizione letta in quel momento è vicina alla sede.")
     ip_ora = _ip()
     c1, c2 = st.columns(2)
     sede = c1.text_input("Indirizzo della sede (solo per il foglio da stampare)", cfg["sede"], key="ac_s_sede")
@@ -315,7 +323,9 @@ def _impostazioni(cfg, utente, audit):
     st.caption(f"Il tuo indirizzo di rete in questo momento: `{ip_ora or 'non rilevato'}`" +
                (" — è un indirizzo interno: apri la suite da suite.piattaformafcr.it per leggere quello pubblico." if ip_ora.startswith(("192.168.", "10.", "172.16.", "127.")) else ""))
     b1, b2 = st.columns(2)
-    nuovo = dict(cfg, sede=sede, url=url.strip(), raggio_m=raggio, max_incertezza_m=inc, ip=ips)
+    pause = st.checkbox("Registra anche le pause (Inizio pausa e Rientro)", cfg["pause"], key="ac_s_pause",
+                        help="Spento: i colleghi vedono solo Entrata e Uscita. Pausa e rientro non chiedono mai la posizione.")
+    nuovo = dict(cfg, pause=pause, sede=sede, url=url.strip(), raggio_m=raggio, max_incertezza_m=inc, ip=ips)
     if b1.button("➕ Aggiungi il mio indirizzo di rete attuale", key="ac_s_addip", width="stretch", disabled=not ip_ora or ip_ora.startswith(("192.168.", "10.", "127."))):
         elenco = [x for x in ips.splitlines() if x.strip()]
         if ip_ora not in elenco:

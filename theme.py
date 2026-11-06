@@ -318,7 +318,7 @@ hr { border-color: var(--line); }
 
 .st-key-hub_top { display: none; }
 @media (max-width: 700px) {
-  .st-key-hub_top { display: block !important; margin-left: 46px; max-width: 100px; }
+  .st-key-hub_top { display: block !important; margin-left: 122px; max-width: 100px; }
   .hero { gap: 12px; } .hero-logo { width: 62px; } .hero-title { font-size: 1.35rem; }
   .hub-title { font-size: 1.5rem; } .score-num { font-size: 2.8rem; }
 }
@@ -392,6 +392,29 @@ EXTRA = '''
 '''
 
 SIDEBAR_CSS = """
+/* ---- Telefono: menu laterale pensato per il pollice ---- */
+@media (max-width: 768px) {
+  /* gli strumenti vengono prima di logo, orologio e profilo */
+  [data-testid="stLayoutWrapper"]:has(> .st-key-sb_nav) { order: -10; }
+  [data-testid="stSidebar"] { width: min(88vw, 360px) !important; min-width: 0 !important; }
+  /* il pulsante che apre il menu: grande, blu, con la scritta */
+  [data-testid="stExpandSidebarButton"] { width: auto !important; height: 46px !important; padding: 0 16px 0 12px !important; border-radius: 14px !important;
+    background: #1d4ed8 !important; color: #fff !important; box-shadow: 0 6px 16px rgba(29,78,216,.35); margin: 4px 0 0 4px; }
+  [data-testid="stExpandSidebarButton"] span, [data-testid="stExpandSidebarButton"] svg { color: #fff !important; fill: #fff !important; }
+  [data-testid="stExpandSidebarButton"]::after { content: "Menu"; font-weight: 800; font-size: 1rem; margin-left: 6px; color: #fff; }
+  [data-testid="stSidebarCollapseButton"] button { width: 46px; height: 46px; }
+  /* tasti e voci comode da toccare */
+  .st-key-sb_nav .stButton > button { min-height: 52px !important; font-size: 1.02rem !important; padding: .55rem .8rem !important; }
+  .st-key-sb_nav .stButton > button p { font-size: 1.02rem !important; }
+  .st-key-sb_nav [data-testid="stExpander"] summary { padding: .8rem .8rem !important; font-size: 1rem !important; min-height: 50px; }
+  .st-key-sb_nav [data-testid="stExpanderDetails"] { padding: 0 .35rem .5rem; }
+  .st-key-sb_nav .stButton { margin-bottom: 4px; }
+  .st-key-sb_utente .stButton > button { min-height: 48px; }
+  [data-testid="stSidebar"] [data-testid="stExpander"] summary { min-height: 48px; }
+  /* il fumetto dell'assistente non copre il menu */
+  .as-bolla, .as-ben { display: none !important; }
+}
+
 [data-testid="stSidebar"] { background: linear-gradient(180deg, #f1f5f9 0%, #ffffff 34%); }
 [data-testid="stSidebar"] > div:first-child { padding-top: .8rem; }
 .sb-brand { position: relative; overflow: hidden; text-align: center; color: #fff; border-radius: 20px; padding: 16px 14px 14px; margin-bottom: 12px;

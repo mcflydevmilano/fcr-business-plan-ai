@@ -231,7 +231,7 @@ def _stazione_timbratura():
         def _esci():
             ss.pop("_tb_utente", None)
             st.rerun()
-        ac_ui.stazione(u, FCR_URI, _apri if dalla_suite else None, None if dalla_suite else _esci)
+        ac_ui.stazione(u, FCR_URI, None, None if dalla_suite else _esci)
         if not dalla_suite and st.button("Vai all'accesso della suite", key="ac_vai_login"):
             ss.pop("_timbra_solo", None)
             st.query_params.clear()
@@ -241,7 +241,7 @@ def _stazione_timbratura():
     st.markdown(theme.login_header(FCR_URI), unsafe_allow_html=True)
     with st.container(key="login_card"):
         st.markdown("### ⏱️ Timbratura")
-        st.caption("Entra con il tuo nome utente e la tua password per registrare entrata, pausa o uscita. Non apre la suite.")
+        st.caption("Entra con il tuo nome utente e la tua password per registrare entrata o uscita. Non apre la suite.")
         with st.form("timbra_login"):
             nome = st.text_input("Nome utente", key="tb_user", autocomplete="username")
             pw = st.text_input("Password", type="password", key="tb_pw", autocomplete="current-password")
@@ -742,6 +742,25 @@ def _non_letti_chat():
         return 0
 
 
+_JS_MENU_TELEFONO = """
+export default function(component) {
+  if (window.__fcrMenuTel) return;
+  window.__fcrMenuTel = true;
+  const chiudi = () => {
+    const b = document.querySelector('[data-testid="stSidebarCollapseButton"] button');
+    if (b) b.click();
+  };
+  document.addEventListener('click', (ev) => {
+    if (window.innerWidth > 768) return;
+    const btn = ev.target.closest('.st-key-sb_nav button, .st-key-sb_utente button[kind]');
+    if (!btn || btn.closest('summary')) return;
+    setTimeout(chiudi, 180);                       // dopo la scelta di uno strumento il menu si chiude e si vede subito la pagina
+  }, true);
+}
+"""
+_menu_telefono = st.components.v2.component("fcr_menu_telefono", js=_JS_MENU_TELEFONO)
+
+
 def _nav_strumenti():
     """Elenco degli strumenti consentiti, raggruppati come nell'Hub: si apre dalla barra laterale in un clic."""
     with st.container(key="sb_nav"):
@@ -810,6 +829,7 @@ with st.sidebar:
             ss["_cancella_cookie"] = True
             st.rerun()
     _nav_strumenti()
+    _menu_telefono(key="menu_telefono")
     st.markdown("<div class='sb-label'>Utilità</div>", unsafe_allow_html=True)
     pwa.pannello()
     pausa.pannello()
