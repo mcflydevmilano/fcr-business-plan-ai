@@ -20,7 +20,7 @@ TIPI = ("entrata", "pausa", "rientro", "uscita")
 ETICHETTE = {"entrata": "Entrata", "pausa": "Inizio pausa", "rientro": "Rientro dalla pausa", "uscita": "Uscita"}
 CON_CONTROLLO = ("entrata", "uscita")                 # solo queste verificano rete o posizione
 CFG_BASE = {"sede": "Via Giovanni Battista Soresina 11, Milano", "lat": None, "lon": None, "raggio_m": 150,
-            "ip": [], "max_incertezza_m": 300, "url": ""}
+            "ip": [], "max_incertezza_m": 300, "url": "", "pause": False}
 
 
 def fuso():
@@ -74,6 +74,7 @@ def normalizza_cfg(raw):
         ips = [x for x in ips.replace(";", ",").replace("\n", ",").split(",")]
     c["ip"] = [x.strip() for x in ips if _rete_valida(x.strip())]
     c["url"] = str(raw.get("url") or "").strip()
+    c["pause"] = bool(raw.get("pause", False))
     return c
 
 
@@ -175,8 +176,9 @@ def stato(eventi, adesso=None):
     return {"entrata": "dentro", "rientro": "dentro", "pausa": "in_pausa"}.get(ultimo, "fuori")
 
 
-def azioni_consentite(st_):
-    return {"fuori": ["entrata"], "dentro": ["pausa", "uscita"], "in_pausa": ["rientro", "uscita"]}[st_]
+def azioni_consentite(st_, pause=True):
+    """Pulsanti possibili. Con le pause spente (impostazione predefinita) restano solo Entrata e Uscita; chi e' gia' in pausa puo' sempre rientrare."""
+    return {"fuori": ["entrata"], "dentro": ["pausa", "uscita"] if pause else ["uscita"], "in_pausa": ["rientro", "uscita"]}[st_]
 
 
 def timbra(utente, tipo, cfg, ip, pos=None, path=None, adesso=None):
@@ -186,7 +188,7 @@ def timbra(utente, tipo, cfg, ip, pos=None, path=None, adesso=None):
         return {"ok": False, "messaggio": "Azione non valida.", "stato": "", "serve_posizione": False}
     ev = storage.elenca_timbrature(utente=utente, path=path)
     s = stato(ev, adesso)
-    if tipo not in azioni_consentite(s):
+    if tipo not in azioni_consentite(s, cfg.get("pause")):
         return {"ok": False, "messaggio": f"Adesso risulti «{s.replace('_', ' ')}»: non puoi registrare «{ETICHETTE[tipo]}».", "stato": s, "serve_posizione": False}
     metodo, dist = "", None
     if tipo in CON_CONTROLLO:

@@ -5,7 +5,7 @@ import pytest
 import acc
 import storage
 
-CFG = acc.normalizza_cfg({"lat": 45.4408, "lon": 9.1693, "raggio_m": 150, "ip": "203.0.113.7, 198.51.100.0/24"})
+CFG = acc.normalizza_cfg({"lat": 45.4408, "lon": 9.1693, "raggio_m": 150, "ip": "203.0.113.7, 198.51.100.0/24", "pause": True})
 SEDE_IP = "203.0.113.7"
 FUORI_IP = "93.1.2.3"
 
@@ -147,3 +147,14 @@ def test_pagina_timbratura_senza_login(monkeypatch, tmp_path):
     assert not app.exception
     assert any("Timbratura" in m.value for m in app.markdown)
     assert not any("Hub" in b.label for b in app.button)          # non apre la suite
+
+
+def test_senza_pause_solo_entrata_e_uscita(tmp_path):
+    p = _db(tmp_path)
+    c = acc.normalizza_cfg({"ip": SEDE_IP})
+    assert c["pause"] is False
+    assert acc.azioni_consentite("fuori", False) == ["entrata"] and acc.azioni_consentite("dentro", False) == ["uscita"]
+    assert acc.timbra("sara", "entrata", c, SEDE_IP, path=p, adesso=_t(8))["ok"]
+    r = acc.timbra("sara", "pausa", c, SEDE_IP, path=p, adesso=_t(11))
+    assert not r["ok"]
+    assert acc.timbra("sara", "uscita", c, SEDE_IP, path=p, adesso=_t(17))["ok"]

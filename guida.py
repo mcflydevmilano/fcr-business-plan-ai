@@ -157,11 +157,11 @@ PASSI = {
         ("Crea i compiti", "Nella scheda «3. Collegamenti» premi «Crea i compiti nella chat»: ognuno li vede nella chat e nel calendario.", None),
         ("Salva", "Apri «💾 Salva e riapri i verbali» in alto e premi Salva.", "salvato"),
     ], "I compiti si creano solo per persone che hanno un utente nella suite."),
-    "ac": ("Registrare entrata, pause e uscita dal telefono, senza fogli e senza dimenticanze.", [
+    "ac": ("Registrare entrata e uscita dal telefono, senza fogli e senza dimenticanze.", [
         ("Inquadra il QR", "Con la fotocamera del telefono inquadra il codice all'ingresso: si apre la pagina di timbratura.", None),
         ("Accedi", "Scrivi nome utente e password. Se hai già la suite aperta sul telefono entri da solo.", None),
-        ("Premi il pulsante", "Entrata quando arrivi, Pausa quando esci, Rientro quando torni, Uscita quando vai via. Fuori dalla rete dell'ufficio il telefono chiede la posizione: serve solo in quel momento.", None),
-        ("Controlla le tue ore", "Nella scheda «Le mie presenze» vedi entrata, uscita, pause e ore. Se manca qualcosa chiedi alla direzione di correggerla.", None),
+        ("Premi il pulsante", "Entrata quando arrivi, Uscita quando vai via. Fuori dalla rete dell'ufficio il telefono chiede la posizione: serve solo in quel momento.", None),
+        ("Controlla le tue ore", "Nella scheda «Le mie presenze» vedi entrata, uscita e ore. Se manca qualcosa chiedi alla direzione di correggerla.", None),
     ], "La posizione si legge solo quando premi Entrata o Uscita da fuori rete e non viene salvata. Se hai dimenticato l'uscita, il giorno dopo puoi comunque timbrare l'entrata."),
     "nv": ("Sapere cosa è cambiato nella suite dopo ogni aggiornamento, senza chiedere a nessuno.", [
         ("Leggi l'ultima novità", "La più recente è in alto, già aperta. Le altre si aprono con un clic.", None),
