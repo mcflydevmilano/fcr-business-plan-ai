@@ -15,6 +15,13 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.21.0", "data": "2026-11-06", "titolo": "Nuovo strumento: ESCo (diagnosi, investimento, contratto)",
+     "voci": ["Diagnosi: bollette di luce e gas mese per mese, consumo di partenza corretto per il clima, spesa annua e kWh per m².",
+              "Investimento: più interventi (anche dal Preventivo fotovoltaico), incentivi, finanziamento, risparmio garantito, quota alla ESCo o canone fisso.",
+              "Piano: rientro, VAN, TIR, copertura del debito e flusso anno per anno, con avvisi su ciò che non torna.",
+              "Contratto: bozza di contratto di prestazione energetica (EPC) in Word, con i numeri del piano, da completare con il legale.",
+              "Nuovo «Preventivi efficienza energetica»: pompa di calore, caldaia a condensazione, cappotto e serramenti, relamping LED, solare termico e colonnine di ricarica, con le stesse schede del fotovoltaico (costi, detrazione, risparmio, rientro, listino). Il prezzo passa nell'Offerta e l'intervento nello strumento ESCo."],
+     "strumenti": ["ESCo: efficienza energetica", "Preventivi efficienza energetica", "Preventivo fotovoltaico"]},
     {"id": "3.20.0", "data": "2026-11-06", "titolo": "Nuovo strumento: Preventivo fotovoltaico",
      "voci": ["Dal tetto del cliente al prezzo: orientamento, zona, ombre, moduli, batteria e consumi in bolletta.",
               "Costi con ricarico, IVA e detrazione (50% prima casa, 36% altre abitazioni, tetto 96.000 €); regime azienda senza detrazione.",

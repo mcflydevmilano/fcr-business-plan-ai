@@ -308,6 +308,24 @@ CARDS = {'credit': {'icona': '📊',
                  'Il prezzo passa nell\'Offerta con un clic'],
         'tag': ['Fotovoltaico', 'Listino', 'Rientro'],
         'bottone': 'Preventivo fotovoltaico'},
+ 'es': {'icona': '🌿',
+        'titolo': 'ESCo: efficienza energetica',
+        'desc': 'Consumi di partenza, piano dell\'investimento e contratto di prestazione energetica.',
+        'voci': ['Bollette di 12 mesi e consumo corretto per il clima',
+                 'Interventi, incentivi, finanziamento, VAN, TIR e copertura del debito',
+                 'Risparmio garantito e quota alla ESCo o canone',
+                 'Bozza del contratto EPC in Word'],
+        'tag': ['ESCo', 'EPC', 'Rientro'],
+        'bottone': 'ESCo'},
+ 'ee': {'icona': '🔥',
+        'titolo': 'Preventivi efficienza energetica',
+        'desc': 'Pompa di calore, caldaia, cappotto, LED, solare termico e colonnine di ricarica.',
+        'voci': ['Sei tipi di intervento con voci di costo e stima del risparmio',
+                 'Prezzo, IVA e detrazione 50% / 36%',
+                 'Anni di rientro e guadagno nel tempo',
+                 'Il prezzo passa nell\'Offerta o nello strumento ESCo'],
+        'tag': ['Pompe di calore', 'Cappotto', 'LED'],
+        'bottone': 'Preventivi efficienza'},
  'sk': {'icona': '🏗️',
         'titolo': 'Scheda cantiere',
         'desc': 'Per ogni cantiere: entrate e uscite, fatture, costi, SAL e rapportini, tutto in un posto.',
@@ -342,7 +360,7 @@ GRUPPI = [
     ("1 · Si parte da qui", "I cantieri e le persone con cui lavori: prima di tutto si scrivono qui",
      ["ru", "fo"]),
     ("2 · Dalla gara al contratto", "Opportunità, gare, preventivi e prezziario",
-     ["rc", "ga", "pv", "fv", "pz", "of"]),
+     ["rc", "ga", "pv", "fv", "ee", "es", "pz", "of"]),
     ("3 · Il cantiere in corso", "Avanzamento lavori, subappalti, ordini, documenti, sicurezza e mezzi",
      ["gt", "sl", "sa", "oa", "ad", "sx", "mz"]),
     ("4 · Ogni giorno in cantiere", "Rapportini, ore, materiali e organico: da fare dal telefono",
@@ -473,7 +491,7 @@ def _freschezza(righe):
             st.markdown(f"{ico[r['stato']]} **{r['nome']}** — {quando}{chi}  <span style='color:#94a3b8'>(si aggiorna ogni {r['soglia']} gg)</span>", unsafe_allow_html=True)
 
 
-DATI_RICERCA = ["rc", "of", "ru", "fo", "sc", "sl", "ga", "sx", "mz", "og", "rp", "gt", "lg", "bk", "oa", "pe", "pv", "cf", "bp", "sa", "pr", "mt", "vr", "ad", "fc", "ta", "fv"]
+DATI_RICERCA = ["rc", "of", "ru", "fo", "sc", "sl", "ga", "sx", "mz", "og", "rp", "gt", "lg", "bk", "oa", "pe", "pv", "cf", "bp", "sa", "pr", "mt", "vr", "ad", "fc", "ta", "fv", "es", "ee"]
 
 
 @st.cache_data(ttl=30, show_spinner=False)

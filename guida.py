@@ -47,6 +47,22 @@ PASSI = {
         ("Scarica il preventivo", "Nella scheda «4. Documenti» premi «📄 Genera preventivo (PDF cliente) ed Excel interno».", "dossier"),
         ("Salva", "Apri «💾 Salva e riapri il preventivo» in alto e premi Salva.", "salvato"),
     ], "I costi proposti dall'AI sono stime: verificali su prezzari e progetto prima di inviare un preventivo."),
+    "ee": ("Fare un preventivo rapido per pompa di calore, caldaia, cappotto, LED, solare termico o colonnine di ricarica.", [
+        ("Scegli l'intervento", "In alto scegli il tipo di lavoro: le voci e i dati da inserire cambiano di conseguenza.", None),
+        ("Inserisci i dati", "Nella scheda «1» scrivi i consumi attuali e le caratteristiche dell'intervento: la suite stima il risparmio.", None),
+        ("Controlla i costi", "Nella scheda «2» premi «Proponi le voci», poi sostituisci i costi con quelli del tuo listino e imposta ricarico, IVA e detrazione.", None),
+        ("Leggi il risultato", "Nella scheda «3» vedi prezzo, risparmio e anni di rientro.", None),
+        ("Usa il preventivo", "Nella scheda «5» porti il prezzo nell'Offerta, lo aggiungi allo strumento ESCo o scarichi l'Excel.", None),
+        ("Salva", "Apri «💾 Salva e riapri il preventivo» in alto e premi Salva.", "salvato"),
+    ], "Consumi, rendimenti e costi proposti sono stime: verificali con un sopralluogo e con il listino."),
+    "es": ("Valutare un intervento di efficienza energetica che paghi tu e ti ripaghi con il risparmio, e preparare il contratto.", [
+        ("Inserisci le bollette", "Nella scheda «1. Diagnosi» scrivi i consumi e le spese dei 12 mesi e, se li hai, i gradi giorno: sono la base per misurare il risparmio.", None),
+        ("Elenca gli interventi", "Nella scheda «2. Interventi» scrivi costo, risparmio e incentivi di ogni intervento, oppure aggiungi un impianto da un Preventivo fotovoltaico.", None),
+        ("Imposta il contratto", "Scegli risparmio condiviso o canone fisso, durata, finanziamento e risparmio garantito.", None),
+        ("Leggi il piano", "Controlla rientro, VAN, TIR e copertura del debito: gli avvisi ti dicono cosa non torna.", None),
+        ("Scarica il contratto", "Nella scheda «3. Contratto EPC» scarichi la bozza in Word da completare con il legale.", None),
+        ("Salva", "Apri «💾 Salva e riapri il piano ESCo» in alto e premi Salva.", "salvato"),
+    ], "Stime al lordo delle imposte: il piano va verificato con il commercialista e il contratto con un legale."),
     "fv": ("Fare in pochi minuti un preventivo fotovoltaico affidabile: prezzo, detrazione, produzione e anni per rientrare.", [
         ("Descrivi il tetto", "Nella scheda «1. Impianto» indica cliente, orientamento, zona, numero e potenza dei moduli, eventuale batteria e i consumi in bolletta.", None),
         ("Controlla i costi", "Nella scheda «2. Costi e prezzo» premi «Proponi le voci», poi sostituisci i costi con quelli del tuo listino e imposta ricarico e IVA.", None),
