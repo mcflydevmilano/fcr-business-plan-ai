@@ -15,6 +15,13 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.20.0", "data": "2026-11-06", "titolo": "Nuovo strumento: Preventivo fotovoltaico",
+     "voci": ["Dal tetto del cliente al prezzo: orientamento, zona, ombre, moduli, batteria e consumi in bolletta.",
+              "Costi con ricarico, IVA e detrazione (50% prima casa, 36% altre abitazioni, tetto 96.000 €); regime azienda senza detrazione.",
+              "Produzione stimata, risparmio, cessione dell'energia, anni di rientro e guadagno nel tempo.",
+              "Listino prezzi caricabile da Excel o CSV così com'è; aggiungi le voci con un clic.",
+              "Cliente e indirizzo dal Registro commerciale; il prezzo passa nell'Offerta con un clic; Excel scaricabile."],
+     "strumenti": ["Preventivo fotovoltaico", "Offerta e finanziamenti"]},
     {"id": "3.19.0", "data": "2026-11-06", "titolo": "Il lavoro non si perde più e gli strumenti si parlano",
      "voci": ["Salvataggio automatico: se il telefono si blocca o chiudi la scheda per sbaglio, riaprendo lo strumento ti viene proposto di riprendere il lavoro non salvato (copia solo tua, valida 30 giorni).",
               "Compiti in un solo elenco: «La mia giornata» mostra insieme i compiti della chat e quelli della bacheca assegnati a te; la bacheca mostra anche i compiti nati in chat, con il pulsante «Fatto».",

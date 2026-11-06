@@ -12,7 +12,7 @@ ETICHETTE = {
     "scad": "Scadenze mezzi", "ris": "Risorse", "ass": "Assegnazioni", "cantieri": "Cantieri", "voci": "Voci di computo", "params": "Parametri", "df": "Tabella",
 }
 NOMI_MODULO = {"credit": "Credit Risk", "bp": "Business Plan", "cf": "Cash Flow", "pv": "Computo e Preventivo", "sc": "Scadenzario", "sl": "SAL e contabilità lavori", "ga": "Gare e offerte",
-               "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "og": "Organico", "ac": "Accessi del personale", "rp": "Rapportini", "gt": "Cronoprogramma", "cfg": "Permessi", "ru": "Rubrica e cantieri", "lg": "Studio legale", "bk": "Riconciliazione bancaria", "oa": "Ordini e approvazioni", "pe": "Persone e ruoli", "pz": "Prezziario", "rc": "Registro commerciale", "of": "Offerta e finanziamenti", "sa": "Subappalti", "pr": "Presenze e ore", "mt": "Materiali e magazzino", "vr": "Verbali e riunioni", "ad": "Archivio documenti", "fc": "Flusso commessa", "ta": "Compiti e attività", "sk": "Scheda cantiere", "nv": "Novità e aggiornamenti"}
+               "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "og": "Organico", "ac": "Accessi del personale", "rp": "Rapportini", "gt": "Cronoprogramma", "cfg": "Permessi", "ru": "Rubrica e cantieri", "lg": "Studio legale", "bk": "Riconciliazione bancaria", "oa": "Ordini e approvazioni", "pe": "Persone e ruoli", "pz": "Prezziario", "rc": "Registro commerciale", "of": "Offerta e finanziamenti", "sa": "Subappalti", "pr": "Presenze e ore", "mt": "Materiali e magazzino", "vr": "Verbali e riunioni", "ad": "Archivio documenti", "fc": "Flusso commessa", "ta": "Compiti e attività", "fv": "Preventivo fotovoltaico", "sk": "Scheda cantiere", "nv": "Novità e aggiornamenti"}
 MAX_ESEMPI = 2
 
 

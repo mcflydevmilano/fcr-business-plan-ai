@@ -47,6 +47,14 @@ PASSI = {
         ("Scarica il preventivo", "Nella scheda «4. Documenti» premi «📄 Genera preventivo (PDF cliente) ed Excel interno».", "dossier"),
         ("Salva", "Apri «💾 Salva e riapri il preventivo» in alto e premi Salva.", "salvato"),
     ], "I costi proposti dall'AI sono stime: verificali su prezzari e progetto prima di inviare un preventivo."),
+    "fv": ("Fare in pochi minuti un preventivo fotovoltaico affidabile: prezzo, detrazione, produzione e anni per rientrare.", [
+        ("Descrivi il tetto", "Nella scheda «1. Impianto» indica cliente, orientamento, zona, numero e potenza dei moduli, eventuale batteria e i consumi in bolletta.", None),
+        ("Controlla i costi", "Nella scheda «2. Costi e prezzo» premi «Proponi le voci», poi sostituisci i costi con quelli del tuo listino e imposta ricarico e IVA.", None),
+        ("Leggi il risultato", "Nella scheda «3. Risultato» vedi prezzo, detrazione, risparmio e anni di rientro.", None),
+        ("Carica il listino", "Nella scheda «4. Listino» importi il file Excel del fornitore: poi aggiungi le voci con un clic.", None),
+        ("Porta il prezzo nell'Offerta", "Nella scheda «5. Documenti» premi «Metti l'impianto nell'Offerta» o scarica l'Excel.", None),
+        ("Salva", "Apri «💾 Salva e riapri il preventivo fotovoltaico» in alto e premi Salva.", "salvato"),
+    ], "Resa, prezzi dell'energia e detrazione sono stime da verificare alla firma del contratto."),
     "sc": ("Rispondere a «questa settimana ho cassa?» con le fatture da incassare e da pagare.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero»: le fatture che vedi ora sono finte.", "demo:sc_demo"),
         ("Inserisci le fatture", "Apri «🧾 Importa fatture elettroniche (XML)» e trascina i file scaricati dal cassetto fiscale. In alternativa scrivile nella tabella o importa un Excel.", "dati:sc_df"),

@@ -240,6 +240,10 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.20.0
+- **Preventivo fotovoltaico** (`fv.py`, `fv_ui.py`, sigla `fv`, salvataggi `fv|…`): impianto (orientamento, inclinazione, zona → resa kWh/kWp, ombre, moduli, batteria, consumi), costi con ricarico/IVA/detrazione (regimi: prima casa 50%, altra abitazione 36%, azienda senza detrazione; tetto di spesa 96.000 €), risultato anno per anno fino a 25 anni (degrado, aumento prezzo energia, cessione, manutenzione) con anni di rientro, listino importabile da Excel/CSV (`fv.leggi_listino`), invio del prezzo all'Offerta (voce «FV», sostituita a ogni invio), Excel scaricabile. Costi, resa e prezzi dell'energia sono stime di partenza da sostituire con i propri dati. Strumento assegnato ai profili direzione, amministrazione e commerciale (Amministrazione → Permessi per cambiare).
+- Metodo: si è guardato cosa fanno Blumatica e Solarius PV (consumi, tetto e orientamento, ombre, accumulo, analisi economica con piano di rientro, incentivi, computo) e i preventivi di mercato; non sono calcoli di progettazione elettrica (stringhe, cadute di tensione, PVGIS), che restano al progettista.
+
 ## Novità 3.19.0
 - **Salvataggio automatico (bozza)**: ogni strumento con «Salva / apri» copia in una bozza personale (`bz|<strumento>|<utente>`, 30 giorni) i dati cambiati rispetto all'apertura; non scrive nulla se non è cambiato niente, non compare tra i salvataggi con nome né nel registro attività. Alla riapertura compare «Riprendi il lavoro / Scarta la copia»; salvare con nome toglie la bozza. Il punto di partenza è preso a fine del primo passaggio, quando i campi sono già inizializzati (`ui_util.bozza_fine`).
 - **Compiti unificati**: `ta.miei()` porta i compiti della bacheca nella lista di «La mia giornata»; la bacheca mostra i compiti della chat (`chat.compiti`) e permette di chiuderli.

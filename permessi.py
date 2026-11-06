@@ -6,23 +6,23 @@ Il ruolo (admin / utente / lettore) decide invece se si puo' MODIFICARE: sono du
 """
 import storage
 
-TUTTI = ["credit", "bp", "cf", "sc", "bk", "oa", "ga", "pv", "sl", "gt", "rp", "sx", "mz", "og", "fo", "ru", "pe", "lg", "ca", "dd", "pz", "rc", "of", "ch", "mc", "sa", "pr", "mt", "vr", "ad", "fc", "ta", "sk", "nv", "ac"]
+TUTTI = ["credit", "bp", "cf", "sc", "bk", "oa", "ga", "pv", "sl", "gt", "rp", "sx", "mz", "og", "fo", "ru", "pe", "lg", "ca", "dd", "pz", "rc", "of", "ch", "mc", "sa", "pr", "mt", "vr", "ad", "fc", "ta", "sk", "nv", "ac", "fv"]
 NOMI = {"credit": "Credit Risk & Rating", "bp": "Business Plan", "cf": "Cash Flow di cantiere", "sc": "Scadenzario", "bk": "Riconciliazione bancaria",
         "oa": "Ordini e approvazioni", "ga": "Gare e offerte", "pv": "Computo e Preventivo", "sl": "SAL e contabilità lavori", "gt": "Cronoprogramma",
         "rp": "Rapportini", "sx": "Sicurezza", "mz": "Parco mezzi", "og": "Organico", "fo": "Fornitori", "ru": "Rubrica e cantieri", "pe": "Persone e ruoli",
-        "lg": "Studio legale", "ca": "Calendario", "dd": "Cruscotto di direzione", "pz": "Prezziario", "rc": "Registro commerciale", "of": "Offerta e finanziamenti", "ch": "Chat interna", "mc": "Margini per commessa", "sa": "Subappalti", "pr": "Presenze e ore", "mt": "Materiali e magazzino", "vr": "Verbali e riunioni", "ad": "Archivio documenti", "fc": "Flusso commessa", "ta": "Compiti e attività", "ac": "Accessi del personale", "sk": "Scheda cantiere", "nv": "Novità e aggiornamenti"}
+        "lg": "Studio legale", "ca": "Calendario", "dd": "Cruscotto di direzione", "pz": "Prezziario", "rc": "Registro commerciale", "of": "Offerta e finanziamenti", "ch": "Chat interna", "mc": "Margini per commessa", "sa": "Subappalti", "pr": "Presenze e ore", "mt": "Materiali e magazzino", "vr": "Verbali e riunioni", "ad": "Archivio documenti", "fc": "Flusso commessa", "ta": "Compiti e attività", "ac": "Accessi del personale", "sk": "Scheda cantiere", "nv": "Novità e aggiornamenti", "fv": "Preventivo fotovoltaico"}
 RISERVATI = {"dd"}            # strumenti che nessun profilo (tranne presidente e admin) riceve per impostazione predefinita
 
 PROFILI_BASE = {
     "presidente": list(TUTTI),
     "direzione": [s for s in TUTTI if s not in RISERVATI],
-    "amministrazione": ["credit", "bp", "cf", "sc", "bk", "oa", "pv", "pz", "fo", "ru", "pe", "ca", "ch", "mc", "sk", "sa", "pr", "ad", "vr", "fc", "ta", "nv", "ac"],
-    "commerciale": ["rc", "of", "ga", "pv", "pz", "sl", "gt", "ru", "ca", "ch", "ad", "vr", "fc", "ta", "nv", "ac"],
+    "amministrazione": ["credit", "bp", "cf", "sc", "bk", "oa", "pv", "pz", "fo", "ru", "pe", "ca", "ch", "mc", "sk", "sa", "pr", "ad", "vr", "fc", "ta", "nv", "ac", "fv"],
+    "commerciale": ["rc", "of", "ga", "pv", "fv", "pz", "sl", "gt", "ru", "ca", "ch", "ad", "vr", "fc", "ta", "nv", "ac"],
     "cantiere": ["rp", "sx", "mz", "og", "gt", "fo", "ru", "oa", "pz", "ca", "ch", "sa", "pr", "mt", "vr", "ad", "fc", "ta", "nv", "ac"],
     "legale": ["lg", "ru", "sc", "fo", "ca", "ch", "sa", "ad", "nv", "ac"],
 }
 PROFILO_PREDEFINITO = "direzione"
-NUOVI_STRUMENTI = ["pz", "rc", "of", "ch", "mc", "sa", "pr", "mt", "vr", "ad", "fc", "ta", "sk", "nv", "ac"]      # aggiunti dopo i primi salvataggi dei permessi: ai profili gia' salvati si danno secondo le regole base
+NUOVI_STRUMENTI = ["pz", "rc", "of", "ch", "mc", "sa", "pr", "mt", "vr", "ad", "fc", "ta", "sk", "nv", "ac", "fv"]      # aggiunti dopo i primi salvataggi dei permessi: ai profili gia' salvati si danno secondo le regole base
 NOME_PRATICA = "permessi"
 
 

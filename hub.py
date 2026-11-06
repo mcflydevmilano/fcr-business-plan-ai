@@ -299,6 +299,15 @@ CARDS = {'credit': {'icona': '📊',
                  'Scadenze nel calendario'],
         'tag': ['Bacheca', 'Scadenze'],
         'bottone': 'Compiti'},
+ 'fv': {'icona': '☀️',
+        'titolo': 'Preventivo fotovoltaico',
+        'desc': 'Dal tetto del cliente al prezzo: costi, detrazione, produzione e tempo di rientro.',
+        'voci': ['Tetto, consumi e prodotti scelti',
+                 'Costi dal tuo listino, ricarico, IVA e detrazione 50% / 36%',
+                 'Produzione, risparmio e anni per rientrare',
+                 'Il prezzo passa nell\'Offerta con un clic'],
+        'tag': ['Fotovoltaico', 'Listino', 'Rientro'],
+        'bottone': 'Preventivo fotovoltaico'},
  'sk': {'icona': '🏗️',
         'titolo': 'Scheda cantiere',
         'desc': 'Per ogni cantiere: entrate e uscite, fatture, costi, SAL e rapportini, tutto in un posto.',
@@ -333,7 +342,7 @@ GRUPPI = [
     ("1 · Si parte da qui", "I cantieri e le persone con cui lavori: prima di tutto si scrivono qui",
      ["ru", "fo"]),
     ("2 · Dalla gara al contratto", "Opportunità, gare, preventivi e prezziario",
-     ["rc", "ga", "pv", "pz", "of"]),
+     ["rc", "ga", "pv", "fv", "pz", "of"]),
     ("3 · Il cantiere in corso", "Avanzamento lavori, subappalti, ordini, documenti, sicurezza e mezzi",
      ["gt", "sl", "sa", "oa", "ad", "sx", "mz"]),
     ("4 · Ogni giorno in cantiere", "Rapportini, ore, materiali e organico: da fare dal telefono",
@@ -464,7 +473,7 @@ def _freschezza(righe):
             st.markdown(f"{ico[r['stato']]} **{r['nome']}** — {quando}{chi}  <span style='color:#94a3b8'>(si aggiorna ogni {r['soglia']} gg)</span>", unsafe_allow_html=True)
 
 
-DATI_RICERCA = ["rc", "of", "ru", "fo", "sc", "sl", "ga", "sx", "mz", "og", "rp", "gt", "lg", "bk", "oa", "pe", "pv", "cf", "bp", "sa", "pr", "mt", "vr", "ad", "fc", "ta"]
+DATI_RICERCA = ["rc", "of", "ru", "fo", "sc", "sl", "ga", "sx", "mz", "og", "rp", "gt", "lg", "bk", "oa", "pe", "pv", "cf", "bp", "sa", "pr", "mt", "vr", "ad", "fc", "ta", "fv"]
 
 
 @st.cache_data(ttl=30, show_spinner=False)
