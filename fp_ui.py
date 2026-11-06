@@ -71,7 +71,8 @@ def _chiedi(nome, ruolo, lista, cfg, personale, audit):
         ore = c3.number_input("Ore (solo per i permessi)", 0.0, 8.0, 0.0, 0.5, key="fp_n_ore")
         motivo = st.text_input("Motivo (facoltativo, obbligatorio per «Altro»)", key="fp_n_motivo")
         if dal and al and al >= dal and t != "Permesso (ore)":
-            st.caption(f"Il periodo scelto ha {fp.giorni_lavorativi(dal, al, cfg['festivi_locali'])} giorni lavorativi (sabato, domenica e festivi non contano).")
+            _gl = fp.giorni_lavorativi(dal, al, cfg['festivi_locali'])
+            st.caption(f"Il periodo scelto ha {_gl} {'giorno lavorativo' if _gl == 1 else 'giorni lavorativi'} (sabato, domenica e festivi non contano).")
             _avviso_copertura(lista, dal, al, personale, cfg, nome)
         ok = st.button("📨 Invia la richiesta", type="primary", key="fp_invia")
         if ok:

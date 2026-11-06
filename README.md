@@ -240,6 +240,10 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.23.0
+- **Bollino NEW automatico**: ogni voce aggiunta a `novita.NOVITE` con `strumenti` accende il bollino sugli strumenti citati (Hub, menu laterale, striscia «Dove sono le novità»). Si spegne per persona quando apre lo strumento e dopo `GIORNI_NEW` (14) giorni. Cfg `novita_viste`.
+- Telefono: riquadri dei numeri a due colonne, titoli più piccoli.
+
 ## Novità 3.22.0
 - **Richieste condivise** (`richieste.py`): archivio comune con stato, decisione e allegati (foto/PDF ridimensionati) per ferie e note spese; i nomi si aggiornano se un utente viene rinominato.
 - **Ferie e permessi** (`fp.py`, `fp_ui.py`, sigla `fp`): ferie, permessi a ore, malattia (si comunica e vale subito), altro. Giorni lavorativi senza sabato, domenica, festivi nazionali, Pasquetta e festività locali (12-07 per Milano). Giorni residui per persona (spettanze diverse per contratto), sovrapposizioni rifiutate, avviso quando i presenti scendono sotto il minimo, matrice «chi manca» del mese e Excel. Chi approva: direzione e amministrazione oppure le persone scelte; nessuno approva le proprie richieste (tranne l'amministratore). Le assenze approvate arrivano nel **Calendario** e negli avvisi.

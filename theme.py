@@ -101,6 +101,9 @@ h3 { margin-top: .6rem; }
 .hub-card.bp::before { background: linear-gradient(90deg, #0f766e, #14b8a6); }
 .hub-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-h); border-color: #bfdbfe; }
 .hub-card.bp:hover { border-color: #99f6e4; box-shadow: 0 2px 4px rgba(15,23,42,.06), 0 14px 34px rgba(15,118,110,.16); }
+.new-pill { position: absolute; top: 14px; right: 14px; background: linear-gradient(135deg,#ef4444,#f97316); color: #fff; font-size: .68rem; font-weight: 800; letter-spacing: .08em; padding: 3px 9px; border-radius: 999px; box-shadow: 0 2px 6px rgba(239,68,68,.35); animation: newpulse 2.2s ease-in-out infinite; }
+@keyframes newpulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+.hub-card { position: relative; }
 .hub-badge { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.45rem; background: var(--accsoft); margin-bottom: 14px; }
 .hub-card.bp .hub-badge { background: #f0fdfa; }
 .hub-num { font-size: .7rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--acc2); }
@@ -339,6 +342,11 @@ hr { border-color: var(--line); }
 .stTabs .react-aria-SelectionIndicator { background: var(--acc2) !important; height: 3px !important; border-radius: 3px; }
 
 @media (max-width: 640px) {
+  /* telefono: i riquadri coi numeri stanno in due colonne invece di una lunga fila, e i titoli di pagina rientrano */
+  [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) { flex-wrap: wrap !important; gap: 10px !important; }
+  [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="stColumn"] { flex: 1 1 calc(50% - 10px) !important; min-width: calc(50% - 10px) !important; width: auto !important; }
+  [data-testid="stMetric"] { padding: 10px 12px; } [data-testid="stMetricValue"] { font-size: 1.3rem; }
+  .stMainBlockContainer h1 { font-size: 1.7rem !important; line-height: 1.1 !important; }
   .stButton > button, .stDownloadButton > button, .stFormSubmitButton > button { font-size: .88rem; padding-left: .55rem; padding-right: .55rem; }
   .stTabs [data-baseweb="tab"], .stTabs [data-testid="stTab"] { padding: 10px 12px !important; }
   .stTabs [data-testid="stTab"] p { font-size: .92rem !important; }
@@ -707,10 +715,11 @@ def hub_sezione(titolo, sotto=""):
     return f'<div class="hub-sez"><div class="hub-sez-t">{_e(titolo)}</div>{s}</div>'
 
 
-def hub_card(numero, icona, titolo, descrizione, voci, tags, variante=""):
+def hub_card(numero, icona, titolo, descrizione, voci, tags, variante="", nuovo=False):
     li = "".join(f"<li>{_e(v)}</li>" for v in voci)
     tg = "".join(f'<span class="hub-tag">{_e(t)}</span>' for t in tags)
-    return (f'<div class="hub-card {variante}"><div class="hub-badge">{icona}</div><div class="hub-num">{_e(numero)}</div>'
+    new = '<span class="new-pill" title="Novità: guarda cosa è cambiato">NEW</span>' if nuovo else ""
+    return (f'<div class="hub-card {variante}">{new}<div class="hub-badge">{icona}</div><div class="hub-num">{_e(numero)}</div>'
             f'<h2>{_e(titolo)}</h2><p>{_e(descrizione)}</p><ul>{li}</ul><div class="hub-tags">{tg}</div></div>')
 
 

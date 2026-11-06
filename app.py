@@ -827,15 +827,20 @@ def _nav_strumenti():
             if st.button(f"🚀  Primi passi  ({_pp[0]} di {_pp[1]})", key="nav_pp", width="stretch", help="Torna all'elenco dei passi da fare, in ordine"):
                 vai_a(None)
         st.markdown("<div class='sb-label'>Strumenti</div>", unsafe_allow_html=True)
+        try:
+            _nn = novita.sigle_nuove(ss["utente"]["username"])
+        except Exception:
+            _nn = {}
         for titolo, _sotto, sigle in hub.GRUPPI:
             sigle = [x for x in sigle if x in CONSENTITI and x != "ch"]
             if not sigle:
                 continue
-            with st.expander(f"{hub.ICONE_GRUPPO.get(titolo, '📁')}  {titolo}", expanded=MODULO in sigle):
+            _k = len([x for x in sigle if x in _nn and x != MODULO])
+            with st.expander(f"{hub.ICONE_GRUPPO.get(titolo, '📁')}  {titolo}" + (f"  ·  🆕 {_k}" if _k else ""), expanded=MODULO in sigle):
                 for x in sigle:
                     c = hub.CARDS[x]
                     _nl = _non_letti_chat() if x == "ch" else 0
-                    if st.button(f"{c['icona']}  {c['bottone']}" + (f"   🔴 {_nl}" if _nl else ""), key=f"nav_{x}", width="stretch",
+                    if st.button(f"{c['icona']}  {c['bottone']}" + (f"   🔴 {_nl}" if _nl else "") + ("   🆕 NEW" if x in _nn and x != MODULO else ""), key=f"nav_{x}", width="stretch",
                                  type="primary" if x == MODULO else "secondary"):
                         vai_a(x)
 
@@ -997,6 +1002,22 @@ if MODULO is not None and MODULO not in CONSENTITI:            # anche se qualcu
 
 assistenza.render((ss.get("utente") or {}).get("username", ""), MODULO or "Hub")
 
+if not MODULO:
+    ss.pop("_new_aperto", None)
+if MODULO and MODULO != "admin":                              # bollino NEW: aperto lo strumento, si spegne per questa persona; l'avviso resta finche' resta aperto
+    try:
+        _nw = ss.get("_new_aperto", {})
+        if _nw.get("sigla") != MODULO:
+            _vn = novita.sigle_nuove(ss["utente"]["username"]).get(MODULO)
+            _nw = {"sigla": MODULO, "v": _vn}
+            ss["_new_aperto"] = _nw
+            if _vn:
+                novita.segna_vista(ss["utente"]["username"], MODULO, _vn)
+        if _nw.get("v"):
+            st.info(f"🆕 **Novità in questo strumento** · {_nw['v']['titolo']} (versione {_nw['v']['id']}). Le trovi spiegate in «Novità e aggiornamenti».")
+    except Exception:
+        pass
+
 if MODULO is None:
     st.markdown(theme.hub_header(FCR_URI, len([c for c in hub.CARDS if c in CONSENTITI])), unsafe_allow_html=True)
     try:
@@ -1019,7 +1040,11 @@ if MODULO is None:
         _nov = novita.da_leggere(ss["utente"]["username"]) if "nv" in CONSENTITI else None
     except Exception:
         _nov = None
-    hub.render(vai_a, CONSENTITI, _fresc, _non_letti_chat() if "ch" in CONSENTITI else 0, (ss["utente"], PROFILO, _compiti_miei, audit), _nov, _agg)
+    try:
+        _nuove = novita.sigle_nuove(ss["utente"]["username"])
+    except Exception:
+        _nuove = {}
+    hub.render(vai_a, CONSENTITI, _fresc, _non_letti_chat() if "ch" in CONSENTITI else 0, (ss["utente"], PROFILO, _compiti_miei, audit), _nov, _agg, _nuove)
     st.stop()
 
 if MODULO == "bp":

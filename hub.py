@@ -412,12 +412,12 @@ def numero(sigla):
     return f"Strumento {ordine.index(sigla) + 1}"
 
 
-def _scheda(sigla, vai_a):
+def _scheda(sigla, vai_a, nuove=None):
     c = CARDS[sigla]
     with st.container(key=f"hubc_{sigla}"):      # il contenitore permette di allineare l'altezza delle schede in riga
         st.markdown(
             theme.hub_card(numero(sigla), c["icona"], c["titolo"], c["desc"], c["voci"], c["tag"],
-                           "" if sigla == "credit" else sigla),
+                           "" if sigla == "credit" else sigla, nuovo=sigla in (nuove or {})),
             unsafe_allow_html=True,
         )
         if st.button(f"Apri {c['bottone']}  →", key=f"hub_{sigla}", width="stretch"):
@@ -436,6 +436,27 @@ PERCORSI = [
      [("rc", "📋 Pratiche commerciali"), ("fc", "🧭 Flusso commessa (28 passaggi)"), ("ta", "✅ Compiti e attività")]),
     ("📊 Dirigo l'azienda", "La situazione in un colpo d'occhio.", [("dd", "📊 Apri il Cruscotto"), ("fc", "🧭 Commesse ferme o da approvare")]),
 ]
+
+
+def _dove_sono_le_novita(vai_a, consentiti, nuove, novita=None):
+    """Una riga con gli strumenti nuovi o cambiati da poco (quelli col bollino NEW), cliccabili."""
+    sigle = [s for s in (nuove or {}) if s in CARDS and (consentiti is None or s in consentiti)]
+    if not sigle:
+        return
+    altri = max(0, len(sigle) - 8)
+    sigle = sigle[:8]
+    with st.container(border=True):
+        st.markdown("**🆕 Dove sono le novità**" + (f" · versione {novita['id']}: {novita['titolo']}" if novita else "") +
+                    "  \nGli strumenti col bollino NEW sono nuovi o cambiati da poco; il bollino si spegne quando li apri.")
+        if novita and st.button("Leggi tutte le novità", key="hub_nv_apri", type="primary", width="stretch"):
+            vai_a("nv")
+        cols = st.columns(min(len(sigle), 4))
+        for i, s in enumerate(sigle):
+            c = CARDS[s]
+            if cols[i % len(cols)].button(f"{c['icona']} {c['titolo']}", key=f"hub_new_{s}", width="stretch"):
+                vai_a(s)
+        if altri:
+            st.caption(f"…e altri {altri} strumenti col bollino NEW qui sotto.")
 
 
 def _ia_spiegata():
@@ -624,14 +645,15 @@ def _ricerca(vai_a, consentiti):
     return True
 
 
-def render(vai_a, consentiti=None, freschezza_righe=None, non_letti_chat=0, giornata=None, novita=None, aggiornati=None):
+def render(vai_a, consentiti=None, freschezza_righe=None, non_letti_chat=0, giornata=None, novita=None, aggiornati=None, nuove=None):
     """consentiti: insieme di sigle visibili a chi guarda (None = tutte). I gruppi rimasti vuoti spariscono."""
     if _ricerca(vai_a, consentiti):
         return
     if giornata:                                    # (utente, profilo, compiti, audit): le cose urgenti per questa persona
         import miagiornata
         miagiornata.render(vai_a, giornata[0], giornata[1], consentiti or [], giornata[2], non_letti_chat, giornata[3])
-    if novita:                                      # ultima novita' non ancora letta da questa persona
+    _mostra_strip = any(s in CARDS and (consentiti is None or s in consentiti) for s in (nuove or {}))
+    if novita and not _mostra_strip:                # ultima novita' non ancora letta da questa persona (se c'e' la striscia NEW, la porta con se')
         with st.container(border=True):
             c1, c2 = st.columns([4, 1.4], vertical_alignment="center")
             c1.markdown(f"**🆕 Novità nella suite** · versione {novita['id']}: {novita['titolo']}")
@@ -644,6 +666,7 @@ def render(vai_a, consentiti=None, freschezza_righe=None, non_letti_chat=0, gior
                         (f"  \n🔴 **{non_letti_chat} messaggi da leggere**" if non_letti_chat else ""))
             if c2.button("Apri la chat", key="hub_chat_apri", type="primary", width="stretch"):
                 vai_a("ch")
+    _dove_sono_le_novita(vai_a, consentiti, nuove, novita)
     _primi_passi(vai_a, consentiti, aggiornati)
     _da_dove_comincio(vai_a, consentiti)
     _ia_spiegata()
@@ -654,17 +677,19 @@ def render(vai_a, consentiti=None, freschezza_righe=None, non_letti_chat=0, gior
             continue
         finanziaria = "credit" in sigle
         icona = ICONE_GRUPPO.get(titolo, "📁")
-        with st.expander(f"{icona}  {titolo}  ·  {len(sigle)} " + ("strumento" if len(sigle) == 1 else "strumenti"),
-                         expanded=(n == 0)):
+        n_new = len([s for s in sigle if s in (nuove or {})])
+        with st.expander(f"{icona}  {titolo}  ·  {len(sigle)} " + ("strumento" if len(sigle) == 1 else "strumenti") +
+                         (f"  ·  🆕 {n_new} " + ("novità" if n_new > 1 else "novità") if n_new else ""),
+                         expanded=(n == 0 or bool(n_new))):
             st.caption(sotto)
             for i in range(0, len(sigle), 2):
                 riga = sigle[i:i + 2]
                 if len(riga) == 1:
-                    _scheda(riga[0], vai_a)
+                    _scheda(riga[0], vai_a, nuove)
                     continue
                 cols = st.columns(2, gap="large")
                 for col, s in zip(cols, riga):
                     with col:
-                        _scheda(s, vai_a)
+                        _scheda(s, vai_a, nuove)
             if finanziaria:                          # l'avvertenza riguarda la parte finanziaria: sta dentro la sezione
                 st.caption(NOTA)

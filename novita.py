@@ -11,10 +11,18 @@ import storage
 
 NOME_MANUALI = "novita_manuali"
 NOME_LETTE = "novita_lette"
+NOME_VISTE = "novita_viste"
+GIORNI_NEW = 14            # per quanti giorni uno strumento cambiato porta il bollino NEW
 MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.23.0", "data": "2026-11-06", "titolo": "Bollino NEW sugli strumenti nuovi e suite più chiara",
+     "voci": ["Bollino NEW: gli strumenti nuovi o cambiati da poco hanno un bollino rosso nell'Hub e nel menu laterale; una striscia «Dove sono le novità» in alto li elenca. Il bollino si spegne quando apri lo strumento (per te soltanto) e dopo 14 giorni.",
+              "Dentro lo strumento nuovo compare un avviso che dice cosa è cambiato.",
+              "Telefono: i riquadri coi numeri stanno in due colonne e i titoli sono più piccoli, così si legge di più senza scorrere.",
+              "I gruppi dell'Hub con strumenti nuovi si aprono da soli."],
+     "strumenti": ["Novità e aggiornamenti"]},
     {"id": "3.22.0", "data": "2026-11-06", "titolo": "Segreteria: ferie e permessi, note spese, lettere; ore mensili e uscite in orario",
      "voci": ["Ferie e permessi: chiedi, il responsabile approva, il calendario mostra chi manca. Giorni residui di ciascuno e avviso se in un periodo restano troppo pochi presenti.",
               "Note spese e trasferte: foto dello scontrino, importo, cantiere e rimborso chilometrico; approvazione e riepilogo mensile per persona, cantiere e categoria, con Excel e scontrini scaricabili.",
@@ -288,6 +296,54 @@ def segna_lette(utente, path=None):
         return
     lette[k] = _chiave(u)
     storage.salva_pratica(NOME_LETTE, lette, path, autore=_s(utente), modulo="cfg")
+    storage.svuota_cache()
+
+
+def _sigle_di(voce):
+    """Le sigle degli strumenti citati da una novita' (per nome come in Permessi, oppure direttamente la sigla)."""
+    import permessi
+    inv = {n.lower(): s for s, n in permessi.NOMI.items()}
+    out = []
+    for x in voce.get("strumenti") or []:
+        k = _s(x)
+        s = inv.get(k.lower()) or (k if k in permessi.NOMI else None)
+        if s and s not in out:
+            out.append(s)
+    return out
+
+
+def sigle_nuove(utente, oggi=None, path=None):
+    """{sigla: novita} degli strumenti nuovi o cambiati da poco che questa persona non ha ancora aperto.
+    Si accende da sola quando si aggiunge una voce a NOVITE con quello strumento; si spegne per la persona quando lo apre, o dopo GIORNI_NEW giorni."""
+    oggi = oggi or dt.date.today()
+    try:
+        viste = (storage.carica_pratica(NOME_VISTE, path, modulo="cfg") or {}).get(_s(utente).lower(), {})
+    except Exception:
+        viste = {}
+    out = {}
+    for v in tutte(path):                       # dalla piu' recente: vale la novita' piu' nuova di ogni strumento
+        try:
+            eta = (oggi - dt.date.fromisoformat(_s(v.get("data")))).days
+        except ValueError:
+            continue
+        if eta < 0 or eta > GIORNI_NEW:
+            continue
+        for s in _sigle_di(v):
+            if s not in out and viste.get(s) != _chiave(v):
+                out[s] = v
+    return out
+
+
+def segna_vista(utente, sigla, novita, path=None):
+    """La persona ha aperto lo strumento: il bollino NEW si spegne per lei."""
+    if not _s(utente) or not novita:
+        return
+    tutti = storage.carica_pratica(NOME_VISTE, path, modulo="cfg") or {}
+    mie = tutti.setdefault(_s(utente).lower(), {})
+    if mie.get(sigla) == _chiave(novita):
+        return
+    mie[sigla] = _chiave(novita)
+    storage.salva_pratica(NOME_VISTE, tutti, path, autore=_s(utente), modulo="cfg")
     storage.svuota_cache()
 
 
