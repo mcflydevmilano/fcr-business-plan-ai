@@ -160,6 +160,17 @@ def render(fcr_uri, audit=None, utente=""):
                 st.warning(a)
             st.dataframe(pd.DataFrame([{"": ICONE[r["Stato"]], "N.": r["Numero"], "Data": r["Data"], "Fornitore": r["Fornitore"], "Cantiere": r["Cantiere"], "Importo €": r["Importo"], "Stato": r["Stato"],
                                         "Deciso da": (r["Decisione"] or {}).get("Da", ""), "Quando": (r["Decisione"] or {}).get("Quando", ""), "Anomalie": "; ".join(r["Anomalie"])} for r in out["ordini"]]), hide_index=True, width="stretch")
+            if k["approvati"] and not sola_lettura():
+                import mt
+                nuove_mt, gia_mt = mt.righe_da_ordini_approvati(out["ordini"], ss["mt_ord"] if "mt_ord" in ss else [])
+                st.caption(f"Materiali: {len(nuove_mt)} ordini approvati da mettere in «Ordini e consegne»" + (f" ({gia_mt} già presenti)." if gia_mt else "."))
+                if st.button("📦 Metti gli ordini approvati in Materiali", key="oa_to_mt", disabled=not nuove_mt):
+                    if "mt_ord" not in ss:                       # tutte le tabelle di Materiali nascono insieme, vuote
+                        ss["mt_ord"], ss["mt_mov"], ss["mt_art"] = (pd.DataFrame(columns=c) for c in (mt.COLONNE_ORDINI, mt.COLONNE_MOV, mt.COLONNE_ART))
+                        ss["mt_demo"] = False
+                    sostituisci_tabella("mt_ord", pd.concat([ss["mt_ord"], pd.DataFrame(nuove_mt, columns=mt.COLONNE_ORDINI)], ignore_index=True))
+                    audit("oa_to_mt", str(len(nuove_mt)))
+                    st.success(f"Aggiunte {len(nuove_mt)} righe agli ordini di Materiali: apri Materiali per segnare le consegne e ricordati di salvare lì.")
             if ss["oa_appr"]:
                 with st.expander("Storico di tutte le decisioni"):
                     st.dataframe(pd.DataFrame(ss["oa_appr"]), hide_index=True, width="stretch")

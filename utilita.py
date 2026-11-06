@@ -16,7 +16,7 @@ def payload_salvati(consentiti):
     """{modulo: ultimo salvataggio non dimostrativo} per gli strumenti che l'utente puo' vedere."""
     out = {}
     for m in storage.MODULI_ARCHIVIO:
-        if m in ("cfg", "al", "pz") or (consentiti is not None and m not in consentiti):
+        if m in ("cfg", "al", "pz", "bz") or (consentiti is not None and m not in consentiti):
             continue
         try:
             p = _ultimo(m)

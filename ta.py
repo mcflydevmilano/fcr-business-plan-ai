@@ -136,3 +136,23 @@ def excel_bytes(righe, kpi=None):
     with pd.ExcelWriter(b, engine="openpyxl") as w:
         pd.DataFrame([{ETICHETTE[c]: r[c] for c in COLONNE} for r in righe], columns=[ETICHETTE[c] for c in COLONNE]).to_excel(w, sheet_name="Compiti", index=False)
     return b.getvalue()
+
+
+def miei(username, path=None):
+    """Compiti aperti della bacheca assegnati a questa persona, nella stessa forma dei compiti della chat ({titolo, scadenza, ...}): servono a «La mia giornata»."""
+    import storage
+    nome = re.sub(r"\s+", " ", str(username or "").strip()).lower()
+    if not nome:
+        return []
+    try:
+        elenco = storage.elenca_pratiche(path, modulo="ta")
+        p = storage.carica_pratica(elenco[0]["nome"], path, "ta") if elenco else None
+    except Exception:
+        return []
+    righe, _ = normalizza((p or {}).get("compiti"))
+    out = []
+    for r in righe:
+        if r["Stato"] == "Fatto" or nome not in re.sub(r"\s+", " ", r["Responsabile"]).lower():
+            continue
+        out.append({"id": None, "titolo": r["Compito"], "scadenza": r["Scadenza"], "assegnato": username, "fonte": "bacheca"})
+    return sorted(out, key=lambda t: (t["scadenza"] or "9999-12-31", t["titolo"]))

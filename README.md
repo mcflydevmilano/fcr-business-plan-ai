@@ -240,6 +240,11 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.19.0
+- **Salvataggio automatico (bozza)**: ogni strumento con «Salva / apri» copia in una bozza personale (`bz|<strumento>|<utente>`, 30 giorni) i dati cambiati rispetto all'apertura; non scrive nulla se non è cambiato niente, non compare tra i salvataggi con nome né nel registro attività. Alla riapertura compare «Riprendi il lavoro / Scarta la copia»; salvare con nome toglie la bozza. Il punto di partenza è preso a fine del primo passaggio, quando i campi sono già inizializzati (`ui_util.bozza_fine`).
+- **Compiti unificati**: `ta.miei()` porta i compiti della bacheca nella lista di «La mia giornata»; la bacheca mostra i compiti della chat (`chat.compiti`) e permette di chiuderli.
+- **Collegamenti**: Computo e Preventivo compila cliente e oggetto dal Registro commerciale; Offerta importa il computo da un preventivo salvato (`of.voci_da_preventivo`: prezzi di vendita + oneri di sicurezza); Ordini approvati → Materiali (`mt.righe_da_ordini_approvati`, senza doppioni).
+
 ## Novità 3.18.0
 - **Utenti, profili ed email insieme**: in *Amministrazione → Utenti* il nuovo utente si crea con nome, cognome, email e profilo; la password provvisoria parte per email (`onboarding.py`). Il profilo di una persona si cambia dalla stessa scheda; la scheda «Permessi» resta per definire cosa apre ogni profilo. *Persone e ruoli* usa lo stesso meccanismo (nome con lo spazio, email, cambio password al primo accesso).
 - **Cantiere a scelta da elenco** anche in Rapportini, Cronoprogramma, SAL, Organico (assegnazioni), Fornitori (contratti), Cash Flow, Sicurezza, Verbali e Archivio documenti: le voci arrivano da *Rubrica e cantieri*; i valori già scritti non si perdono. Senza cantieri in Rubrica resta testo libero.

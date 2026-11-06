@@ -92,11 +92,11 @@ def caselle(utente, profilo, consentiti, payloads=None, ultimi=None, compiti=Non
     elif {"sc", "ga", "fo", "sx", "mz", "rp", "gt", "lg"} & set(pay_cal):
         out.append(_casella("Scadenze", "Nei prossimi 7 giorni", "nessuna", "ok", "Niente di urgente in calendario", "ca" if "ca" in consentiti else None))
     # 3) compiti miei
-    if compiti is not None and "ch" in consentiti:
+    if compiti is not None and {"ch", "ta"} & consentiti:
         scaduti = [t for t in compiti if t.get("scadenza") and t["scadenza"] < oggi.isoformat()]
         if compiti:
             out.append(_casella("Compiti", "Assegnati a me", f"{len(compiti)} aperti", "bad" if scaduti else "warn",
-                                (f"{len(scaduti)} in ritardo · " if scaduti else "") + compiti[0]["titolo"][:50], "ch"))
+                                (f"{len(scaduti)} in ritardo · " if scaduti else "") + compiti[0]["titolo"][:50], "ch" if "ch" in consentiti else "ta"))
     # 4) dati fermi
     if ultimi is not None:
         fermi = freschezza.fermi(freschezza.valuta(ultimi, moduli=consentiti))

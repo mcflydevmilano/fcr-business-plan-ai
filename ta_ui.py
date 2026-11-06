@@ -4,6 +4,7 @@ import datetime as dt
 import pandas as pd
 import streamlit as st
 
+import chat
 import guida
 import ta
 import theme
@@ -93,6 +94,34 @@ def _bacheca(carte, oggi, audit, utente):
             c.caption(f"+ altri {len(sel) - MAX_PER_COLONNA} nella scheda «2. Nuovo e tabella»")
 
 
+def _da_chat(utente, audit):
+    """I compiti assegnati in chat (a me o da me) nella stessa bacheca: niente seconda lista da controllare."""
+    if not utente or not (ss.get("utente") or {}).get("username"):
+        return
+    try:
+        elenco = chat.compiti(ss["utente"]["username"], tutti=True)
+    except Exception:
+        return
+    if not elenco:
+        return
+    oggi = dt.date.today().isoformat()
+    with st.expander(f"💬 Compiti assegnati in chat · {len(elenco)}", expanded=True):
+        for t in elenco:
+            a, b = st.columns([6, 1.3])
+            rit = bool(t["scadenza"]) and t["scadenza"] < oggi
+            chi = f"👤 {t['assegnato']}" + (f" (da {t['creato_da']})" if t["creato_da"] != t["assegnato"] else "")
+            a.markdown(f"**{t['titolo']}**")
+            a.caption(chi + (("  ·  " + ("🔴 scaduto " if rit else "📅 ") + t["scadenza"]) if t["scadenza"] else ""))
+            if not sola_lettura() and b.button("✔ Fatto", key=f"cmd_ta_chat_{t['id']}", width="stretch"):
+                try:
+                    chat.chiudi_compito(t["id"], ss["utente"])
+                    audit("ta_chat_chiuso", t["titolo"][:60])
+                except Exception as e:
+                    st.error(str(e))
+                else:
+                    st.rerun()
+
+
 def _nuovo(utente, audit):
     with st.form("ta_nuovo", clear_on_submit=True):
         t = st.text_input("Cosa c'è da fare", key="ta_n_titolo")
@@ -134,6 +163,7 @@ def render(fcr_uri, audit=None, utente=""):
             {"label": "In ritardo", "value": str(k["ritardo"]), "sub": "scadenza passata", "tono": "bad" if k["ritardo"] else "ok"},
             {"label": "In scadenza", "value": str(k["in_arrivo"]), "sub": f"entro {ss['ta_preavviso_gg']} giorni", "tono": "warn" if k["in_arrivo"] else "ok"},
             {"label": "Senza responsabile", "value": str(k["senza_resp"]), "sub": "da assegnare", "tono": "warn" if k["senza_resp"] else "ok"}]), unsafe_allow_html=True)
+        _da_chat(utente, audit)
         if not righe:
             st.info("Nessun compito. Aggiungine uno nella scheda «2».")
         else:

@@ -43,6 +43,35 @@ def normalizza_ordini(righe):
     return out, avvisi
 
 
+def righe_da_ordini_approvati(ordini_oa, esistenti=()):
+    """Righe per «Ordini e consegne» di Materiali dagli ordini APPROVATI di Ordini e approvazioni (`ordini_oa`: righe di oa.calcola_oa).
+    Quelle gia' presenti (stesso materiale, fornitore, commessa, quantita' e prezzo) non si ripetono. Restituisce (nuove, gia_presenti)."""
+    def chiave(m, f, c, q, p):
+        return (_s(m).lower(), _s(f).lower(), _s(c).lower(), round(float(q or 0), 4), round(float(p or 0), 4))
+    visti = {chiave(e.get("Materiale"), e.get("Fornitore"), e.get("Commessa") or "(senza commessa)", to_float(e.get("Quantita"), 0.0), to_float(e.get("Prezzo_unit"), 0.0)) for e in existenti_lista(esistenti)}
+    nuove, gia = [], 0
+    for o in ordini_oa or []:
+        if o.get("Stato") != "Approvato":
+            continue
+        q = to_float(o.get("Quantita"), 0.0)
+        q = q if q > 0 else 1.0
+        p = round(to_float(o.get("Importo"), 0.0) / q, 4)
+        mat = _s(o.get("Descrizione")) or _s(o.get("Voce")) or _s(o.get("Fornitore"))
+        comm = _s(o.get("Cantiere")) or "(senza commessa)"
+        k = chiave(mat, o.get("Fornitore"), comm, q, p)
+        if k in visti:
+            gia += 1
+            continue
+        visti.add(k)
+        nuove.append({"Materiale": mat, "Fornitore": _s(o.get("Fornitore")), "Commessa": comm, "Quantita": q, "Um": "pz",
+                      "Prezzo_unit": p, "Consegna_prevista": "", "Consegnato": "no", "Data_consegna": "", "Ddt": ""})
+    return nuove, gia
+
+
+def existenti_lista(e):
+    return [dict(r) for r in (e.to_dict("records") if hasattr(e, "to_dict") else (e or []))]
+
+
 def normalizza_mov(righe):
     out, avvisi = [], []
     for i, r in enumerate(righe or [], start=1):

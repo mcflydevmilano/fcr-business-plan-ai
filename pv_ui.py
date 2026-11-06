@@ -64,6 +64,32 @@ def _applica(p, nome):
     ss["_pending"] = pend
 
 
+def _da_registro():
+    """Compila cliente e oggetto dalla pratica del Registro commerciale: niente doppia digitazione."""
+    if sola_lettura():
+        return
+    try:
+        import rc
+        import storage
+        el = storage.elenca_pratiche(modulo="rc")
+        righe, _ = rc.normalizza((storage.carica_pratica(el[0]["nome"], modulo="rc") or {}).get("pratiche")) if el else ([], [])
+    except Exception:
+        return
+    att = [r for r in righe if r["Archivio"] == "Attiva" and r["Codice"]]
+    if not att:
+        return
+    et = [f"{r['Codice']} · {r['Indirizzo']} {r['Citta']}".strip() for r in att]
+    with st.expander("🔗 Prendi cliente e oggetto dal Registro commerciale"):
+        a, b = st.columns([3, 1.4])
+        sc = a.selectbox("Pratica", ["—"] + et, key="pv_da_rc")
+        b.markdown("<div style='height:1.7rem'></div>", unsafe_allow_html=True)
+        if sc != "—" and b.button("Compila", key="pv_da_rc_ok", width="stretch"):
+            r = att[et.index(sc)]
+            ss["_pending"] = {"pv_cliente": r.get("Amministratore") or f"Condominio {r['Indirizzo']}".strip(),
+                              "pv_oggetto": f"{r['Codice']} - {r['Indirizzo']} {r['Citta']}".strip()}
+            st.rerun()
+
+
 def render(ai_generate, active_key, fcr_uri, ai, audit=None, utente=""):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Computo e Preventivo",
@@ -75,6 +101,7 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None, utente=""):
     for k, v in (("pv_cliente", ""), ("pv_oggetto", "Ristrutturazione edificio"), ("pv_validita", 30), ("pv_note", "")):
         ss.setdefault(k, v)
     pannello_archivio("pv", "il preventivo", _raccogli, _applica, audit, utente)
+    _da_registro()
     t1, t2, t3, t4 = st.tabs(["📝 1. Computo", "💰 2. Preventivo e Margine", "📈 3. Sensibilità e Cash Flow", "📄 4. Documenti"])
 
     with t1:

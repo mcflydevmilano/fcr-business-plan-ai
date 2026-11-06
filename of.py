@@ -144,6 +144,23 @@ def per_capitolo(voci):
     return d
 
 
+def voci_da_preventivo(payload):
+    """Voci d'offerta (colonne COL_VOCI) ricavate da un preventivo salvato in «Computo e Preventivo»: prezzi di vendita (con spese generali, utile e sconto) + oneri di sicurezza a corpo."""
+    import pv
+    p = payload or {}
+    voci, _ = pv.normalizza_voci(p.get("voci"))
+    if not voci:
+        return []
+    par = {k: v for k, v in (p.get("params") or {}).items() if k in pv.PV_DEFAULT}
+    out = pv.calcola_preventivo(voci, par)
+    righe = [{"Cap": r["Categoria"] or "-", "Cod": r["Codice"], "Descrizione": r["Descrizione"], "UM": r["UM"], "Quantita": r["Quantita"],
+              "Prezzo": round(r["Prezzo unitario"], 4), "Ipotesi": ""} for r in out["voci"]]
+    sic = out["kpi"]["oneri_sicurezza"]
+    if sic:
+        righe.append({"Cap": "Sicurezza", "Cod": "", "Descrizione": "Oneri di sicurezza (non ribassabili)", "UM": "a corpo", "Quantita": 1.0, "Prezzo": sic, "Ipotesi": ""})
+    return righe
+
+
 def import_cme(dati):
     """Legge il computo dal foglio «Table 1» (capitoli A-E, ipotesi A/B) e gli sconti dal «Foglio1». `dati`: bytes o percorso."""
     wb = openpyxl.load_workbook(io.BytesIO(dati) if isinstance(dati, (bytes, bytearray)) else dati, data_only=True)

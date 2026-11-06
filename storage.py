@@ -247,7 +247,7 @@ def cache_lettura(chiave, fn, path=None, ttl=None):
     return val
 
 
-MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl", "ga", "fo", "sx", "mz", "og", "rp", "gt", "cfg", "ru", "lg", "bk", "oa", "al", "pe", "pz", "rc", "of", "sa", "pr", "mt", "vr", "ad", "fc", "ta")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
+MODULI_ARCHIVIO = ("bp", "cf", "pv", "sc", "sl", "ga", "fo", "sx", "mz", "og", "rp", "gt", "cfg", "ru", "lg", "bk", "oa", "al", "pe", "pz", "rc", "of", "sa", "pr", "mt", "vr", "ad", "fc", "ta", "bz")        # il Credit Risk usa i nomi "semplici"; gli altri moduli hanno un prefisso riservato
 
 
 MAX_VERSIONI = 20          # versioni precedenti conservate per ogni salvataggio
@@ -358,10 +358,48 @@ def ultimi_aggiornamenti(path=None):
     out = {}
     for nome, agg, aut in righe:
         pref = next((m for m in MODULI_ARCHIVIO if nome.startswith(m + "|")), "credit")
-        if pref in ("cfg", "al", "pz") or e_demo(nome.split("|", 1)[1] if pref != "credit" else nome):
+        if pref in ("cfg", "al", "pz", "bz") or e_demo(nome.split("|", 1)[1] if pref != "credit" else nome):
             continue
         out.setdefault(pref, (agg, aut or "", nome.split("|", 1)[1] if pref != "credit" else nome))
     return out
+
+
+# ----------------------------------------------------------------------------
+# BOZZE AUTOMATICHE: copia di lavoro di ogni persona e strumento, salvata da sola mentre si lavora.
+# Non sono salvataggi veri: niente storico, niente registro attivita', non compaiono nell'elenco «Salvati»; durano 30 giorni.
+# ----------------------------------------------------------------------------
+GIORNI_BOZZE = 30
+
+
+def _chiave_bozza(utente, modulo):
+    return f"bz|{modulo}|{utente}"
+
+
+def salva_bozza(utente, modulo, payload, path=None):
+    testo = json.dumps(payload, ensure_ascii=False, default=str)
+    k = _chiave_bozza(utente, modulo)
+    with _db(path) as con:
+        adesso = _now_ms()
+        if con.execute("SELECT 1 FROM pratiche WHERE nome=?", (k,)).fetchone():
+            con.execute("UPDATE pratiche SET aggiornato=?, payload=?, autore=? WHERE nome=?", (adesso, testo, utente, k))
+        else:
+            con.execute("INSERT INTO pratiche (nome, creato, aggiornato, payload, autore) VALUES (?,?,?,?,?)", (k, adesso, adesso, testo, utente))
+        limite = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(time.time() - GIORNI_BOZZE * 86400))
+        con.execute("DELETE FROM pratiche WHERE nome LIKE 'bz|%' AND aggiornato < ?", (limite,))
+    svuota_cache()
+
+
+def carica_bozza(utente, modulo, path=None):
+    """(payload, aggiornato) dell'ultima bozza automatica oppure (None, '')."""
+    with _db(path) as con:
+        r = con.execute("SELECT payload, aggiornato FROM pratiche WHERE nome=?", (_chiave_bozza(utente, modulo),)).fetchone()
+    return (json.loads(r[0]), r[1]) if r else (None, "")
+
+
+def elimina_bozza(utente, modulo, path=None):
+    with _db(path) as con:
+        con.execute("DELETE FROM pratiche WHERE nome=?", (_chiave_bozza(utente, modulo),))
+    svuota_cache()
 
 
 def carica_pratica(nome, path=None, modulo="credit"):

@@ -193,6 +193,22 @@ def _scheda_computo(ctx):
                     st.rerun()
             elif up is not None:
                 st.error("Non ho trovato voci di computo nel file.")
+    if not sola_lettura():
+        try:
+            import storage
+            nomi_pv = [x["nome"] for x in storage.elenca_pratiche(modulo="pv")]
+        except Exception:
+            nomi_pv = []
+        if nomi_pv:
+            a_, b_ = st.columns([3, 1.4])
+            sc_pv = a_.selectbox("…oppure prendi il computo da un preventivo già fatto (Computo e Preventivo)", ["—"] + nomi_pv, key="of_da_pv")
+            b_.markdown("<div style='height:1.7rem'></div>", unsafe_allow_html=True)
+            if sc_pv != "—" and b_.button("Importa il preventivo", key="of_da_pv_ok", type="primary", width="stretch"):
+                voci_pv = of.voci_da_preventivo(storage.carica_pratica(sc_pv, modulo="pv"))
+                if voci_pv:
+                    sostituisci_tabella("of_voci", _df("of_voci", voci_pv))
+                    st.rerun()
+                st.warning("Quel preventivo non ha voci.")
     t = ctx["computo"]
     if _rec("of_voci"):
         st.markdown(theme.stat_strip([

@@ -15,6 +15,13 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.19.0", "data": "2026-11-06", "titolo": "Il lavoro non si perde più e gli strumenti si parlano",
+     "voci": ["Salvataggio automatico: se il telefono si blocca o chiudi la scheda per sbaglio, riaprendo lo strumento ti viene proposto di riprendere il lavoro non salvato (copia solo tua, valida 30 giorni).",
+              "Compiti in un solo elenco: «La mia giornata» mostra insieme i compiti della chat e quelli della bacheca assegnati a te; la bacheca mostra anche i compiti nati in chat, con il pulsante «Fatto».",
+              "Computo e Preventivo: cliente e oggetto si prendono dal Registro commerciale.",
+              "Offerta e finanziamenti: il computo si può importare da un preventivo già fatto, senza riscriverlo.",
+              "Ordini e approvazioni: gli ordini approvati si mandano a Materiali (Ordini e consegne) con un clic, senza doppioni."],
+     "strumenti": ["Computo e Preventivo", "Offerta e finanziamenti", "Ordini e approvazioni", "Compiti e attività"]},
     {"id": "3.18.0", "data": "2026-11-06", "titolo": "Utenti, profili ed email in un solo posto; cantieri a scelta da elenco",
      "voci": ["Amministrazione → Utenti: crei la persona con nome e cognome, email e profilo (cosa vede) in un solo passaggio; la password provvisoria arriva per email.",
               "Anche «Persone e ruoli» crea gli account allo stesso modo, con l'email della persona.",

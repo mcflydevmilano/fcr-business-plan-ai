@@ -6,6 +6,8 @@ tornando all'Hub). Qui la tabella "vera" sta in st.session_state[chiave]; a ogni
 chiave del widget (nuova versione), cosi' il widget riparte pulito dai dati aggiornati.
 """
 import pandas as pd
+import json
+
 import streamlit as st
 
 ss = st.session_state
@@ -131,6 +133,101 @@ def conflitto_salvataggio(modulo, utente, audit):
         st.rerun()
 
 
+def _hash_payload(p):
+    import hashlib
+    return hashlib.sha1(json.dumps(p, sort_keys=True, ensure_ascii=False, default=str).encode("utf-8")).hexdigest()
+
+
+def _stato_bozza(modulo):
+    return ss.setdefault(f"_bz_{modulo}", {"base": None, "ultimo": None, "ora": "", "attesa": False, "visto": False, "ref": None})
+
+
+def _ora_adesso():
+    import datetime as _dt
+    try:
+        from zoneinfo import ZoneInfo
+        return _dt.datetime.now(ZoneInfo("Europe/Rome")).strftime("%H:%M")
+    except Exception:
+        return _dt.datetime.now().strftime("%H:%M")
+
+
+def bozza_fine(max_byte=3_000_000):
+    """Da chiamare alla fine di ogni strumento: se i dati sono cambiati dall'apertura, li copia in una bozza automatica (solo per te, 30 giorni).
+    Cosi' un telefono che si blocca o una scheda chiusa per sbaglio non fanno perdere il lavoro. Non scrive nulla se non e' cambiato niente."""
+    import storage
+    reg = ss.pop("_bz_reg", None) or {}
+    if sola_lettura():
+        return
+    for modulo, (raccogli, utente) in reg.items():
+        s = _stato_bozza(modulo)
+        if s["attesa"] or not utente:
+            continue
+        try:
+            p = raccogli()
+            h = _hash_payload(p)
+        except Exception:
+            continue
+        if s.get("nuovo"):                                  # fine del primo passaggio: i campi si sono appena inizializzati, questo e' il vero punto di partenza
+            s["nuovo"], s["base"] = False, h
+            continue
+        if h == s["base"] or h == s["ultimo"]:
+            continue
+        try:
+            if len(json.dumps(p, default=str)) > max_byte:
+                continue
+            storage.salva_bozza(utente, modulo, p)
+            s["ultimo"], s["ora"] = h, _ora_adesso()
+        except Exception:
+            pass
+
+
+def _bozza_inizio(modulo, raccogli, applica, utente):
+    """Primo passaggio in uno strumento: ricorda lo stato iniziale e, se c'e' una bozza diversa, propone di ripristinarla."""
+    import storage
+    ss.setdefault("_bz_reg", {})[modulo] = (raccogli, utente)
+    s = _stato_bozza(modulo)
+    ref = (ss.get(f"_base_{modulo}") or {}).get("nome", ""), (ss.get(f"_base_{modulo}") or {}).get("agg", "")
+    try:
+        h = _hash_payload(raccogli())
+    except Exception:
+        return s
+    if not s["visto"]:
+        s["visto"], s["base"], s["ref"], s["nuovo"] = True, h, ref, True
+        try:
+            bozza, quando = storage.carica_bozza(utente, modulo) if utente else (None, "")
+        except Exception:
+            bozza, quando = None, ""
+        if bozza and _hash_payload(bozza) != h:
+            s["attesa"], s["quando"] = True, quando
+    elif ref != s["ref"]:                                  # aperto o salvato un salvataggio con nome: da qui in poi la bozza riparte
+        s["ref"], s["base"], s["ultimo"], s["attesa"], s["nuovo"] = ref, h, h, False, True
+        try:
+            storage.elimina_bozza(utente, modulo)
+        except Exception:
+            pass
+    return s
+
+
+def _bozza_banner(modulo, applica, utente, s):
+    import storage
+    if not s.get("attesa"):
+        return
+    with st.container(border=True):
+        st.warning(f"📝 Hai del lavoro non salvato in questo strumento (copia automatica del {_ora_it(s.get('quando', ''))}). Vuoi riprenderlo?")
+        c1, c2 = st.columns(2)
+        if c1.button("↩️ Riprendi il lavoro", key=f"bz_si_{modulo}", type="primary", width="stretch"):
+            bozza, _ = storage.carica_bozza(utente, modulo)
+            if bozza:
+                s["attesa"], s["ultimo"] = False, _hash_payload(bozza)
+                applica(bozza, "bozza automatica")
+                st.rerun()
+            s["attesa"] = False
+        if c2.button("🗑️ Scarta la copia", key=f"bz_no_{modulo}", width="stretch"):
+            storage.elimina_bozza(utente, modulo)
+            s["attesa"] = False
+            st.rerun()
+
+
 def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente=""):
     """Riquadro 'Salva / apri' per un modulo. `raccogli()` -> payload (dict JSON); `applica(payload, nome)` ripristina i dati."""
     import storage
@@ -148,7 +245,11 @@ def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente="
             ss.pop(f"_conf_{modulo}", None)
             applica(payload, ap["nome"])
             st.rerun()
-    with st.expander(f"💾 Salva e riapri {etichetta}"):
+    _s = _bozza_inizio(modulo, raccogli, applica, utente)
+    _bozza_banner(modulo, applica, utente, _s)
+    with st.expander(f"💾 Salva e riapri {etichetta}" + (f"  ·  copia automatica delle {_s['ora']}" if _s.get("ora") else "")):
+        st.caption("Mentre lavori, la suite tiene una copia automatica di quello che scrivi (solo per te): se la pagina si chiude, al ritorno puoi riprenderla. "
+                   "Per condividerlo con i colleghi, salvalo con un nome.")
         if not storage.database_persistente():
             st.warning("Database esterno non configurato: i salvataggi si perdono al riavvio dell'app (vedi DATABASE_URL nei Secrets).")
         a, b = st.columns([3, 1])
@@ -160,6 +261,12 @@ def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente="
             try:
                 if salva_protetto(modulo, nome, raccogli(), utente, audit):
                     st.success("Salvato.")
+                    try:
+                        _s["base"] = _s["ultimo"] = _hash_payload(raccogli())
+                        _s["ref"] = ((ss.get(f"_base_{modulo}") or {}).get("nome", ""), (ss.get(f"_base_{modulo}") or {}).get("agg", ""))
+                        storage.elimina_bozza(utente, modulo)
+                    except Exception:
+                        pass
             except Exception as e:
                 st.error(f"Impossibile salvare: {e}")
         conflitto_salvataggio(modulo, utente, audit)
