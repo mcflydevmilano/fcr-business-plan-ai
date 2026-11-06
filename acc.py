@@ -20,7 +20,7 @@ TIPI = ("entrata", "pausa", "rientro", "uscita")
 ETICHETTE = {"entrata": "Entrata", "pausa": "Inizio pausa", "rientro": "Rientro dalla pausa", "uscita": "Uscita"}
 CON_CONTROLLO = ("entrata", "uscita")                 # solo queste verificano rete o posizione
 CFG_BASE = {"sede": "Via Giovanni Battista Soresina 11, Milano", "lat": None, "lon": None, "raggio_m": 150,
-            "ip": [], "max_incertezza_m": 300, "url": "", "pause": False}
+            "ip": [], "max_incertezza_m": 300, "url": "", "pause": False, "esterni": []}
 
 
 def fuso():
@@ -75,6 +75,10 @@ def normalizza_cfg(raw):
     c["ip"] = [x.strip() for x in ips if _rete_valida(x.strip())]
     c["url"] = str(raw.get("url") or "").strip()
     c["pause"] = bool(raw.get("pause", False))
+    ext = raw.get("esterni") or []
+    if isinstance(ext, str):
+        ext = ext.split(",")
+    c["esterni"] = sorted({" ".join(str(x).split()).lower() for x in ext if str(x).strip()})
     return c
 
 
@@ -181,17 +185,31 @@ def azioni_consentite(st_, pause=True):
     return {"fuori": ["entrata"], "dentro": ["pausa", "uscita"] if pause else ["uscita"], "in_pausa": ["rientro", "uscita"]}[st_]
 
 
-def timbra(utente, tipo, cfg, ip, pos=None, path=None, adesso=None):
+def puo_fuori_sede(utente, cfg):
+    return " ".join(str(utente or "").split()).lower() in set((cfg or {}).get("esterni") or [])
+
+
+def timbra(utente, tipo, cfg, ip, pos=None, path=None, adesso=None, esterno=None):
     """Registra la timbratura se e' coerente con lo stato e, per Entrata/Uscita, se la sede e' verificata.
-    Restituisce {ok, messaggio, stato, serve_posizione}."""
+    `esterno`: testo di giustificazione (dove va, cosa fa) per chi e' abilitato al lavoro fuori sede: niente verifica di rete o posizione,
+    la timbratura resta nel registro come «fuori sede» con la giustificazione. Restituisce {ok, messaggio, stato, serve_posizione}."""
     if tipo not in TIPI:
         return {"ok": False, "messaggio": "Azione non valida.", "stato": "", "serve_posizione": False}
     ev = storage.elenca_timbrature(utente=utente, path=path)
     s = stato(ev, adesso)
     if tipo not in azioni_consentite(s, cfg.get("pause")):
         return {"ok": False, "messaggio": f"Adesso risulti «{s.replace('_', ' ')}»: non puoi registrare «{ETICHETTE[tipo]}».", "stato": s, "serve_posizione": False}
-    metodo, dist = "", None
-    if tipo in CON_CONTROLLO:
+    metodo, dist, nota = "", None, ""
+    if esterno is not None:
+        if not puo_fuori_sede(utente, cfg):
+            return {"ok": False, "messaggio": "Non sei abilitato a timbrare da fuori sede: chiedi all'amministratore.", "stato": s, "serve_posizione": False}
+        nota = " ".join(str(esterno).split())[:300]
+        if tipo == "entrata" and len(nota) < 5:
+            return {"ok": False, "messaggio": "Scrivi dove vai e cosa devi fare (almeno qualche parola).", "stato": s, "serve_posizione": False}
+        if tipo not in CON_CONTROLLO:
+            return {"ok": False, "messaggio": "Azione non valida da fuori sede.", "stato": s, "serve_posizione": False}
+        metodo = "esterno"
+    elif tipo in CON_CONTROLLO:
         v = valuta_accesso(cfg, ip, pos)
         if not v["ok"]:
             return {"ok": False, "messaggio": v["messaggio"], "stato": s, "serve_posizione": v["serve_posizione"]}
@@ -199,7 +217,7 @@ def timbra(utente, tipo, cfg, ip, pos=None, path=None, adesso=None):
     else:
         metodo = "rete" if ip_in_sede(ip, cfg) else "telefono"
     ts = (adesso or adesso_utc()).strftime("%Y-%m-%d %H:%M:%S")
-    storage.aggiungi_timbratura(utente, tipo, metodo, dist, "", utente, ts, path)
+    storage.aggiungi_timbratura(utente, tipo, metodo, dist, nota, utente, ts, path)
     nuovo = stato(ev + [{"tipo": tipo, "ts": ts}], adesso)
     return {"ok": True, "messaggio": f"{ETICHETTE[tipo]} registrata alle {a_locale(ts).strftime('%H:%M')}.", "stato": nuovo, "serve_posizione": False}
 
@@ -273,7 +291,9 @@ def riepilogo_giorno(eventi, giorno, adesso=None):
     entrate = [a_locale(e["ts"]) for e in ev if e["tipo"] == "entrata"]
     uscite = [a_locale(e["ts"]) for e in ev if e["tipo"] == "uscita"]
     return {"entrata": entrate[0] if entrate else None, "uscita": uscite[-1] if uscite else None, "lavorato_min": int(round(lav)),
-            "pausa_min": int(round(pausa)), "anomalie": anomalie, "aperta": aperta and ora.date() == giorno, "manuale": any(e["metodo"] == "manuale" for e in ev)}
+            "pausa_min": int(round(pausa)), "anomalie": anomalie, "aperta": aperta and ora.date() == giorno, "manuale": any(e["metodo"] == "manuale" for e in ev),
+            "fuori_sede": [str(e.get("nota") or "").strip() for e in ev if e["metodo"] == "esterno" and str(e.get("nota") or "").strip()],
+            "esterno": any(e["metodo"] == "esterno" for e in ev)}
 
 
 def ore(minuti):
@@ -294,6 +314,6 @@ def tabella(eventi, da, a, adesso=None):
                 righe.append({"Persona": u, "Giorno": g, "Entrata": r["entrata"].strftime("%H:%M") if r["entrata"] else "",
                               "Uscita": r["uscita"].strftime("%H:%M") if r["uscita"] else ("in corso" if r["aperta"] else ""),
                               "Ore in ufficio": ore(r["lavorato_min"]), "Pausa": ore(r["pausa_min"]), "_min": r["lavorato_min"],
-                              "Note": ", ".join(r["anomalie"] + (["modificata a mano"] if r["manuale"] else []))})
+                              "Note": ", ".join(r["anomalie"] + (["modificata a mano"] if r["manuale"] else []) + (["fuori sede: " + " / ".join(r["fuori_sede"]) if r["fuori_sede"] else "fuori sede"] if r["esterno"] else []))})
             g += dt.timedelta(days=1)
     return righe

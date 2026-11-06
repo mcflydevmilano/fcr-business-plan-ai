@@ -750,6 +750,20 @@ def _non_letti_chat():
 
 _JS_MENU_TELEFONO = """
 export default function(component) {
+  if (!document.getElementById('fcr-aggiorna')) {            // pulsante «Aggiorna»: come F5, su tutte le pagine della suite
+    const b = document.createElement('button');
+    b.id = 'fcr-aggiorna';
+    b.type = 'button';
+    b.title = 'Aggiorna la pagina';
+    b.setAttribute('aria-label', 'Aggiorna la pagina');
+    b.textContent = '\u21BB';
+    const mob = window.innerWidth <= 640;
+    b.style.cssText = 'position:fixed;z-index:999989;width:40px;height:40px;border-radius:50%;border:1px solid #cbd5e1;background:#fff;color:#1d4ed8;'
+      + 'font-size:22px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(15,23,42,.18);padding:0;'
+      + (mob ? 'right:19px;bottom:76px;' : 'right:34px;bottom:96px;');
+    b.addEventListener('click', () => { b.style.transform = 'rotate(360deg)'; b.style.transition = 'transform .5s'; setTimeout(() => window.location.reload(), 120); });
+    document.body.appendChild(b);
+  }
   if (window.__fcrMenuTel) return;
   window.__fcrMenuTel = true;
   const chiudi = () => {

@@ -93,11 +93,42 @@ def _blocco_timbra(nome, cfg, audit, chiave):
             if res["ok"]:
                 audit("ac_timbratura", acc.ETICHETTE[a["azione"]])
         st.rerun()
+    if acc.puo_fuori_sede(nome, cfg):
+        _blocco_fuori_sede(nome, cfg, ip, s, audit, chiave)
     if in_sede:
         st.caption("📶 Sei collegato alla rete dell'ufficio: non serve la posizione.")
     else:
         st.caption("📍 Fuori dalla rete dell'ufficio, per Entrata e Uscita il telefono chiede la posizione. Viene letta solo in quel momento, non viene seguita né salvata.")
     return s
+
+
+def _blocco_fuori_sede(nome, cfg, ip, s, audit, chiave):
+    """Per le persone abilitate: Entrata e Uscita senza verifica del luogo, con la giustificazione scritta."""
+    with st.expander("🚗 Lavoro fuori sede (cantiere, sopralluogo, da casa)", expanded=False):
+        if s == "fuori":
+            st.caption("Scrivi dove vai e cosa devi fare: resta nel registro e lo vede l'amministratore. Non viene letta nessuna posizione.")
+            dove = st.text_input("Dove vai e cosa fai", key=f"ac_fs_dove_{chiave}", placeholder="es. Cantiere Via Roma 12, sopralluogo con il cliente")
+            if st.button("Timbra l'entrata da fuori sede", key=f"ac_fs_in_{chiave}", width="stretch", type="primary"):
+                res = acc.timbra(nome, "entrata", cfg, ip, esterno=dove)
+                if res["ok"]:
+                    audit("ac_timbratura", "Entrata fuori sede")
+                    ss[f"_ac_msg_{chiave}"] = (True, res["messaggio"] + " (fuori sede)")
+                    ss.pop(f"ac_fs_dove_{chiave}", None)
+                    st.rerun()
+                else:
+                    st.error(res["messaggio"])
+        else:
+            st.caption("Se hai iniziato il lavoro da fuori sede, chiudi la giornata da qui. Puoi aggiungere una nota (facoltativa).")
+            nota = st.text_input("Nota (facoltativa)", key=f"ac_fs_nota_{chiave}", placeholder="es. rientrato dal cantiere, lavori terminati")
+            if st.button("Timbra l'uscita da fuori sede", key=f"ac_fs_out_{chiave}", width="stretch", type="primary"):
+                res = acc.timbra(nome, "uscita", cfg, ip, esterno=nota)
+                if res["ok"]:
+                    audit("ac_timbratura", "Uscita fuori sede")
+                    ss[f"_ac_msg_{chiave}"] = (True, res["messaggio"] + " (fuori sede)")
+                    ss.pop(f"ac_fs_nota_{chiave}", None)
+                    st.rerun()
+                else:
+                    st.error(res["messaggio"])
 
 
 def stazione(utente, fcr_uri, apri_suite=None, esci=None):
@@ -199,7 +230,7 @@ def render(fcr_uri, audit, utente, profilo, utenti_secrets=None):
         i += 1
     if impostazioni:
         with tabs[i]:
-            _impostazioni(cfg, utente, audit)
+            _impostazioni(cfg, utente, audit, utenti_secrets)
 
 
 def _mie(nome):
@@ -247,6 +278,11 @@ def _registro(utente, audit, utenti_secrets):
         st.write(" · ".join(f"**{p}** ({'in pausa' if s == 'in_pausa' else 'in ufficio'})" for p, s in dentro))
     else:
         st.caption("Nessuno risulta in ufficio in questo momento.")
+    fuori = [e for e in di_oggi if e["metodo"] == "esterno" and e["tipo"] == "entrata"]
+    if fuori:
+        st.markdown("#### 🚗 Fuori sede oggi")
+        for e in fuori:
+            st.info(f"**{e['utente']}** · entrata alle {acc.a_locale(e['ts']):%H:%M} — {e.get('nota') or 'senza giustificazione'}")
     st.markdown("#### Presenze")
     c1, c2, c3 = st.columns([1, 1, 2])
     da = c1.date_input("Dal", oggi.replace(day=1), format="DD/MM/YYYY", key="ac_reg_da")
@@ -292,7 +328,7 @@ def _registro(utente, audit, utenti_secrets):
                 st.error(str(e))
         recenti = list(reversed(storage.elenca_timbrature(u0, u1, None if chi == "Tutte" else chi)))[:40]
         if recenti:
-            etich = {e["id"]: f"{acc.a_locale(e['ts']):%d/%m %H:%M} · {e['utente']} · {acc.ETICHETTE[e['tipo']]}" + (" (a mano)" if e["metodo"] == "manuale" else "") for e in recenti}
+            etich = {e["id"]: f"{acc.a_locale(e['ts']):%d/%m %H:%M} · {e['utente']} · {acc.ETICHETTE[e['tipo']]}" + (" (a mano)" if e["metodo"] == "manuale" else " (fuori sede)" if e["metodo"] == "esterno" else "") for e in recenti}
             with st.form("ac_ann", clear_on_submit=True):
                 sel = st.selectbox("Timbratura da annullare", list(etich), format_func=lambda i: etich[i], key="ac_a_s")
                 mot = st.text_input("Motivo (obbligatorio)", key="ac_a_m")
@@ -307,7 +343,7 @@ def _registro(utente, audit, utenti_secrets):
                     st.error(str(e))
 
 
-def _impostazioni(cfg, utente, audit):
+def _impostazioni(cfg, utente, audit, utenti_secrets=None):
     st.markdown("#### Sede e controlli")
     st.caption("La timbratura di Entrata e Uscita vale se il telefono è collegato alla rete dell'ufficio, oppure, da un'altra rete, se la posizione letta in quel momento è vicina alla sede.")
     ip_ora = _ip()
@@ -325,7 +361,13 @@ def _impostazioni(cfg, utente, audit):
     b1, b2 = st.columns(2)
     pause = st.checkbox("Registra anche le pause (Inizio pausa e Rientro)", cfg["pause"], key="ac_s_pause",
                         help="Spento: i colleghi vedono solo Entrata e Uscita. Pausa e rientro non chiedono mai la posizione.")
-    nuovo = dict(cfg, pause=pause, sede=sede, url=url.strip(), raggio_m=raggio, max_incertezza_m=inc, ip=ips)
+    _noti = _nomi(utenti_secrets)
+    esterni = st.multiselect("Persone abilitate a timbrare da fuori sede", sorted(set(_noti) | set(cfg.get("esterni") or [])), default=cfg.get("esterni") or [],
+                             key="ac_s_esterni", format_func=lambda x: x,
+                             help="Per chi lavora fuori dall'ufficio (cantieri, sopralluoghi, lavoro da casa) e non si può verificare dove si trova. "
+                                  "Queste persone, oltre ai pulsanti normali, vedono «Timbra da fuori sede» e devono scrivere dove vanno e cosa fanno: "
+                                  "la giustificazione resta nel registro, segnata come «fuori sede». Vale per le sole persone scelte qui.")
+    nuovo = dict(cfg, pause=pause, sede=sede, url=url.strip(), raggio_m=raggio, max_incertezza_m=inc, ip=ips, esterni=esterni)
     if b1.button("➕ Aggiungi il mio indirizzo di rete attuale", key="ac_s_addip", width="stretch", disabled=not ip_ora or ip_ora.startswith(("192.168.", "10.", "127."))):
         elenco = [x for x in ips.splitlines() if x.strip()]
         if ip_ora not in elenco:

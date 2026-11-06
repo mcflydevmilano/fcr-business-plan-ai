@@ -1,0 +1,10 @@
+# Dati e segreti: non vanno MAI nel repository
+.streamlit/secrets.toml
+*.db
+*.sqlite
+fcr_pratiche.db
+__pycache__/
+.pytest_cache/
+.cache/
+*.pyc
+.env
