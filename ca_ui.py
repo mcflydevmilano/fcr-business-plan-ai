@@ -19,10 +19,12 @@ ss = st.session_state
 ICONE = {"ok": "🟢", "warn": "🟡", "bad": "🔴"}
 
 
-def _payloads(includi_demo):
+def _payloads(includi_demo, consentiti=None):
     """Per ogni modulo: dati della sessione (se presenti) oppure ultimo salvataggio. Restituisce (payloads, fonti)."""
     pay, fonti = {}, {}
     for m in calendario.MODULI_CALENDARIO:
+        if m == "fp":
+            continue                                             # le assenze arrivano da un archivio a parte (sotto)
         nome = calendario.NOMI_MODULO[m]
         if dd_ui._sessione_disponibile(m):
             if ss.get(f"{m}_demo") and not includi_demo:
@@ -40,6 +42,13 @@ def _payloads(includi_demo):
         except Exception:
             pass
         fonti[nome] = "nessun dato"
+    if consentiti is None or "fp" in consentiti:
+        try:                                                     # assenze approvate (Ferie e permessi), solo se la persona puo' vedere lo strumento
+            import fp
+            pay["fp"] = {"assenze": fp.assenze_per_calendario()}
+            fonti[calendario.NOMI_MODULO["fp"]] = "richieste approvate"
+        except Exception:
+            pass
     try:                                                         # compiti nati dalla chat, assegnati alla persona collegata
         import chat
         comp = chat.compiti(ss["utente"]["username"])
@@ -62,7 +71,7 @@ def render(fcr_uri, audit=None, consentiti=None):
     b.multiselect("Tipo di scadenza", calendario.CATEGORIE, key="ca_cat", placeholder="Tutte")
     c.markdown("<div style='height:1.9rem'></div>", unsafe_allow_html=True)
     c.checkbox("Includi i dati di esempio", key="ca_demo")
-    pay, fonti = _payloads(ss["ca_demo"])
+    pay, fonti = _payloads(ss["ca_demo"], consentiti)
     if consentiti is not None:                                 # chi non vede uno strumento non ne vede nemmeno le scadenze
         pay = {k: v for k, v in pay.items() if k in consentiti}
         ok = {calendario.NOMI_MODULO[m] for m in consentiti if m in calendario.NOMI_MODULO}

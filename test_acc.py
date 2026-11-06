@@ -149,15 +149,35 @@ def test_pagina_timbratura_senza_login(monkeypatch, tmp_path):
     assert not any("Hub" in b.label for b in app.button)          # non apre la suite
 
 
-def test_senza_pause_solo_entrata_e_uscita(tmp_path):
+def test_uscite_in_orario_sempre_disponibili_con_motivo(tmp_path):
+    p = _db(tmp_path)
+    c = acc.normalizza_cfg({"ip": SEDE_IP, "pause": False})                       # anche un salvataggio vecchio con le pause spente
+    assert c["pause"] is True and acc.azioni_consentite("dentro") == ["pausa", "uscita"] and acc.azioni_consentite("fuori") == ["entrata"]
+    assert acc.timbra("sara", "entrata", c, SEDE_IP, path=p, adesso=_t(8))["ok"]
+    assert acc.timbra("sara", "pausa", c, SEDE_IP, path=p, adesso=_t(11), motivo="Commissione di lavoro", dettaglio="banca")["ok"]
+    assert acc.timbra("sara", "rientro", c, SEDE_IP, path=p, adesso=_t(12))["ok"]
+    assert acc.timbra("sara", "pausa", c, SEDE_IP, path=p, adesso=_t(13), motivo="Visita medica")["ok"]
+    assert acc.timbra("sara", "rientro", c, SEDE_IP, path=p, adesso=_t(14))["ok"]
+    assert acc.timbra("sara", "uscita", c, SEDE_IP, path=p, adesso=_t(17))["ok"]
+    ev = storage.elenca_timbrature(utente="sara", path=p)
+    assert [e["nota"] for e in ev if e["tipo"] == "pausa"] == ["Commissione di lavoro - banca", "Visita medica"]
+    r = acc.riepilogo_giorno(ev, acc.a_locale(ev[0]["ts"]).date(), adesso=_t(18))
+    assert r["lavorato_min"] == 8 * 60 and r["commissione_min"] == 60 and r["pausa_min"] == 60       # 9 ore di presenza - 1 ora di visita medica; la commissione conta
+
+
+def test_riepilogo_mensile_per_persona(tmp_path):
     p = _db(tmp_path)
     c = acc.normalizza_cfg({"ip": SEDE_IP})
-    assert c["pause"] is False
-    assert acc.azioni_consentite("fuori", False) == ["entrata"] and acc.azioni_consentite("dentro", False) == ["uscita"]
-    assert acc.timbra("sara", "entrata", c, SEDE_IP, path=p, adesso=_t(8))["ok"]
-    r = acc.timbra("sara", "pausa", c, SEDE_IP, path=p, adesso=_t(11))
-    assert not r["ok"]
-    assert acc.timbra("sara", "uscita", c, SEDE_IP, path=p, adesso=_t(17))["ok"]
+    for g in (3, 4):
+        d = lambda h, g=g: dt.datetime(2026, 11, g, h - 1, 0)                         # ora italiana = UTC+1 a novembre
+        for pers in ("anna verdi", "luca neri"):
+            acc.timbra(pers, "entrata", c, SEDE_IP, path=p, adesso=d(8))
+            acc.timbra(pers, "uscita", c, SEDE_IP, path=p, adesso=d(16 if pers == "anna verdi" else 17))
+    ev = storage.elenca_timbrature(path=p)
+    righe = acc.tabella(ev, dt.date(2026, 11, 1), dt.date(2026, 11, 30))
+    riep = {r["Persona"]: r for r in acc.riepilogo_mese(righe)}
+    assert riep["anna verdi"]["Ore lavorate"] == "16:00" and riep["anna verdi"]["Giorni di presenza"] == 2 and riep["anna verdi"]["Media al giorno"] == "8:00"
+    assert riep["luca neri"]["Ore lavorate"] == "18:00" and riep["luca neri"]["_ore_decimali"] == 18.0
 
 
 def test_fuori_sede_solo_per_gli_abilitati_con_giustificazione(tmp_path):

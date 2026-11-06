@@ -71,12 +71,19 @@ def _blocco_timbra(nome, cfg, audit, chiave):
     s = acc.stato(ev)
     in_sede = acc.ip_in_sede(ip, cfg)
     ultimo = acc.a_locale(ev[-1]["ts"]) if ev else None
-    testo = {"fuori": "Sei **fuori**", "dentro": "Sei **in ufficio**", "in_pausa": "Sei **in pausa**"}[s]
+    testo = {"fuori": "Sei **fuori**", "dentro": "Sei **in ufficio**", "in_pausa": "Sei **uscito per un po'**"}[s]
+    if s == "in_pausa" and ev and ev[-1]["tipo"] == "pausa" and ev[-1].get("nota"):
+        testo += f" ({ev[-1]['nota']})"
     if ultimo:
         testo += f" · ultima timbratura: {acc.ETICHETTE[ev[-1]['tipo']].lower()} alle {ultimo.strftime('%H:%M')} del {ultimo.strftime('%d/%m')}"
     st.markdown(testo)
     azioni = [{"id": t, "label": acc.ETICHETTE[t], "gps": (t in acc.CON_CONTROLLO and not in_sede), "principale": i == 0}
               for i, t in enumerate(acc.azioni_consentite(s, cfg.get("pause")))]
+    if s == "dentro":
+        m1, m2 = st.columns([1, 1.4])
+        m1.selectbox("Se esci per un po', per cosa?", acc.MOTIVI, key=f"ac_motivo_{chiave}",
+                     help="«Commissione di lavoro» (banca, posta, cantiere vicino) conta come ora lavorata; pausa, permesso e visita medica no.")
+        m2.text_input("Dettaglio (facoltativo)", key=f"ac_dett_{chiave}", max_chars=100, placeholder="es. banca, dentista")
     msg = ss.pop(f"_ac_msg_{chiave}", None)
     if msg:
         (st.success if msg[0] else st.error)(msg[1])
@@ -88,7 +95,7 @@ def _blocco_timbra(nome, cfg, audit, chiave):
             ss[f"_ac_msg_{chiave}"] = (False, _ERRORI_GPS.get(str(a["errore"]), "Posizione non disponibile."))
         else:
             pos = {"lat": a["lat"], "lon": a["lon"], "acc": a.get("acc")} if "lat" in a else None
-            res = acc.timbra(nome, a["azione"], cfg, ip, pos)
+            res = acc.timbra(nome, a["azione"], cfg, ip, pos, motivo=ss.get(f"ac_motivo_{chiave}"), dettaglio=ss.get(f"ac_dett_{chiave}", ""))
             ss[f"_ac_msg_{chiave}"] = (res["ok"], res["messaggio"])
             if res["ok"]:
                 audit("ac_timbratura", acc.ETICHETTE[a["azione"]])
@@ -148,8 +155,9 @@ def stazione(utente, fcr_uri, apri_suite=None, esci=None):
 def _tabella_df(righe, senza_persona=False):
     """Tabella da mostrare: niente colonne interne; la colonna Pausa solo se qualcuno ha davvero fatto pause."""
     df = pd.DataFrame([{k: v for k, v in r.items() if not k.startswith("_") and not (senza_persona and k == "Persona")} for r in righe])
-    if "Pausa" in df and (df["Pausa"] == "0:00").all():
-        df = df.drop(columns=["Pausa"])
+    for c in ("Pausa", "Commissioni"):
+        if c in df and (df[c] == "0:00").all():
+            df = df.drop(columns=[c])
     return df
 
 
@@ -235,6 +243,8 @@ def render(fcr_uri, audit, utente, profilo, utenti_secrets=None):
 
 def _mie(nome):
     oggi = dt.datetime.now(acc.fuso()).date()
+    with st.expander("🗓️ Le mie ore del mese (con Excel)", expanded=True):
+        _riepilogo_mensile(nome, "mie")
     c1, c2 = st.columns(2)
     da = c1.date_input("Dal", oggi.replace(day=1), format="DD/MM/YYYY", key="ac_mie_da")
     a = c2.date_input("Al", oggi, format="DD/MM/YYYY", key="ac_mie_a")
@@ -247,7 +257,7 @@ def _mie(nome):
     if not righe:
         st.info("Nessuna timbratura nel periodo.")
         return
-    st.metric("Ore in ufficio nel periodo", acc.ore(sum(r["_min"] for r in righe)))
+    st.metric("Ore lavorate nel periodo", acc.ore(sum(r["_min"] for r in righe)))
     st.dataframe(_tabella_df(righe, True), width="stretch", hide_index=True,
                  column_config={"Giorno": st.column_config.DateColumn("Giorno", format="DD/MM/YYYY")})
     st.caption("Se manca una timbratura (per esempio un'uscita dimenticata), chiedi alla direzione di correggerla.")
@@ -261,6 +271,45 @@ def _nomi(utenti_secrets):
     except Exception:
         pass
     return sorted(n, key=str.lower)
+
+
+def _excel_mese(righe, titolo):
+    """Excel con il riepilogo per persona (ore totali del mese) e il dettaglio giorno per giorno."""
+    buf = io.BytesIO()
+    riep = [{k: v for k, v in r.items() if not k.startswith("_") or k == "_ore_decimali"} for r in acc.riepilogo_mese(righe)]
+    df = pd.DataFrame(riep).rename(columns={"_ore_decimali": "Ore lavorate (decimali)"})
+    with pd.ExcelWriter(buf, engine="openpyxl") as w:
+        df.to_excel(w, index=False, sheet_name="Ore del mese")
+        _tabella_df(righe).to_excel(w, index=False, sheet_name="Dettaglio giorni")
+        w.sheets["Ore del mese"].cell(row=len(df) + 3, column=1, value=titolo)
+    return buf.getvalue()
+
+
+def _riepilogo_mensile(persona, chiave):
+    """Ore totali di un mese per persona (o per tutti): tabella e Excel."""
+    oggi = dt.datetime.now(acc.fuso()).date()
+    c1, c2 = st.columns(2)
+    mesi = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
+    mese = c1.selectbox("Mese", range(1, 13), index=oggi.month - 1, format_func=lambda m: mesi[m - 1], key=f"ac_m_mese_{chiave}")
+    anno = c2.selectbox("Anno", range(oggi.year, oggi.year - 4, -1), key=f"ac_m_anno_{chiave}")
+    da = dt.date(anno, mese, 1)
+    a = (dt.date(anno + (mese == 12), mese % 12 + 1, 1) - dt.timedelta(days=1))
+    u0, u1 = acc.intervallo_giorni(da, a)
+    righe = acc.tabella(storage.elenca_timbrature(u0, u1, persona), da, a)
+    if not righe:
+        st.info("Nessuna timbratura in questo mese.")
+        return
+    riep = acc.riepilogo_mese(righe)
+    df = pd.DataFrame([{k: v for k, v in r.items() if not k.startswith("_")} for r in riep])
+    if (df["di cui commissioni di lavoro"] == "0:00").all():
+        df = df.drop(columns=["di cui commissioni di lavoro"])
+    st.dataframe(df, hide_index=True, width="stretch")
+    tot = sum(r["_min"] for r in riep)
+    st.markdown(f"**Totale ore lavorate a {mesi[mese - 1].lower()} {anno}: {acc.ore(tot)}**" + (f" ({len(riep)} persone)" if len(riep) > 1 else ""))
+    if any(r["Giorni da controllare"] for r in riep):
+        st.warning("Alcuni giorni hanno note (uscite mancanti, correzioni a mano): controllali prima di usare le ore per il cedolino.")
+    st.download_button("📥 Scarica le ore del mese in Excel", _excel_mese(righe, f"{mesi[mese - 1]} {anno}"), file_name=f"ore_{anno}_{mese:02d}" + (f"_{persona}" if persona else "") + ".xlsx",
+                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"ac_m_xls_{chiave}")
 
 
 def _registro(utente, audit, utenti_secrets):
@@ -283,6 +332,8 @@ def _registro(utente, audit, utenti_secrets):
         st.markdown("#### 🚗 Fuori sede oggi")
         for e in fuori:
             st.info(f"**{e['utente']}** · entrata alle {acc.a_locale(e['ts']):%H:%M} — {e.get('nota') or 'senza giustificazione'}")
+    st.markdown("#### Ore del mese")
+    _riepilogo_mensile(None, "reg")
     st.markdown("#### Presenze")
     c1, c2, c3 = st.columns([1, 1, 2])
     da = c1.date_input("Dal", oggi.replace(day=1), format="DD/MM/YYYY", key="ac_reg_da")
@@ -359,8 +410,7 @@ def _impostazioni(cfg, utente, audit, utenti_secrets=None):
     st.caption(f"Il tuo indirizzo di rete in questo momento: `{ip_ora or 'non rilevato'}`" +
                (" — è un indirizzo interno: apri la suite da suite.piattaformafcr.it per leggere quello pubblico." if ip_ora.startswith(("192.168.", "10.", "172.16.", "127.")) else ""))
     b1, b2 = st.columns(2)
-    pause = st.checkbox("Registra anche le pause (Inizio pausa e Rientro)", cfg["pause"], key="ac_s_pause",
-                        help="Spento: i colleghi vedono solo Entrata e Uscita. Pausa e rientro non chiedono mai la posizione.")
+    pause = True                                    # «Esco per un po'» e «Sono rientrato» sono sempre disponibili (non chiedono la posizione)
     _noti = _nomi(utenti_secrets)
     esterni = st.multiselect("Persone abilitate a timbrare da fuori sede", sorted(set(_noti) | set(cfg.get("esterni") or [])), default=cfg.get("esterni") or [],
                              key="ac_s_esterni", format_func=lambda x: x,

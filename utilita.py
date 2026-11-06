@@ -27,9 +27,20 @@ def payload_salvati(consentiti):
     return out
 
 
+def _pay_calendario(consentiti):
+    pay = {m: p for m, p in payload_salvati(consentiti).items() if m in calendario.MODULI_CALENDARIO}
+    if consentiti is None or "fp" in consentiti:
+        try:
+            import fp
+            pay["fp"] = {"assenze": fp.assenze_per_calendario()}          # chi manca (ferie e permessi approvati)
+        except Exception:
+            pass
+    return pay
+
+
 def avvisi(consentiti, oggi=None, giorni=7):
     """Scadute e in arrivo entro `giorni`, solo dai dati salvati (leggero: usato a ogni caricamento)."""
-    pay = storage.cache_lettura("util_pay|" + ",".join(sorted(consentiti or [])), lambda: {m: p for m, p in payload_salvati(consentiti).items() if m in calendario.MODULI_CALENDARIO}, ttl=120)
+    pay = storage.cache_lettura("util_pay|" + ",".join(sorted(consentiti or [])), lambda: _pay_calendario(consentiti), ttl=120)
     return calendario.eventi(pay, oggi or dt.date.today(), giorni)
 
 

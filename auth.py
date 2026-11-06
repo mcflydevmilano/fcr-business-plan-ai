@@ -210,6 +210,11 @@ def rinomina_utente(vecchio, nuovo, da="", utenti_secrets=None, path=None):
     storage.rinomina_utente_db(v, n, path)
     import permessi, due_passaggi, chat, novita
     try:
+        import richieste
+        richieste.rinomina_utente(v, n, path)
+    except Exception:
+        pass
+    try:
         cfg = permessi.carica_config(path)
         if v in (cfg.get("utenti") or {}):
             cfg["utenti"][n] = cfg["utenti"].pop(v)

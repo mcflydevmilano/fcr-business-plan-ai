@@ -20,8 +20,8 @@ import sc
 import sx
 from sc import data_da
 
-MODULI_CALENDARIO = ("sc", "ga", "fo", "sx", "mz", "rp", "gt", "lg", "sa", "mt", "vr", "ad", "ta")
-NOMI_MODULO = {"sc": "Scadenzario", "ga": "Gare e offerte", "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "rp": "Rapportini di cantiere", "gt": "Cronoprogramma", "lg": "Studio legale", "ch": "Compiti dalla chat", "sa": "Subappalti", "mt": "Materiali", "vr": "Verbali e riunioni", "ad": "Archivio documenti", "ta": "Compiti e attività"}
+MODULI_CALENDARIO = ("sc", "ga", "fo", "sx", "mz", "rp", "gt", "lg", "sa", "mt", "vr", "ad", "ta", "fp")
+NOMI_MODULO = {"sc": "Scadenzario", "ga": "Gare e offerte", "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "rp": "Rapportini di cantiere", "gt": "Cronoprogramma", "lg": "Studio legale", "ch": "Compiti dalla chat", "sa": "Subappalti", "mt": "Materiali", "vr": "Verbali e riunioni", "ad": "Archivio documenti", "ta": "Compiti e attività", "fp": "Ferie e permessi"}
 CATEGORIE = ["Incasso", "Pagamento", "Gara", "Documento gara", "Documento fornitore", "Formazione / idoneità", "Documento di cantiere", "Mezzo", "Segnalazione", "Fine fase", "Termine legale", "Contratto", "Compito", "Documento subappalto", "Consegna", "Azione di riunione", "Documento commessa", "Attività"]
 
 
@@ -117,6 +117,14 @@ def eventi(payloads, oggi=None, orizzonte_gg=60, categorie=None):
         for x in vr.normalizza_azioni(p["vr"].get("azi"), tit)[0]:
             if x["Stato"] == "Aperta" and x["Scadenza"]:
                 ev.append(_ev(data_da(x["Scadenza"]), oggi, "vr", "Azione di riunione", x["Azione"][:80], f"{x['Responsabile'] or 'senza responsabile'} · {x['Verbale'][:40]}", None, prev))
+    if p.get("fp"):                                                  # assenze approvate: chi manca, da oggi in poi
+        for x in p["fp"].get("assenze") or []:
+            try:
+                dal, al = data_da(x["dal"]), data_da(x["al"])
+                fine = f" fino al {al:%d/%m}" if al != dal else ""
+                ev.append(_ev(max(dal, oggi), oggi, "fp", "Assenza", f"{x['persona']}: {str(x.get('tipo') or 'assente').lower()}{fine}", "", None, -1))
+            except (KeyError, TypeError, ValueError, AttributeError):
+                continue
     if p.get("ta"):
         prev = int((p["ta"].get("params") or {}).get("preavviso_gg", ta.TA_DEFAULT["preavviso_gg"]))
         for x in ta.normalizza(p["ta"].get("compiti"))[0]:

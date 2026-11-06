@@ -15,6 +15,12 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.22.0", "data": "2026-11-06", "titolo": "Segreteria: ferie e permessi, note spese, lettere; ore mensili e uscite in orario",
+     "voci": ["Ferie e permessi: chiedi, il responsabile approva, il calendario mostra chi manca. Giorni residui di ciascuno e avviso se in un periodo restano troppo pochi presenti.",
+              "Note spese e trasferte: foto dello scontrino, importo, cantiere e rimborso chilometrico; approvazione e riepilogo mensile per persona, cantiere e categoria, con Excel e scontrini scaricabili.",
+              "Lettere e modelli: incarico, richiesta di preventivo, convocazione, diffida, risposta tipo e sollecito, compilati dalla Rubrica e scaricabili in Word; i modelli si possono cambiare.",
+              "Accessi del personale: nuovo pulsante «Esco per un po'» con il motivo (le commissioni di lavoro contano come ore lavorate) e «Sono rientrato»; ore totali del mese per persona, anche in Excel."],
+     "strumenti": ["Ferie e permessi", "Note spese e trasferte", "Lettere e modelli", "Accessi del personale"]},
     {"id": "3.21.0", "data": "2026-11-06", "titolo": "Nuovo strumento: ESCo (diagnosi, investimento, contratto)",
      "voci": ["Diagnosi: bollette di luce e gas mese per mese, consumo di partenza corretto per il clima, spesa annua e kWh per m².",
               "Investimento: più interventi (anche dal Preventivo fotovoltaico), incentivi, finanziamento, risparmio garantito, quota alla ESCo o canone fisso.",

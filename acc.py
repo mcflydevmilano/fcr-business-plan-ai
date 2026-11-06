@@ -17,10 +17,12 @@ import storage
 
 NOME_CFG = "accessi_cfg"
 TIPI = ("entrata", "pausa", "rientro", "uscita")
-ETICHETTE = {"entrata": "Entrata", "pausa": "Inizio pausa", "rientro": "Rientro dalla pausa", "uscita": "Uscita"}
+ETICHETTE = {"entrata": "Entrata", "pausa": "Esco per un po'", "rientro": "Sono rientrato", "uscita": "Uscita"}
+MOTIVI = ("Pausa pranzo o caffè", "Commissione di lavoro", "Permesso personale", "Visita medica", "Altro")
+MOTIVO_LAVORO = "Commissione di lavoro"             # l'uscita per lavoro (banca, posta, cantiere vicino) conta come ora lavorata
 CON_CONTROLLO = ("entrata", "uscita")                 # solo queste verificano rete o posizione
 CFG_BASE = {"sede": "Via Giovanni Battista Soresina 11, Milano", "lat": None, "lon": None, "raggio_m": 150,
-            "ip": [], "max_incertezza_m": 300, "url": "", "pause": False, "esterni": []}
+            "ip": [], "max_incertezza_m": 300, "url": "", "pause": True, "esterni": []}
 
 
 def fuso():
@@ -74,7 +76,7 @@ def normalizza_cfg(raw):
         ips = [x for x in ips.replace(";", ",").replace("\n", ",").split(",")]
     c["ip"] = [x.strip() for x in ips if _rete_valida(x.strip())]
     c["url"] = str(raw.get("url") or "").strip()
-    c["pause"] = bool(raw.get("pause", False))
+    c["pause"] = True                              # uscite e rientri in orario di lavoro: sempre disponibili
     ext = raw.get("esterni") or []
     if isinstance(ext, str):
         ext = ext.split(",")
@@ -181,15 +183,15 @@ def stato(eventi, adesso=None):
 
 
 def azioni_consentite(st_, pause=True):
-    """Pulsanti possibili. Con le pause spente (impostazione predefinita) restano solo Entrata e Uscita; chi e' gia' in pausa puo' sempre rientrare."""
-    return {"fuori": ["entrata"], "dentro": ["pausa", "uscita"] if pause else ["uscita"], "in_pausa": ["rientro", "uscita"]}[st_]
+    """Pulsanti possibili: dentro si puo' uscire per un po' (con il motivo) o finire la giornata; chi e' uscito per un po' puo' rientrare o chiudere."""
+    return {"fuori": ["entrata"], "dentro": ["pausa", "uscita"], "in_pausa": ["rientro", "uscita"]}[st_]
 
 
 def puo_fuori_sede(utente, cfg):
     return " ".join(str(utente or "").split()).lower() in set((cfg or {}).get("esterni") or [])
 
 
-def timbra(utente, tipo, cfg, ip, pos=None, path=None, adesso=None, esterno=None):
+def timbra(utente, tipo, cfg, ip, pos=None, path=None, adesso=None, esterno=None, motivo=None, dettaglio=""):
     """Registra la timbratura se e' coerente con lo stato e, per Entrata/Uscita, se la sede e' verificata.
     `esterno`: testo di giustificazione (dove va, cosa fa) per chi e' abilitato al lavoro fuori sede: niente verifica di rete o posizione,
     la timbratura resta nel registro come «fuori sede» con la giustificazione. Restituisce {ok, messaggio, stato, serve_posizione}."""
@@ -200,6 +202,9 @@ def timbra(utente, tipo, cfg, ip, pos=None, path=None, adesso=None, esterno=None
     if tipo not in azioni_consentite(s, cfg.get("pause")):
         return {"ok": False, "messaggio": f"Adesso risulti «{s.replace('_', ' ')}»: non puoi registrare «{ETICHETTE[tipo]}».", "stato": s, "serve_posizione": False}
     metodo, dist, nota = "", None, ""
+    if tipo == "pausa":                                                    # uscita temporanea: il motivo decide se il tempo conta come lavoro
+        motivo = motivo if motivo in MOTIVI else "Altro"
+        nota = motivo + (f" - {' '.join(str(dettaglio).split())[:150]}" if str(dettaglio or "").strip() else "")
     if esterno is not None:
         if not puo_fuori_sede(utente, cfg):
             return {"ok": False, "messaggio": "Non sei abilitato a timbrare da fuori sede: chiedi all'amministratore.", "stato": s, "serve_posizione": False}
@@ -247,8 +252,9 @@ def riepilogo_giorno(eventi, giorno, adesso=None):
     ev = [e for e in eventi if a_locale(e["ts"]).date() == giorno]
     if not ev:
         return None
-    lav = pausa = 0.0
+    lav = pausa = comm = 0.0
     inizio = ini_pausa = None
+    lavoro_pausa = False
     anomalie = []
     for e in ev:
         t = a_locale(e["ts"])
@@ -259,7 +265,11 @@ def riepilogo_giorno(eventi, giorno, adesso=None):
             inizio = t
         elif k == "rientro":
             if ini_pausa is not None:
-                pausa += (t - ini_pausa).total_seconds() / 60
+                m_ = (t - ini_pausa).total_seconds() / 60
+                if lavoro_pausa:
+                    lav, comm = lav + m_, comm + m_
+                else:
+                    pausa += m_
                 ini_pausa = None
             else:
                 anomalie.append("Rientro senza pausa")
@@ -269,12 +279,17 @@ def riepilogo_giorno(eventi, giorno, adesso=None):
                 lav += (t - inizio).total_seconds() / 60
                 inizio = None
             ini_pausa = t
+            lavoro_pausa = str(e.get("nota") or "").startswith(MOTIVO_LAVORO)
         elif k == "uscita":
             if inizio is not None:
                 lav += (t - inizio).total_seconds() / 60
                 inizio = None
             elif ini_pausa is not None:
-                pausa += (t - ini_pausa).total_seconds() / 60
+                m_ = (t - ini_pausa).total_seconds() / 60
+                if lavoro_pausa:
+                    lav, comm = lav + m_, comm + m_
+                else:
+                    pausa += m_
                 ini_pausa = None
             else:
                 anomalie.append("Uscita senza entrata")
@@ -285,13 +300,17 @@ def riepilogo_giorno(eventi, giorno, adesso=None):
             if inizio is not None:
                 lav += (ora - inizio).total_seconds() / 60
             if ini_pausa is not None:
-                pausa += (ora - ini_pausa).total_seconds() / 60
+                m_ = (ora - ini_pausa).total_seconds() / 60
+                if lavoro_pausa:
+                    lav, comm = lav + m_, comm + m_
+                else:
+                    pausa += m_
         else:
             anomalie.append("Uscita mancante")
     entrate = [a_locale(e["ts"]) for e in ev if e["tipo"] == "entrata"]
     uscite = [a_locale(e["ts"]) for e in ev if e["tipo"] == "uscita"]
     return {"entrata": entrate[0] if entrate else None, "uscita": uscite[-1] if uscite else None, "lavorato_min": int(round(lav)),
-            "pausa_min": int(round(pausa)), "anomalie": anomalie, "aperta": aperta and ora.date() == giorno, "manuale": any(e["metodo"] == "manuale" for e in ev),
+            "pausa_min": int(round(pausa)), "commissione_min": int(round(comm)), "anomalie": anomalie, "aperta": aperta and ora.date() == giorno, "manuale": any(e["metodo"] == "manuale" for e in ev),
             "fuori_sede": [str(e.get("nota") or "").strip() for e in ev if e["metodo"] == "esterno" and str(e.get("nota") or "").strip()],
             "esterno": any(e["metodo"] == "esterno" for e in ev)}
 
@@ -313,7 +332,25 @@ def tabella(eventi, da, a, adesso=None):
             if r:
                 righe.append({"Persona": u, "Giorno": g, "Entrata": r["entrata"].strftime("%H:%M") if r["entrata"] else "",
                               "Uscita": r["uscita"].strftime("%H:%M") if r["uscita"] else ("in corso" if r["aperta"] else ""),
-                              "Ore in ufficio": ore(r["lavorato_min"]), "Pausa": ore(r["pausa_min"]), "_min": r["lavorato_min"],
+                              "Ore in ufficio": ore(r["lavorato_min"]), "Pausa": ore(r["pausa_min"]), "Commissioni": ore(r["commissione_min"]), "_min": r["lavorato_min"], "_pausa": r["pausa_min"], "_comm": r["commissione_min"],
                               "Note": ", ".join(r["anomalie"] + (["modificata a mano"] if r["manuale"] else []) + (["fuori sede: " + " / ".join(r["fuori_sede"]) if r["fuori_sede"] else "fuori sede"] if r["esterno"] else []))})
             g += dt.timedelta(days=1)
     return righe
+
+
+def riepilogo_mese(righe):
+    """Da `tabella()` a un riepilogo per persona: giorni, ore lavorate (comprese le commissioni di lavoro), pause e permessi, media e giorni da controllare."""
+    per = {}
+    for r in righe:
+        p = per.setdefault(r["Persona"], {"Persona": r["Persona"], "Giorni": 0, "_min": 0, "_comm": 0, "_pausa": 0, "Da controllare": 0})
+        p["Giorni"] += 1 if r["_min"] > 0 or r["Entrata"] else 0
+        p["_min"] += r["_min"]
+        p["_comm"] += r["_comm"]
+        p["_pausa"] += r["_pausa"]
+        p["Da controllare"] += 1 if r["Note"] else 0
+    out = []
+    for nome in sorted(per, key=str.lower):
+        p = per[nome]
+        out.append({"Persona": nome, "Giorni di presenza": p["Giorni"], "Ore lavorate": ore(p["_min"]), "di cui commissioni di lavoro": ore(p["_comm"]), "Pause e permessi": ore(p["_pausa"]),
+                    "Media al giorno": ore(p["_min"] / p["Giorni"]) if p["Giorni"] else "0:00", "Giorni da controllare": p["Da controllare"], "_min": p["_min"], "_ore_decimali": round(p["_min"] / 60, 2)})
+    return out

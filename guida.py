@@ -55,6 +55,24 @@ PASSI = {
         ("Usa il preventivo", "Nella scheda «5» porti il prezzo nell'Offerta, lo aggiungi allo strumento ESCo o scarichi l'Excel.", None),
         ("Salva", "Apri «💾 Salva e riapri il preventivo» in alto e premi Salva.", "salvato"),
     ], "Consumi, rendimenti e costi proposti sono stime: verificali con un sopralluogo e con il listino."),
+    "fp": ("Chiedere ferie e permessi e farli approvare, senza fogli e senza telefonate.", [
+        ("Chiedi", "Nella scheda «Chiedi» scegli ferie, permesso a ore, malattia o altro, indica le date e invia: vedi subito i giorni che ti restano.", None),
+        ("Approva", "Chi approva trova le richieste in «Da approvare», con l'avviso se in quei giorni restano pochi presenti.", None),
+        ("Guarda chi manca", "In «Chi manca» vedi il mese con le assenze di tutti; le ferie approvate compaiono anche nel Calendario.", None),
+        ("Regole", "Direzione e amministrazione impostano giorni di ferie, ore di permesso, presenti minimi e chi approva in «Regole».", None),
+    ], "La malattia si comunica e vale subito: porta o invia il certificato appena puoi."),
+    "ns": ("Registrare le spese di trasferta con la foto dello scontrino e farle rimborsare.", [
+        ("Scatta la ricevuta", "In «Nuova spesa» scegli la categoria, scrivi importo e cantiere e allega la foto dello scontrino, anche dalla fotocamera del telefono.", None),
+        ("Rimborso chilometrico", "Scegli «Rimborso chilometrico» e scrivi solo i km: l'importo si calcola con la tariffa dell'azienda.", None),
+        ("Approvazione", "Il responsabile approva o respinge, con una nota, dalla scheda «Da approvare».", None),
+        ("Riepilogo", "L'amministrazione vede il mese per persona, cantiere e categoria, scarica l'Excel e gli scontrini e segna le spese rimborsate.", None),
+    ], "Senza ricevuta la spesa si invia solo spiegando bene cosa è stato pagato."),
+    "lm": ("Scrivere in pochi secondi le lettere che si ripetono, senza ricopiare i dati.", [
+        ("Scegli il modello", "Incarico, richiesta di preventivo, convocazione, diffida, risposta tipo o sollecito di pagamento.", None),
+        ("Scegli destinatario e cantiere", "Si prendono dalla Rubrica: nome, referente, indirizzo e cliente si compilano da soli.", None),
+        ("Completa e controlla", "Compila i pochi campi richiesti: quelli vuoti restano visibili tra [parentesi quadre] nell'anteprima.", None),
+        ("Scarica", "Premi «Scarica in Word»: trovi intestazione, data, oggetto, testo e firma.", None),
+    ], "Diffide e incarichi sono una base: falli rivedere da un legale. Puoi cambiare i testi nella scheda «Modelli»."),
     "es": ("Valutare un intervento di efficienza energetica che paghi tu e ti ripaghi con il risparmio, e preparare il contratto.", [
         ("Inserisci le bollette", "Nella scheda «1. Diagnosi» scrivi i consumi e le spese dei 12 mesi e, se li hai, i gradi giorno: sono la base per misurare il risparmio.", None),
         ("Elenca gli interventi", "Nella scheda «2. Interventi» scrivi costo, risparmio e incentivi di ogni intervento, oppure aggiungi un impianto da un Preventivo fotovoltaico.", None),
