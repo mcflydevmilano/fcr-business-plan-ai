@@ -158,3 +158,61 @@ def test_senza_pause_solo_entrata_e_uscita(tmp_path):
     r = acc.timbra("sara", "pausa", c, SEDE_IP, path=p, adesso=_t(11))
     assert not r["ok"]
     assert acc.timbra("sara", "uscita", c, SEDE_IP, path=p, adesso=_t(17))["ok"]
+
+
+def test_fuori_sede_solo_per_gli_abilitati_con_giustificazione(tmp_path):
+    p = _db(tmp_path)
+    cfg = acc.normalizza_cfg(dict(CFG, esterni=["Luca  Neri", "luca neri", ""]))
+    assert cfg["esterni"] == ["luca neri"]
+    # non abilitato: rifiutato
+    r = acc.timbra("mario rossi", "entrata", cfg, FUORI_IP, path=p, adesso=_t(8), esterno="cantiere")
+    assert not r["ok"] and "abilitato" in r["messaggio"]
+    # abilitato ma senza giustificazione
+    r = acc.timbra("luca neri", "entrata", cfg, FUORI_IP, path=p, adesso=_t(8), esterno="  ")
+    assert not r["ok"] and "dove vai" in r["messaggio"].lower()
+    # entrata con giustificazione, senza posizione
+    r = acc.timbra("luca neri", "entrata", cfg, FUORI_IP, path=p, adesso=_t(8), esterno="Cantiere Via Roma 12, sopralluogo")
+    assert r["ok"] and r["stato"] == "dentro"
+    # senza esterno, da fuori rete, resta vietato come prima
+    assert acc.timbra("luca neri", "uscita", cfg, FUORI_IP, path=p, adesso=_t(12))["serve_posizione"]
+    r = acc.timbra("luca neri", "uscita", cfg, FUORI_IP, path=p, adesso=_t(16), esterno="")
+    assert r["ok"] and r["stato"] == "fuori"
+    ev = storage.elenca_timbrature(utente="luca neri", path=p)
+    assert [e["metodo"] for e in ev] == ["esterno", "esterno"] and "Via Roma" in ev[0]["nota"]
+    righe = acc.tabella(ev, dt.date(2026, 11, 5), dt.date(2026, 11, 5), adesso=_t(18))
+    assert righe[0]["Ore in ufficio"] == "8:00" and "fuori sede: Cantiere Via Roma 12" in righe[0]["Note"]
+
+
+def test_ui_fuori_sede_visibile_solo_agli_abilitati(monkeypatch, tmp_path):
+    import os
+    from streamlit.testing.v1 import AppTest
+    monkeypatch.setenv("APP_PASSWORD", "segreta")
+    monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "f.db"))
+    acc.salva_cfg(dict(CFG, esterni=["luca neri"]), "admin")
+    storage.svuota_cache()
+    import auth
+    auth.crea_utente("luca neri", "Password-Lunga-1")
+    auth.crea_utente("mario rossi", "Password-Lunga-1")
+    for nome, atteso in (("luca neri", True), ("mario rossi", False)):
+        app = AppTest.from_file(os.path.join(os.path.dirname(__file__), "app.py"), default_timeout=60)
+        app.session_state["utente"] = {"username": nome, "ruolo": "utente", "origine": "db"}
+        app.session_state["active_module"] = "ac"
+        app.run()
+        assert not app.exception
+        assert any("fuori sede" in e.label.lower() for e in app.expander) == atteso
+
+
+def test_registro_mostra_i_fuori_sede_di_oggi(monkeypatch, tmp_path):
+    import os
+    from streamlit.testing.v1 import AppTest
+    monkeypatch.setenv("APP_PASSWORD", "segreta")
+    monkeypatch.setattr(storage, "DB_PATH", str(tmp_path / "g.db"))
+    cfg = acc.salva_cfg(dict(CFG, esterni=["luca neri"]), "admin")
+    storage.svuota_cache()
+    assert acc.timbra("luca neri", "entrata", acc.carica_cfg(), FUORI_IP, esterno="Cantiere Via Roma 12")["ok"]
+    app = AppTest.from_file(os.path.join(os.path.dirname(__file__), "app.py"), default_timeout=60)
+    app.session_state["utente"] = {"username": "admin", "ruolo": "admin", "origine": "app_password"}
+    app.session_state["active_module"] = "ac"
+    app.run()
+    assert not app.exception
+    assert any("Cantiere Via Roma 12" in i.value for i in app.info)
