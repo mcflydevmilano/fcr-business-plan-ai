@@ -411,23 +411,25 @@ def _pannello_2fa(u, forzato=False):
 
 def _cambio_password_obbligato(u, giorni):
     st.markdown(theme.LOGIN_CSS, unsafe_allow_html=True)
-    if giorni is None:
-        st.warning("🔑 Benvenuto! Stai usando la password provvisoria ricevuta per email: scegline una tua per continuare.")
-    else:
-        st.warning("🔑 La tua password è scaduta: scegli una nuova password per continuare." if giorni < 0 else "La tua password è scaduta.")
-    with st.form("form_pw_scaduta"):
-        p0 = st.text_input("Password attuale", type="password")
-        p1 = st.text_input("Nuova password", type="password", help=f"Almeno {auth.LUNGHEZZA_MIN_PASSWORD} caratteri, con lettere e numeri; diversa dall'attuale.")
-        if st.form_submit_button("Cambia password", type="primary"):
-            try:
-                auth.cambia_password_scaduta(u["username"], p0, p1)
-                st.rerun()
-            except ValueError as e:
-                st.error(str(e))
-    if st.button("Esci", key="scad_esci"):
-        ss.clear()
-        ss["_cancella_cookie"] = True
-        st.rerun()
+    st.markdown(theme.login_header(FCR_URI), unsafe_allow_html=True)
+    with st.container(key="login_card"):                    # scheda bianca: sullo sfondo blu le scritte non si leggerebbero
+        if giorni is None:
+            st.warning("🔑 Benvenuto! Stai usando la password provvisoria ricevuta per email: scegline una tua per continuare.")
+        else:
+            st.warning("🔑 La tua password è scaduta: scegli una nuova password per continuare." if giorni < 0 else "La tua password è scaduta.")
+        with st.form("form_pw_scaduta"):
+            p0 = st.text_input("Password attuale", type="password")
+            p1 = st.text_input("Nuova password", type="password", help=f"Almeno {auth.LUNGHEZZA_MIN_PASSWORD} caratteri, con lettere e numeri; diversa dall'attuale.")
+            if st.form_submit_button("Cambia password", type="primary"):
+                try:
+                    auth.cambia_password_scaduta(u["username"], p0, p1)
+                    st.rerun()
+                except ValueError as e:
+                    st.error(str(e))
+        if st.button("Esci", key="scad_esci"):
+            ss.clear()
+            ss["_cancella_cookie"] = True
+            st.rerun()
 
 
 _gg_pw = auth.giorni_a_scadenza_password(ss["utente"], PASSWORD_SCADENZA_GG)
@@ -454,12 +456,14 @@ _2fa_mia, _2fa_obbl = _2fa_info()
 _forza_2fa = bool(ss["utente"].get("ruolo") == "admin" and _2fa_obbl and not _2fa_mia)
 if _forza_2fa:
     st.markdown(theme.LOGIN_CSS, unsafe_allow_html=True)
-    st.warning("🔐 Per gli amministratori è obbligatoria la verifica in due passaggi: attivala ora per continuare.")
-    _pannello_2fa(ss["utente"], forzato=False)
-    if st.button("Esci", key="f2fa_esci"):
-        ss.clear()
-        ss["_cancella_cookie"] = True
-        st.rerun()
+    st.markdown(theme.login_header(FCR_URI), unsafe_allow_html=True)
+    with st.container(key="login_card"):
+        st.warning("🔐 Per gli amministratori è obbligatoria la verifica in due passaggi: attivala ora per continuare.")
+        _pannello_2fa(ss["utente"], forzato=False)
+        if st.button("Esci", key="f2fa_esci"):
+            ss.clear()
+            ss["_cancella_cookie"] = True
+            st.rerun()
     st.stop()
 if ss.pop("_avviso_emergenza", None) is not None:
     st.warning("Hai usato un codice di emergenza: se hai perso il telefono, reimposta la verifica in due passaggi.")

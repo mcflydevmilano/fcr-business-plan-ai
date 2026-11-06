@@ -15,6 +15,12 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.18.0", "data": "2026-11-06", "titolo": "Utenti, profili ed email in un solo posto; cantieri a scelta da elenco",
+     "voci": ["Amministrazione → Utenti: crei la persona con nome e cognome, email e profilo (cosa vede) in un solo passaggio; la password provvisoria arriva per email.",
+              "Anche «Persone e ruoli» crea gli account allo stesso modo, con l'email della persona.",
+              "Il campo Cantiere/Commessa è un menu preso da «Rubrica e cantieri» anche in Rapportini, Cronoprogramma, SAL, Organico, Fornitori, Cash Flow, Sicurezza, Verbali e Archivio documenti: niente più cantieri scritti in due modi.",
+              "Correggendo il nome di una persona, si aggiorna anche l'elenco di «Persone e ruoli»."],
+     "strumenti": ["Amministrazione", "Persone e ruoli"]},
     {"id": "3.17.3", "data": "2026-11-06", "titolo": "Accesso ricordato anche sul telefono",
      "voci": ["Inserisci la password una volta: per 12 ore la suite non te la richiede più, anche dopo aver chiuso e riaperto il telefono.",
               "Se il telefono perde il cookie, l'accesso viene ripreso da una copia di riserva sul dispositivo.",

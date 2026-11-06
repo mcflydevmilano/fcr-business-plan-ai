@@ -11,7 +11,7 @@ import ops_report
 import rp
 import storage
 import theme
-from ui_util import cantieri_vivi_rubrica, esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
+from ui_util import colonna_cantiere, cantieri_vivi_rubrica, esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
 
 ss = st.session_state
 NOME = "Rapportini"                     # salvataggio condiviso: tutti i capicantiere scrivono qui
@@ -316,9 +316,9 @@ def _cambia_stato(id_, stato, utente, audit):
 def _cfg():
     n, t, s = st.column_config.NumberColumn, st.column_config.TextColumn, st.column_config.SelectboxColumn
     a, b = rp.ETICHETTE_RAPP, rp.ETICHETTE_SEGN
-    return ({"Id": None, "Data": t(a["Data"], help="AAAA-MM-GG o GG/MM/AAAA"), "Cantiere": t(a["Cantiere"]), "Compilato_da": t(a["Compilato_da"]), "Meteo": s(a["Meteo"], options=list(rp.METEO)),
+    return ({"Id": None, "Data": t(a["Data"], help="AAAA-MM-GG o GG/MM/AAAA"), "Cantiere": colonna_cantiere(a["Cantiere"], (("rp_rapp", "Cantiere"),)), "Compilato_da": t(a["Compilato_da"]), "Meteo": s(a["Meteo"], options=list(rp.METEO)),
              "Presenti": n(a["Presenti"], min_value=0.0, step=1.0, format="%.0f"), "Ore": n(a["Ore"], min_value=0.0, step=1.0, format="%.0f"), "Lavorazioni": t(a["Lavorazioni"], width="large"), "Mezzi": t(a["Mezzi"]), "Note": t(a["Note"])},
-            {"Id": None, "Data": t(b["Data"]), "Cantiere": t(b["Cantiere"]), "Tipo": s(b["Tipo"], options=list(rp.TIPI_SEGN)), "Gravita": s(b["Gravita"], options=list(rp.GRAVITA)),
+            {"Id": None, "Data": t(b["Data"]), "Cantiere": colonna_cantiere(b["Cantiere"], (("rp_segn", "Cantiere"),)), "Tipo": s(b["Tipo"], options=list(rp.TIPI_SEGN)), "Gravita": s(b["Gravita"], options=list(rp.GRAVITA)),
              "Descrizione": t(b["Descrizione"], width="large"), "Responsabile": t(b["Responsabile"]), "Scadenza": t(b["Scadenza"], help="AAAA-MM-GG o GG/MM/AAAA"), "Stato": s(b["Stato"], options=list(rp.STATI_SEGN))})
 
 

@@ -363,8 +363,8 @@ def test_il_cruscotto_avvisa_se_i_dati_sono_vecchi():
 # ------------------------------------------------------------------ PERSONE E RUOLI
 def test_pe_username_e_profili_per_ruolo():
     import pe
-    assert pe.username_suggerito("Mario De Rossi", ["mario.rossi"]) == "mario.rossi2"
-    assert pe.username_suggerito("Àngela Núñez") == "angela.nunez"
+    assert pe.username_suggerito("Mario De Rossi", ["mario rossi"]) == "mario rossi2"
+    assert pe.username_suggerito("Àngela Núñez") == "angela nunez"
     assert pe.profilo_per_ruolo("Capocantiere") == "cantiere" and pe.profilo_per_ruolo("Presidente") == "presidente" and pe.profilo_per_ruolo("Ruolo sconosciuto") == "cantiere"
     assert all(pe.profilo_per_ruolo(r) in permessi.PROFILI_BASE for r in pe.RUOLI)
 
@@ -395,12 +395,14 @@ def test_pe_crea_account_dall_elenco_e_assegna_il_profilo():
     assert not at.exception, [e.value for e in at.exception]
     next(b for b in at.button if b.key == "crea_pe").click().run()
     assert not at.exception, [e.value for e in at.exception]
-    u = storage.utente_db("marco.colombo")
-    assert u and u["ruolo"] == "utente"
-    assert permessi.carica_config()["utenti"]["marco.colombo"] == "cantiere"                 # proposto dal ruolo «Capocantiere»
-    assert at.session_state["pe_pers"].iloc[0]["Utente"] == "marco.colombo"
-    user, pw = at.session_state["tmp_pe"]
-    assert user == "marco.colombo" and auth.verifica_password(pw, u["hash"])
+    u = storage.utente_db("marco colombo")
+    assert u and u["ruolo"] == "utente" and u["cambio_pw"] == 1
+    assert permessi.carica_config()["utenti"]["marco colombo"] == "cantiere"                 # proposto dal ruolo «Capocantiere»
+    assert at.session_state["pe_pers"].iloc[0]["Utente"] == "marco colombo"
+    testi = " ".join(s.value for s in at.success)
+    assert "marco colombo" in testi and "Password provvisoria" in testi                      # senza posta la password si vede a schermo
+    pw = testi.split("`")[1]
+    assert auth.verifica_password(pw, u["hash"])
     assert storage.elenca_eventi(20, azione="pe_account_creato")
 
 

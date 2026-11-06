@@ -227,6 +227,17 @@ def rinomina_utente(vecchio, nuovo, da="", utenti_secrets=None, path=None):
             storage.salva_pratica(novita.NOME_LETTE, lette, path, autore=da, modulo="cfg")
     except Exception:
         pass
+    try:                                              # il collegamento persona <-> account nell'elenco di «Persone e ruoli»
+        for el in storage.elenca_pratiche(path, modulo="pe"):
+            dati = storage.carica_pratica(el["nome"], path, modulo="pe") or {}
+            pers = dati.get("persone") or []
+            if any(str(p.get("Utente") or "").lower() == v for p in pers):
+                for p in pers:
+                    if str(p.get("Utente") or "").lower() == v:
+                        p["Utente"] = n
+                storage.salva_pratica(el["nome"], dati, path, autore=da, modulo="pe")
+    except Exception:
+        pass
     storage.svuota_cache()
     storage.log_evento(da, "utente_rinominato", f"{v} -> {n}", path)
 

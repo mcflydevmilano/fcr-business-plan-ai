@@ -11,7 +11,7 @@ import ops_report
 import theme
 from core import fmt_num
 from sc import data_da
-from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
+from ui_util import colonna_cantiere, esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
 
 ss = st.session_state
 PARAM = ("soglia_pct", "preavviso_gg")
@@ -42,7 +42,7 @@ def _esempio_fermi():
 def _cfg():
     t, n = st.column_config.TextColumn, st.column_config.NumberColumn
     e = gt.ETICHETTE_FASI
-    return {"Commessa": t(e["Commessa"]), "Fase": t(e["Fase"]), "Inizio": t(e["Inizio"], help="AAAA-MM-GG o GG/MM/AAAA"), "Fine": t(e["Fine"], help="AAAA-MM-GG o GG/MM/AAAA"),
+    return {"Commessa": colonna_cantiere(e["Commessa"], (("gt_fasi", "Commessa"),)), "Fase": t(e["Fase"]), "Inizio": t(e["Inizio"], help="AAAA-MM-GG o GG/MM/AAAA"), "Fine": t(e["Fine"], help="AAAA-MM-GG o GG/MM/AAAA"),
             "Avanzamento": n(e["Avanzamento"], min_value=0.0, max_value=100.0, step=5.0, format="%.0f"), "Responsabile": t(e["Responsabile"]),
             "Dopo": t(e["Dopo"], help="Scrivi il nome della fase che deve finire prima (dello stesso cantiere). Più fasi: separale con «;». Per attese o sovrapposizioni aggiungi i giorni: «Strutture +5» (5 giorni dopo la fine) o «Strutture -10» (parte 10 giorni prima che finiscano). Vuoto = parte quando vuole."),
             "NonPrima": t(e["NonPrima"], help="Data minima di inizio: arrivo dei materiali, permessi, autorizzazioni. AAAA-MM-GG o GG/MM/AAAA. Vuoto = nessun vincolo.")}

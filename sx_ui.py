@@ -9,7 +9,7 @@ import charts
 import ops_report
 import sx
 import theme
-from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella
+from ui_util import colonna_cantiere, esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella
 
 ss = st.session_state
 ICONE = {"ok": "🟢", "warn": "🟡", "bad": "🔴", "nd": "⚪"}
@@ -31,8 +31,8 @@ def _esempio():
 def _cfg():
     t = st.column_config.TextColumn
     a, b = sx.ETICHETTE_PERS, sx.ETICHETTE_DOCC
-    return ({"Persona": t(a["Persona"]), "Ruolo": t(a["Ruolo"]), "Cantiere": t(a["Cantiere"]), "Documento": t(a["Documento"], width="medium"), "Scadenza": t(a["Scadenza"], help="AAAA-MM-GG o GG/MM/AAAA")},
-            {"Cantiere": t(b["Cantiere"]), "Documento": t(b["Documento"], width="large"), "Presente": st.column_config.CheckboxColumn(b["Presente"]), "Scadenza": t(b["Scadenza"], help="AAAA-MM-GG o GG/MM/AAAA")})
+    return ({"Persona": t(a["Persona"]), "Ruolo": t(a["Ruolo"]), "Cantiere": colonna_cantiere(a["Cantiere"], (("sx_pers", "Cantiere"),)), "Documento": t(a["Documento"], width="medium"), "Scadenza": t(a["Scadenza"], help="AAAA-MM-GG o GG/MM/AAAA")},
+            {"Cantiere": colonna_cantiere(b["Cantiere"], (("sx_docc", "Cantiere"),)), "Documento": t(b["Documento"], width="large"), "Presente": st.column_config.CheckboxColumn(b["Presente"]), "Scadenza": t(b["Scadenza"], help="AAAA-MM-GG o GG/MM/AAAA")})
 
 
 def _raccogli():

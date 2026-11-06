@@ -3,6 +3,7 @@ import os
 import tempfile
 
 import pytest
+import permessi
 from streamlit.testing.v1 import AppTest
 
 APP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.py")
@@ -251,5 +252,6 @@ def test_admin_crea_utente_con_nome_cognome_e_mail(monkeypatch):
     assert not app.exception
     u = storage.utente_db("mario rossi")
     assert u and u["cambio_pw"] == 1 and u["email"] == "mario.rossi@fcrgeneralcontractor.eu"
-    assert len(inviate) == 1 and "Password provvisoria:" in inviate[0].get_content()
+    assert permessi.carica_config()["utenti"]["mario rossi"] == permessi.carica_config()["predefinito"]
+    assert len(inviate) == 1 and "Password provvisoria:" in inviate[0].get_content() and "Strumenti a tua disposizione" in inviate[0].get_content()
     assert inviate[0]["To"] == "mario.rossi@fcrgeneralcontractor.eu"

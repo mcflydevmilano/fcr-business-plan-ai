@@ -639,7 +639,7 @@ def _es_vr():
 
 def _cfg_vr():
     a, b = vr.ETICHETTE_VERBALI, vr.ETICHETTE_AZIONI
-    return ({"Data": _t(a["Data"], help="AAAA-MM-GG o GG/MM/AAAA"), "Titolo": _t(a["Titolo"], width="large"), "Commessa": _t(a["Commessa"]), "Partecipanti": _t(a["Partecipanti"]), "Decisioni": _t(a["Decisioni"], width="large")},
+    return ({"Data": _t(a["Data"], help="AAAA-MM-GG o GG/MM/AAAA"), "Titolo": _t(a["Titolo"], width="large"), "Commessa": colonna_cantiere(a["Commessa"], (("vr_ver", "Commessa"),)), "Partecipanti": _t(a["Partecipanti"]), "Decisioni": _t(a["Decisioni"], width="large")},
             {"Verbale": _t(b["Verbale"], width="large"), "Azione": _t(b["Azione"], width="large"), "Responsabile": _t(b["Responsabile"], help="Il nome utente della persona (es. mario), così diventa un compito in chat"),
              "Scadenza": _t(b["Scadenza"], help="AAAA-MM-GG o GG/MM/AAAA"), "Stato": st.column_config.SelectboxColumn(b["Stato"], options=vr.STATI)})
 
@@ -726,7 +726,7 @@ def _es_ad():
 
 def _cfg_ad():
     a = ad.ETICHETTE_DOC
-    return {"Commessa": _t(a["Commessa"]), "Categoria": st.column_config.SelectboxColumn(a["Categoria"], options=ad.CATEGORIE), "Titolo": _t(a["Titolo"], width="large"),
+    return {"Commessa": colonna_cantiere(a["Commessa"], (("ad_doc", "Commessa"),)), "Categoria": st.column_config.SelectboxColumn(a["Categoria"], options=ad.CATEGORIE), "Titolo": _t(a["Titolo"], width="large"),
             "Link": st.column_config.TextColumn(a["Link"], width="large", help="Indirizzo che inizia con https:// (Drive, SharePoint, cartella condivisa)"), "Scadenza": _t(a["Scadenza"], help="AAAA-MM-GG o GG/MM/AAAA"), "Responsabile": _t(a["Responsabile"])}
 
 

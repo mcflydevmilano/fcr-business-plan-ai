@@ -6,25 +6,14 @@ import pandas as pd
 import streamlit as st
 
 import auth
+import onboarding
 import posta
 import permessi
 import spazio
 import storage
 
 
-def testo_accesso(nome, password, nuovo=True, url=""):
-    """(oggetto, corpo) dell'email con la password provvisoria."""
-    url = url or "https://suite.piattaformafcr.it"
-    ben = f"Ciao {auth.mostra_nome(nome).split()[0]}," if nome else "Ciao,"
-    prima = ("ti abbiamo creato l'accesso alla FCR Suite, il gestionale di FCR General Contractor." if nuovo
-             else "l'amministratore ha reimpostato la tua password della FCR Suite.")
-    corpo = (f"{ben}\n\n{prima}\n\nIndirizzo: {url}\nNome utente: {auth.mostra_nome(nome)}  (maiuscole e minuscole non contano; lo spazio sì)\n"
-             f"Password provvisoria: {password}\n\n"
-             "Al primo accesso la suite ti chiede di scegliere una password tua (almeno 10 caratteri, con lettere e numeri): "
-             "è obbligatorio, poi la password provvisoria non funziona più.\n\n"
-             "Non dare la password a nessuno e cancella questa email dopo il primo accesso.\n"
-             "Se non riesci a entrare, scrivi all'amministratore.\n\nFCR Suite")
-    return "Il tuo accesso alla FCR Suite", corpo
+testo_accesso = onboarding.testo_accesso
 
 
 def _manda_accesso(nome, mail, password, nuovo=True):
@@ -72,7 +61,7 @@ def render(utente, utenti_secrets, audit):
         utenti = storage.elenca_utenti()
         if utenti:
             st.dataframe(pd.DataFrame([{"Utente": u["username"], "Ruolo": u["ruolo"], "Stato": "attivo" if u["attivo"] else "revocato",
-                                        "Creato": (u["creato"] or "")[:16], "Ultimo accesso": (u["ultimo_accesso"] or "mai")[:16]} for u in utenti]),
+                                        "Profilo": permessi.carica_config()["utenti"].get(u["username"], "(predefinito)"), "Email": u.get("email") or "", "Creato": (u["creato"] or "")[:16], "Ultimo accesso": (u["ultimo_accesso"] or "mai")[:16]} for u in utenti]),
                          width="stretch", hide_index=True)
             sel = st.selectbox("Seleziona un utente", [u["username"] for u in utenti], key="adm_sel")
             rec = next(u for u in utenti if u["username"] == sel)
@@ -101,6 +90,17 @@ def render(utente, utenti_secrets, audit):
                 storage.aggiorna_utente(sel, ruolo=nuovo_ruolo)
                 audit("ruolo_cambiato", f"{sel} -> {nuovo_ruolo}")
                 st.rerun()
+            _cfgu = permessi.carica_config()
+            _att = _cfgu["utenti"].get(sel, _cfgu["predefinito"])
+            _pl = list(_cfgu["profili"])
+            p1, p2 = st.columns([3, 1])
+            _nuovo_prof = p1.selectbox("Cosa vede (profilo)", _pl, index=_pl.index(_att) if _att in _pl else 0, key=f"adm_prof_{sel}",
+                                       help="Quali strumenti apre questa persona. I profili si modificano nella scheda «Permessi».")
+            p2.markdown("<div style='height:1.9rem'></div>", unsafe_allow_html=True)
+            if p2.button("💾 Salva", key=f"adm_prof_salva_{sel}", width="stretch") and _nuovo_prof != _att:
+                onboarding.imposta_profilo(sel, _nuovo_prof, utente["username"])
+                audit("pe_profilo_cambiato", f"{sel}: {_att} → {_nuovo_prof}")
+                st.success("Profilo aggiornato.")
             with st.expander("✏️ Correggi nome o email di questa persona"):
                 st.caption("Se il nome ha un errore, correggilo qui: il cambio vale ovunque (accessi, timbrature, chat, permessi). "
                            "La persona dovrà entrare con il nuovo nome.")
@@ -158,9 +158,12 @@ def render(utente, utenti_secrets, audit):
             n1, n2 = st.columns(2)
             nome_p = n1.text_input("Nome", placeholder="Mario")
             cogn_p = n2.text_input("Cognome", placeholder="Rossi")
-            m1, m2 = st.columns([3, 1])
+            m1, m2, m3 = st.columns([3, 1.4, 1.6])
             mail = m1.text_input("Email della persona", placeholder="mario.rossi@fcrgeneralcontractor.eu")
-            ruolo = m2.selectbox("Ruolo", list(auth.RUOLI), index=1)
+            ruolo = m2.selectbox("Può modificare?", list(auth.RUOLI), index=1, help="admin = tutto; utente = lavora e modifica; lettore = solo consulta.")
+            _cfgp = permessi.carica_config()
+            _prof = m3.selectbox("Cosa vede (profilo)", list(_cfgp["profili"]), index=list(_cfgp["profili"]).index(_cfgp["predefinito"]),
+                                 help="Il profilo decide quali strumenti vede. I profili si modificano nella scheda «Permessi».")
             if st.form_submit_button("Crea utente e invia la password"):
                 nome = auth.nome_da_testo(nome_p, cogn_p)
                 if not nome_p.strip() or not cogn_p.strip():
@@ -168,18 +171,16 @@ def render(utente, utenti_secrets, audit):
                 elif _pronta and not posta.indirizzo_valido(mail):
                     st.error("Scrivi un indirizzo email valido: serve per inviare la password.")
                 else:
-                    tmp = auth.genera_password_temporanea()
                     try:
-                        auth.crea_utente(nome, tmp, ruolo, utente["username"], email=mail, cambio_pw=True)
+                        esito = onboarding.crea_account(nome, mail, ruolo, _prof, utente["username"])
                     except ValueError as e:
                         st.error(str(e))
                     else:
-                        st.success(f"Utente «{nome}» creato.")
-                        if _pronta and posta.indirizzo_valido(mail):
-                            _manda_accesso(nome, mail, tmp, nuovo=True)
+                        st.success(f"Utente «{nome}» creato con il profilo «{_prof}».")
+                        if esito["inviata"]:
+                            st.info(f"Ho inviato la password provvisoria a {mail}.")
                         else:
-                            st.session_state["adm_tmp"] = (nome, tmp)
-                            st.rerun()
+                            st.warning(f"L'email non è partita. Password provvisoria di **{nome}**: `{esito['password']}` — comunicala a voce (non verrà mostrata di nuovo).")
 
     with t2:
         import datetime as _dt

@@ -9,7 +9,7 @@ import cf_report
 import charts
 import theme
 from core import fmt_num
-from ui_util import esempi_attivi, modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile
+from ui_util import colonna_cantiere, esempi_attivi, modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile
 
 ss = st.session_state
 
@@ -27,7 +27,7 @@ def _params():
 
 def _cfg():
     n, e = st.column_config.NumberColumn, cf.ETICHETTE_COLONNE
-    return {"Cantiere": st.column_config.TextColumn(e["Cantiere"]), "Contratto": n(e["Contratto"], min_value=0.0, step=1000.0, format="%.0f"),
+    return {"Cantiere": colonna_cantiere(e["Cantiere"], (("cf_df", "Cantiere"),)), "Contratto": n(e["Contratto"], min_value=0.0, step=1000.0, format="%.0f"),
             "Inizio": n(e["Inizio"], min_value=1, step=1, format="%d"), "Durata": n(e["Durata"], min_value=1, step=1, format="%d"),
             "Anticipo_pct": n(e["Anticipo_pct"], min_value=0.0, max_value=100.0, step=5.0, format="%.0f"),
             "Saldo_pct": n(e["Saldo_pct"], min_value=0.0, max_value=100.0, step=5.0, format="%.0f"),

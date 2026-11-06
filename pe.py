@@ -20,7 +20,7 @@ ETICHETTE_PERSONE = {"Persona": "Nome e cognome", "Ruolo": "Ruolo in azienda", "
                      "Tipo": "Tipo", "Utente": "Nome utente nell'app", "Attivo": "In servizio"}
 SINONIMI_PERSONE = {"Persona": ("Nominativo", "Dipendente", "Cognome e nome", "Nome"), "Ruolo": ("Mansione", "Qualifica", "Funzione"), "Telefono": ("Cellulare", "cell", "Tel"), "Email": ("Mail", "E-mail"),
                     "Cantiere": ("Commessa", "Sede")}
-_RE_USER = re.compile(r"^[a-z0-9][a-z0-9._-]{2,39}$")
+_RE_USER = re.compile(r"^[a-z0-9][a-z0-9._-]*( [a-z0-9][a-z0-9._-]*)*$")
 
 
 def _t(v):
@@ -42,8 +42,8 @@ def normalizza_persone(righe):
         t = _t(r.get("Tipo"))
         att = _t(r.get("Attivo")).lower()
         user = _t(r.get("Utente")).lower()
-        if user and not _RE_USER.match(user):
-            avvisi.append(f"«{n}»: il nome utente «{user}» non è valido (3-40 caratteri: lettere minuscole, numeri, punto, trattino).")
+        if user and not (3 <= len(user) <= 40 and _RE_USER.match(user)):
+            avvisi.append(f"«{n}»: il nome utente «{user}» non è valido (3-40 caratteri: lettere, numeri e spazi).")
         out.append({"Persona": n, "Ruolo": _t(r.get("Ruolo")) or "Altro", "Reparto": _t(r.get("Reparto")), "Telefono": _t(r.get("Telefono")), "Email": _t(r.get("Email")),
                     "Cantiere": _t(r.get("Cantiere")), "Tipo": t if t in TIPI else "Dipendente", "Utente": user, "Attivo": "No" if att in ("no", "n", "false", "0", "cessato") else "Sì"})
     return out, avvisi
@@ -58,9 +58,9 @@ def _ascii(s):
 
 
 def username_suggerito(persona, esistenti=()):
-    """nome.cognome in minuscolo senza accenti; se esiste gia' aggiunge un numero."""
+    """«nome cognome» in minuscolo senza accenti, con lo spazio; se esiste gia' aggiunge un numero."""
     parole = [w for w in re.findall(r"[a-z0-9]+", _ascii(_t(persona)).lower())]
-    base = ".".join([parole[0], parole[-1]]) if len(parole) >= 2 else (parole[0] if parole else "utente")
+    base = " ".join([parole[0], parole[-1]]) if len(parole) >= 2 else (parole[0] if parole else "utente")
     base = (base + "xx")[:36] if len(base) < 3 else base[:36]
     nomi = {e.lower() for e in esistenti}
     cand, n = base, 2

@@ -10,7 +10,7 @@ import fo
 import ops_report
 import theme
 from core import fmt_num
-from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
+from ui_util import colonna_cantiere, esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
 
 ss = st.session_state
 ICONE = {"ok": "🟢", "warn": "🟡", "bad": "🔴", "nd": "⚪"}
@@ -35,7 +35,7 @@ def _cfg():
     a, b, c = fo.ETICHETTE_DOCFO, fo.ETICHETTE_CONTR, fo.ETICHETTE_OFF
     return ({"Fornitore": t(a["Fornitore"], width="medium"), "Tipo": st.column_config.SelectboxColumn(a["Tipo"], options=fo.TIPI), "Documento": t(a["Documento"], width="medium"),
              "Scadenza": t(a["Scadenza"], help="AAAA-MM-GG o GG/MM/AAAA")},
-            {"Fornitore": t(b["Fornitore"]), "Commessa": t(b["Commessa"]), "Descrizione": t(b["Descrizione"]), "Importo": n(b["Importo"], min_value=0.0, step=1000.0, format="%.0f"),
+            {"Fornitore": t(b["Fornitore"]), "Commessa": colonna_cantiere(b["Commessa"], (("fo_contr", "Commessa"),)), "Descrizione": t(b["Descrizione"]), "Importo": n(b["Importo"], min_value=0.0, step=1000.0, format="%.0f"),
              "Fatturato": n(b["Fatturato"], min_value=0.0, step=500.0, format="%.0f"), "Pagato": n(b["Pagato"], min_value=0.0, step=500.0, format="%.0f")},
             {"Voce": t(c["Voce"], width="medium"), "Fornitore": t(c["Fornitore"]), "Importo": n(c["Importo"], min_value=0.0, step=500.0, format="%.0f")})
 

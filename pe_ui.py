@@ -7,6 +7,7 @@ import streamlit as st
 import auth
 import guida
 import ops_report
+import onboarding
 import pe
 import permessi
 import storage
@@ -70,9 +71,12 @@ def _tab_accessi(persone, utente, utenti_secrets, audit):
     profili = list(cfg["profili"])
     acc = _account(utenti_secrets)
     st.caption("Dall'elenco crei l'account di una persona e le dai il profilo giusto in un colpo solo. Il profilo decide **quali strumenti vede**; il livello decide se **può modificare** i dati (lettore = solo consulta).")
-    if ss.get("pe_tmp"):
-        u, pw = ss["tmp_pe"]
-        st.success(f"Account **{u}** creato. Password temporanea: `{pw}` — comunicala alla persona in privato; non verrà mostrata di nuovo e va cambiata al primo accesso (barra laterale → Account).")
+    if ss.get("tmp_pe"):
+        u, pw, inviata, mail = ss.pop("tmp_pe")
+        if inviata:
+            st.success(f"Account **{u}** creato: ho inviato la password provvisoria a {mail}. Al primo accesso la persona sceglie la sua.")
+        else:
+            st.success(f"Account **{u}** creato. Password provvisoria: `{pw}` — comunicala alla persona in privato; non verrà mostrata di nuovo e va cambiata al primo accesso.")
     st.markdown("**Stato degli accessi**")
     righe = []
     for p in persone:
@@ -90,25 +94,23 @@ def _tab_accessi(persone, utente, utenti_secrets, audit):
         nome = st.selectbox("Persona", [p["Persona"] for p in senza], key="pe_sel_crea")
         p = next(x for x in senza if x["Persona"] == nome)
         a, b, c = st.columns([2, 1.3, 1.7])
-        user = a.text_input("Nome utente", pe.username_suggerito(nome, acc), key=f"pe_user_{nome}")
+        user = a.text_input("Nome utente (nome e cognome)", pe.username_suggerito(nome, acc), key=f"pe_user_{nome}")
+        mail = st.text_input("Email della persona (la password provvisoria arriva qui)", p.get("Email") or "", key=f"pe_mail_{nome}")
         livello = b.selectbox("Può modificare?", ["utente", "lettore"], format_func=lambda x: "Sì, può modificare" if x == "utente" else "No, solo consulta", key="pe_livello",
                               index=1 if p["Ruolo"] in ("Presidente", "Operaio") else 0)
         prop = pe.profilo_per_ruolo(p["Ruolo"], cfg.get("mappa_ruoli"))
         prof = c.selectbox("Cosa vede (profilo)", profili, index=profili.index(prop) if prop in profili else 0, key=f"pe_prof_{nome}")
         st.caption(f"Per il ruolo «{p['Ruolo']}» si propone il profilo «{prop}». Il profilo «presidente» apre anche il Cruscotto.")
         if st.button("🔐 Crea account e abilita", key="crea_pe", type="primary"):
-            pw = auth.genera_password_temporanea()
             try:
-                auth.crea_utente(user, pw, livello, utente["username"])
+                esito = onboarding.crea_account(user, mail, livello, prof, utente["username"])
             except ValueError as e:
                 st.error(str(e))
             else:
-                user = auth.normalizza_username(user)
-                cfg["utenti"][user] = prof
-                permessi.salva_config(cfg, utente["username"])
+                user = esito["utente"]
                 _imposta_utente(nome, user)
                 audit("pe_account_creato", f"{nome} → {user} ({livello}, profilo {prof})")
-                ss["tmp_pe"] = (user, pw)
+                ss["tmp_pe"] = (user, esito["password"], esito["inviata"], mail)
                 st.rerun()
 
     liberi = [u for u in acc if u not in {p["Utente"] for p in persone if p["Utente"]}]

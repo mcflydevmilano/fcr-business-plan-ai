@@ -10,7 +10,7 @@ import og
 import ops_report
 import theme
 from core import fmt_num
-from ui_util import esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella
+from ui_util import colonna_cantiere, esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella
 
 ss = st.session_state
 PARAM = ("mesi", "sat_min_pct", "ore_giorno", "patrono", "festivita")
@@ -34,7 +34,7 @@ def _cfg():
     a, b = og.ETICHETTE_RIS, og.ETICHETTE_ASS
     return ({"Risorsa": t(a["Risorsa"], width="medium"), "Ruolo": t(a["Ruolo"]), "Costo_orario": n(a["Costo_orario"], min_value=0.0, step=1.0, format="%.1f"), "Ore_giorno": n(a["Ore_giorno"], min_value=0.0, max_value=24.0, step=1.0, format="%.1f"),
              "Ore_mese": n(a["Ore_mese"], min_value=0.0, step=10.0, format="%.0f"), "Assunzione": t(a["Assunzione"], help="AAAA-MM-GG o GG/MM/AAAA"), "Cessazione": t(a["Cessazione"], help="Dopo questa data la persona esce da capacità, costi e previsioni.")},
-            {"Risorsa": t(b["Risorsa"], width="medium"), "Commessa": t(b["Commessa"]), "Dal": t(b["Dal"], help="AAAA-MM-GG o GG/MM/AAAA"), "Al": t(b["Al"], help="Vuoto = senza fine"),
+            {"Risorsa": t(b["Risorsa"], width="medium"), "Commessa": colonna_cantiere(b["Commessa"], (("og_ass", "Commessa"),)), "Dal": t(b["Dal"], help="AAAA-MM-GG o GG/MM/AAAA"), "Al": t(b["Al"], help="Vuoto = senza fine"),
              "Ore_mese": n(b["Ore_mese"], min_value=0.0, step=10.0, format="%.0f")},
             {"Risorsa": t(og.ETICHETTE_ASSENZE["Risorsa"], width="medium"), "Dal": t("Dal", help="AAAA-MM-GG o GG/MM/AAAA"), "Al": t(og.ETICHETTE_ASSENZE["Al"]), "Motivo": t(og.ETICHETTE_ASSENZE["Motivo"])})
 

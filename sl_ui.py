@@ -12,7 +12,7 @@ import sl
 import sl_report
 import theme
 from core import fmt_num
-from ui_util import esempi_attivi, senza_esempi, modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile, sola_lettura
+from ui_util import colonna_cantiere, esempi_attivi, senza_esempi, modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile, sola_lettura
 
 ss = st.session_state
 PARAM_CHIAVI = ("gg_pagamento", "gg_svincolo")
@@ -50,10 +50,10 @@ def _cfg():
            "Anticipo_pct": n(e["Anticipo_pct"], min_value=0.0, max_value=100.0, step=5.0, format="%.0f"),
            "Iva_pct": n(e["Iva_pct"], min_value=0.0, max_value=100.0, step=1.0, format="%.0f"), "Gg_incasso": n(e["Gg_incasso"], min_value=0, step=15, format="%d"),
            "Inizio": t(e["Inizio"], help=data), "Fine_prev": t(e["Fine_prev"], help=data)}
-    sal = {"Commessa": t(s["Commessa"]), "Numero": t(s["Numero"]), "Data": t(s["Data"], help=data),
+    sal = {"Commessa": colonna_cantiere(s["Commessa"], (("sl_sal", "Commessa"), ("sl_com", "Commessa"))), "Numero": t(s["Numero"]), "Data": t(s["Data"], help=data),
            "Avanzamento_pct": n(s["Avanzamento_pct"], min_value=0.0, max_value=100.0, step=5.0, format="%.1f"),
            "Incassato": n(s["Incassato"], min_value=0.0, step=100.0, format="%.2f"), "Data_incasso": t(s["Data_incasso"], help=data)}
-    cos = {"Commessa": t(k["Commessa"]), "Data": t(k["Data"], help=data), "Fornitore": t(k["Fornitore"]), "Descrizione": t(k["Descrizione"]), "Categoria": t(k["Categoria"]),
+    cos = {"Commessa": colonna_cantiere(k["Commessa"], (("sl_cos", "Commessa"), ("sl_com", "Commessa"))), "Data": t(k["Data"], help=data), "Fornitore": t(k["Fornitore"]), "Descrizione": t(k["Descrizione"]), "Categoria": t(k["Categoria"]),
            "Importo": n(k["Importo"], min_value=0.0, step=100.0, format="%.2f"), "Pagato": n(k["Pagato"], min_value=0.0, step=100.0, format="%.2f")}
     return {"sl_com": com, "sl_sal": sal, "sl_cos": cos}
 

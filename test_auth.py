@@ -140,3 +140,21 @@ def test_testo_email_accesso():
     import admin_ui
     ogg, corpo = admin_ui.testo_accesso("mario rossi", "Abc123xyz789", True)
     assert "Abc123xyz789" in corpo and "Ciao Mario," in corpo and "password tua" in corpo and ogg
+
+
+def test_rinomina_aggiorna_anche_persone_e_ruoli(db):
+    import onboarding
+    import pe
+    esito = onboarding.crea_account("mario rosi", "", "utente", "cantiere", "admin", db)
+    assert esito["utente"] == "mario rosi" and not esito["inviata"] and storage.utente_db("mario rosi", db)["cambio_pw"] == 1
+    import permessi
+    assert permessi.carica_config(db)["utenti"]["mario rosi"] == "cantiere"
+    storage.salva_pratica("elenco", {"persone": [{"Persona": "Mario Rossi", "Ruolo": "Geometra", "Utente": "mario rosi"}]}, db, autore="x", modulo="pe")
+    auth.rinomina_utente("mario rosi", "mario rossi", "admin", path=db)
+    assert pe.persone_salvate(db)[0]["Utente"] == "mario rossi"
+    ogg, corpo = onboarding.testo_accesso("mario rossi", "Abc123xyz789", True, strumenti=["Chat interna", "Rapportini"])
+    assert "Chat interna, Rapportini" in corpo
+    with pytest.raises(ValueError):
+        onboarding.crea_account("anna bianchi", "non-una-mail", "utente", "cantiere", "admin", db)
+    with pytest.raises(ValueError):
+        onboarding.crea_account("anna bianchi", "", "utente", "profilo-inesistente", "admin", db)

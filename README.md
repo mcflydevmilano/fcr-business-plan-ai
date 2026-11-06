@@ -240,6 +240,11 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.18.0
+- **Utenti, profili ed email insieme**: in *Amministrazione → Utenti* il nuovo utente si crea con nome, cognome, email e profilo; la password provvisoria parte per email (`onboarding.py`). Il profilo di una persona si cambia dalla stessa scheda; la scheda «Permessi» resta per definire cosa apre ogni profilo. *Persone e ruoli* usa lo stesso meccanismo (nome con lo spazio, email, cambio password al primo accesso).
+- **Cantiere a scelta da elenco** anche in Rapportini, Cronoprogramma, SAL, Organico (assegnazioni), Fornitori (contratti), Cash Flow, Sicurezza, Verbali e Archivio documenti: le voci arrivano da *Rubrica e cantieri*; i valori già scritti non si perdono. Senza cantieri in Rubrica resta testo libero.
+- La timbratura (*Accessi del personale*) è per il personale d'ufficio: non alimenta *Presenze e ore*, che riguarda gli operai di cantiere.
+
 ## Novità 3.17.3
 - **Accesso ricordato sul telefono**: il gettone di accesso (12 ore, `SESSIONE_ORE` per cambiarlo) ora è salvato anche in una copia di riserva sul dispositivo; se un telefono perde il cookie, la sessione riparte da lì senza chiedere la password. «Esci» cancella cookie e copia. Senza segreti configurati la chiave di firma è salvata nel database, quindi i riavvii del server non fanno più scollegare tutti. Nel Registro attività compaiono `sessione_ripresa` (cookie o copia locale) e `sessione_non_ripresa` (gettone scaduto o non valido), utili per capire se un collega viene scollegato.
 
