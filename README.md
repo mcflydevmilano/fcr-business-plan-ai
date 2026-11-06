@@ -240,6 +240,9 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.17.3
+- **Accesso ricordato sul telefono**: il gettone di accesso (12 ore, `SESSIONE_ORE` per cambiarlo) ora è salvato anche in una copia di riserva sul dispositivo; se un telefono perde il cookie, la sessione riparte da lì senza chiedere la password. «Esci» cancella cookie e copia. Senza segreti configurati la chiave di firma è salvata nel database, quindi i riavvii del server non fanno più scollegare tutti. Nel Registro attività compaiono `sessione_ripresa` (cookie o copia locale) e `sessione_non_ripresa` (gettone scaduto o non valido), utili per capire se un collega viene scollegato.
+
 ## Novità 3.17.2
 - **Computo e Preventivo, import elastico**: si carica un computo o preventivo già fatto (Excel, tutti i fogli, o CSV) senza rinominare le colonne. La suite cerca la riga delle intestazioni (nelle prime 40 righe), riconosce molti nomi (Tariffa, Designazione dei lavori, Q.tà, Prezzo unitario, Importo…), usa i titoli di capitolo come categoria, salta totali e riporti, ricava il prezzo da importo ÷ quantità se manca. Se non riconosce nulla, mostra le prime righe e si scelgono le colonne a mano. Attenzione: il prezzo del file entra in «Materiali» e la suite ci aggiunge spese generali e utile; per un preventivo già a prezzi di vendita, azzera quelle percentuali.
 

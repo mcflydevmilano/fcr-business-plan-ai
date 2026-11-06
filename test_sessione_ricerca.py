@@ -77,3 +77,15 @@ def test_ricerca_strumenti():
 
 def test_ricerca_senza_risultati():
     assert ricerca.cerca_strumenti("qqqzzzxxx", list(hub.CARDS), hub.CARDS) == []
+
+
+def test_stato_gettone_e_chiave_persistente(tmp_path):
+    p = str(tmp_path / "s.db")
+    k1 = sessione.chiave_persistente(p)
+    assert k1 == sessione.chiave_persistente(p) and len(k1) == 32                      # stessa chiave a ogni riavvio
+    u = {"username": "admin", "origine": "app_password", "ruolo": "admin"}
+    t = sessione.crea(u, k1, None, "pw", ore=12, adesso=1000, path=p)
+    assert sessione.stato_gettone(t, k1, adesso=2000) == "valido"
+    assert sessione.stato_gettone(t, k1, adesso=1000 + 13 * 3600) == "scaduto"
+    assert sessione.stato_gettone(t + "x", k1, adesso=2000) == "non_valido" and sessione.stato_gettone("rotto", k1) == "non_valido"
+    assert sessione.secondi_residui(t, k1, adesso=1000 + 11 * 3600) == 3600 and sessione.secondi_residui(t, k1, adesso=1000 + 13 * 3600) == 0

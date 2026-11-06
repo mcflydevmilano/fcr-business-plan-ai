@@ -186,8 +186,9 @@ try:
     ORE_SESSIONE = max(1, min(168, int(float(get_secret("SESSIONE_ORE", sessione.ORE_PREDEFINITE)))))      # quanto resta valido il «ricordami» (ore)
 except (TypeError, ValueError):
     ORE_SESSIONE = sessione.ORE_PREDEFINITE
-CHIAVE_SESSIONE = sessione.chiave([get_secret("SESSION_SECRET"), get_secret("DATABASE_URL"), get_secret("APP_PASSWORD"),
-                                   json.dumps({k: v.get("hash", "") for k, v in UTENTI_SECRETS.items()}, sort_keys=True) if UTENTI_SECRETS else ""])
+_PARTI_CHIAVE = [get_secret("SESSION_SECRET"), get_secret("DATABASE_URL"), get_secret("APP_PASSWORD"),
+                 json.dumps({k: v.get("hash", "") for k, v in UTENTI_SECRETS.items()}, sort_keys=True) if UTENTI_SECRETS else ""]
+CHIAVE_SESSIONE = sessione.chiave(_PARTI_CHIAVE) if any(_PARTI_CHIAVE) else sessione.chiave_persistente()
 
 
 def audit(azione, dettaglio=""):
@@ -281,7 +282,21 @@ def check_login():
                 ss["utente"] = _u
                 storage.log_evento(_u["username"], "sessione_ripresa", "cookie")
                 return True
+            _stato = sessione.stato_gettone(_tok, CHIAVE_SESSIONE)
+            storage.log_evento("", "sessione_non_ripresa", f"cookie: {_stato}")
             ss["_cancella_cookie"] = True                              # gettone scaduto o non valido: lo toglie dal browser
+        else:
+            _tl = sessione.token_locale()                              # niente cookie (telefoni): provo la copia di riserva
+            if _tl:
+                _u = sessione.ripristina(_tl, CHIAVE_SESSIONE, UTENTI_SECRETS, APP_PASSWORD)
+                if _u:
+                    ss["utente"] = _u
+                    ss["_set_cookie"] = _tl
+                    ss["_set_cookie_ore"] = max(1, sessione.secondi_residui(_tl, CHIAVE_SESSIONE)) / 3600.0
+                    storage.log_evento(_u["username"], "sessione_ripresa", "copia locale")
+                    st.rerun()
+                storage.log_evento("", "sessione_non_ripresa", f"copia locale: {sessione.stato_gettone(_tl, CHIAVE_SESSIONE)}")
+                ss["_cancella_cookie"] = True
     if ss.pop("_cancella_cookie", False):
         sessione.scrivi_cookie("")
     _addio = ss.pop("_addio", None)
@@ -701,7 +716,7 @@ PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nom
 pwa.inietta()
 pausa.inietta()
 if ss.get("_set_cookie"):
-    sessione.scrivi_cookie(ss.pop("_set_cookie"), ORE_SESSIONE)
+    sessione.scrivi_cookie(ss.pop("_set_cookie"), ss.pop("_set_cookie_ore", ORE_SESSIONE))
 _ap = ss.get("_apri_pratica")                                  # apertura da un semaforo del Cruscotto: vale per lo strumento di destinazione e per pochi giri
 if _ap:
     _ap["giri"] = _ap.get("giri", 0) + 1

@@ -15,6 +15,11 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.17.3", "data": "2026-11-06", "titolo": "Accesso ricordato anche sul telefono",
+     "voci": ["Inserisci la password una volta: per 12 ore la suite non te la richiede più, anche dopo aver chiuso e riaperto il telefono.",
+              "Se il telefono perde il cookie, l'accesso viene ripreso da una copia di riserva sul dispositivo.",
+              "Dopo 12 ore, o dopo «Esci», la password viene richiesta di nuovo."],
+     "strumenti": []},
     {"id": "3.17.2", "data": "2026-11-06", "titolo": "Computo e Preventivo: importa un computo già fatto senza riclassificare le colonne",
      "voci": ["Carichi il tuo Excel (o CSV) così com'è: la suite trova da sola la riga delle intestazioni, anche sotto titoli e dati dell'azienda.",
               "Capisce nomi come Tariffa, Designazione dei lavori, Q.tà, Prezzo unitario, Importo, e legge tutti i fogli del file.",

@@ -29,6 +29,20 @@ def chiave(segreti):
     return hashlib.sha256(("fcr-sessione|" + "|".join(parti)).encode("utf-8")).digest()
 
 
+def chiave_persistente(path=None):
+    """Chiave di firma salvata nel database la prima volta: senza segreti configurati i gettoni non muoiono a ogni riavvio del server."""
+    import secrets as _sec
+    try:
+        raw = storage.carica_pratica("sessione_chiave", path, modulo="cfg")
+        k = (raw or {}).get("k") if isinstance(raw, dict) else None
+        if not k:
+            k = _sec.token_hex(32)
+            storage.salva_pratica("sessione_chiave", {"k": k}, path, autore="sistema", modulo="cfg")
+        return hashlib.sha256(("fcr-sessione-db|" + k).encode("utf-8")).digest()
+    except Exception:
+        return _CASUALE
+
+
 def _b64(b):
     return base64.urlsafe_b64encode(b).decode("ascii").rstrip("=")
 
@@ -73,6 +87,23 @@ def leggi(token, key, adesso=None):
         return None
 
 
+def stato_gettone(token, key, adesso=None):
+    """«valido», «scaduto» (firma giusta ma tempo finito) oppure «non_valido»: serve solo a capire nel registro perche' si e' chiesta la password."""
+    try:
+        corpo, firma = str(token).split(".", 1)
+        if not hmac.compare_digest(firma, _b64(hmac.new(key, corpo.encode("ascii"), hashlib.sha256).digest())):
+            return "non_valido"
+        dati = json.loads(_unb64(corpo).decode("utf-8"))
+        return "valido" if int(dati["e"]) >= (adesso if adesso is not None else time.time()) else "scaduto"
+    except Exception:
+        return "non_valido"
+
+
+def secondi_residui(token, key, adesso=None):
+    dati = leggi(token, key, adesso)
+    return max(0, int(dati["e"] - (adesso if adesso is not None else time.time()))) if dati else 0
+
+
 def ripristina(token, key, utenti_secrets=None, app_password=None, path=None, adesso=None):
     """L'utente da riportare dentro (con ruolo riletto dai dati attuali) oppure None se il gettone non vale piu'."""
     dati = leggi(token, key, adesso)
@@ -105,6 +136,22 @@ export default function(component) {
     if (data && data.token) document.cookie = '""" + COOKIE + """=' + data.token + '; max-age=' + data.durata + base;
     else document.cookie = '""" + COOKIE + """=; max-age=0' + base;
   } catch (e) {}
+  try {                                               // copia di riserva: alcuni telefoni perdono i cookie ma non questo spazio
+    if (data && data.token) localStorage.setItem('""" + COOKIE + """', data.token);
+    else localStorage.removeItem('""" + COOKIE + """');
+  } catch (e) {}
+}
+"""
+
+_JS_LEGGI = """
+export default function(component) {
+  const { setTriggerValue } = component;
+  try {
+    if (window.__fcrLsProvato) return;                         // una sola prova per ogni apertura della pagina
+    window.__fcrLsProvato = true;
+    const t = localStorage.getItem('""" + COOKIE + """');
+    if (t) setTriggerValue('token', t);
+  } catch (e) {}
 }
 """
 
@@ -116,6 +163,16 @@ def scrivi_cookie(token, ore=ORE_PREDEFINITE):
         st.components.v2.component("fcr_sessione_cookie", js=_JS)(data={"token": token or "", "durata": int(ore * 3600)}, key="fcr_sessione_cookie_c")
     except Exception:
         pass
+
+
+def token_locale():
+    """Il gettone conservato dal telefono nello spazio locale (copia di riserva del cookie), se c'e': e' ancora da verificare con `ripristina`."""
+    import streamlit as st
+    try:
+        r = st.components.v2.component("fcr_sessione_leggi", js=_JS_LEGGI)(key="fcr_sessione_leggi_c", on_token_change=lambda: None)
+        return str(r.token or "") if r is not None and getattr(r, "token", None) else ""
+    except Exception:
+        return ""
 
 
 def cookie_corrente():
