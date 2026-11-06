@@ -356,3 +356,57 @@ def _spazio():
     c2.metric("Copie di sicurezza", spazio.leggibile(bk["byte"]), f"{bk['file']} file" if bk["cartella"] else "cartella non trovata", delta_color="off")
     if bk["cartella"]:
         st.caption(f"Cartella delle copie: {bk['cartella']}")
+    st.divider()
+    _memoria_e_velocita()
+
+
+def _memoria_e_velocita():
+    import salute
+    st.markdown("#### Memoria e velocità del server")
+    st.caption("Mostra quanta RAM sta usando il computer e permette di misurarne la velocità. Fai la prova prima e dopo una modifica (più RAM, un aggiornamento) per vedere la differenza.")
+    m = salute.memoria()
+    if not m:
+        st.info("Su questo computer le cifre della memoria non sono leggibili (succede solo fuori dal server Linux).")
+    else:
+        livello, frase = salute.giudizio_memoria(m["perc"])
+        (st.success if livello == "ok" else st.warning if livello == "attenzione" else st.error)(f"**RAM usata: {m['perc']:.0f}%** · {frase}")
+        st.progress(min(1.0, m["perc"] / 100))
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("RAM totale", f"{m['totale'] / 1024:.1f} GB")
+        c2.metric("In uso", f"{m['usata'] / 1024:.1f} GB")
+        c3.metric("Libera", f"{m['disponibile'] / 1024:.1f} GB")
+        sw = salute.memoria_suite()
+        c4.metric("Occupata dalla suite", f"{sw:.0f} MB" if sw else "-")
+        c1b, c2b, c3b = st.columns(3)
+        c1m, ncpu, acceso = salute.carico()
+        c1b.metric("Carico del processore", f"{c1m:.2f}" if c1m is not None else "-", f"{ncpu} processori", delta_color="off",
+                   help="Sotto il numero di processori il computer respira; sopra, è sotto sforzo.")
+        c2b.metric("Acceso da", salute.durata_it(acceso))
+        c3b.metric("Swap usata", f"{m['swap_usata']:.0f} MB" if m["swap_totale"] else "nessuna",
+                   help="Quando la RAM finisce il computer usa il disco, che è molto più lento. Deve restare vicino a zero.")
+    st.markdown("**Prova di velocità**")
+    if st.button("⚡ Misura la velocità adesso", key="cmd_prova_vel", help="Dura 5-10 secondi: durante la prova la suite può rallentare un attimo."):
+        with st.spinner("Sto misurando… qualche secondo"):
+            st.session_state["_prova_vel"] = salute.prova()
+    r = st.session_state.get("_prova_vel")
+    prove = salute.storico()
+    if r:
+        prec = prove[-2] if len(prove) >= 2 else None
+        conf = salute.confronto(r, prec)
+
+        def d(k):
+            return (f"{conf[k]:+d}% rispetto alla prova del {prec['quando'][:10]}" if k in conf and prec else None)
+        a, b, c = st.columns(3)
+        a.metric("Calcolo (meno è meglio)", f"{r['cpu_s']:.2f} s", d("cpu_s"))
+        b.metric("Memoria", f"{r['ram_mbs']:,} MB/s".replace(",", "."), d("ram_mbs"))
+        c.metric("Disco: scrittura", f"{r['disco_w']:,} MB/s".replace(",", "."), d("disco_w"))
+        a2, b2, c2 = st.columns(3)
+        a2.metric("Disco: lettura", f"{r['disco_r']:,} MB/s".replace(",", "."), d("disco_r"))
+        b2.metric("Database: salvare (meno è meglio)", f"{r['db_scrivi_ms']} ms" if r["db_scrivi_ms"] is not None else "-", d("db_scrivi_ms"))
+        c2.metric("Database: leggere (meno è meglio)", f"{r['db_leggi_ms']} ms" if r["db_leggi_ms"] is not None else "-", d("db_leggi_ms"))
+        st.caption("Cosa conta per chi usa la suite: i tempi del **database** (ogni clic salva o legge) e la **memoria libera**. Più RAM non rende i calcoli più veloci: evita i rallentamenti quando si lavora in tanti insieme.")
+    if prove:
+        with st.expander(f"Prove precedenti ({len(prove)})"):
+            st.dataframe([{"Quando": p["quando"].replace("T", " "), "RAM": f"{(p.get('ram_tot_mb') or 0) / 1024:.0f} GB", "Calcolo s": p["cpu_s"],
+                           "Memoria MB/s": p["ram_mbs"], "Disco scrittura": p["disco_w"], "Disco lettura": p["disco_r"],
+                           "DB salva ms": p["db_scrivi_ms"], "DB leggi ms": p["db_leggi_ms"]} for p in reversed(prove)], hide_index=True, width="stretch")

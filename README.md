@@ -240,6 +240,9 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.24.0
+- `salute.py`: RAM/CPU/uptime da /proc e prova di velocità (calcolo, RAM, disco, database) con storico `salute_storico` (ultime 20). Interfaccia in Amministrazione > Spazio.
+
 ## Novità 3.23.2
 - Pause: motore avviato anche dal riquadro, stato visibile (minuti lavorati, prossimo avviso). Chat: contrasto dei pulsanti nelle bolle.
 

@@ -17,6 +17,10 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.24.0", "data": "2026-11-07", "titolo": "Controllo della memoria e prova di velocità del server",
+     "voci": ["Amministrazione, scheda «Spazio»: quanta RAM sta usando il server (con un giudizio in parole semplici), carico del processore, da quanto è acceso e quanta memoria occupa la suite.",
+              "Pulsante «Misura la velocità adesso»: calcolo, memoria, disco e tempi del database. Ogni prova resta salvata e mostra di quanto è cambiata rispetto alla precedente, così si vede la differenza dopo una modifica come più RAM."],
+     "strumenti": ["Amministrazione"]},
     {"id": "3.23.2", "data": "2026-11-06", "titolo": "Promemoria delle pause più affidabili; testo leggibile nella chat",
      "voci": ["Pause e piccolo svago: i pulsanti di prova funzionano sempre e il riquadro dice da quanto lavori e tra quanto arriva il prossimo avviso; se i promemoria non sono attivi lo dice e come rimetterli (Ctrl+F5).",
               "Chat: i pulsanti dentro le bolle (per esempio «Scarica la foto») hanno di nuovo il testo bianco ben leggibile."],
