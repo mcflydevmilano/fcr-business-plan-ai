@@ -6,9 +6,33 @@ import pandas as pd
 import streamlit as st
 
 import auth
+import posta
 import permessi
 import spazio
 import storage
+
+
+def testo_accesso(nome, password, nuovo=True, url=""):
+    """(oggetto, corpo) dell'email con la password provvisoria."""
+    url = url or "https://suite.piattaformafcr.it"
+    ben = f"Ciao {auth.mostra_nome(nome).split()[0]}," if nome else "Ciao,"
+    prima = ("ti abbiamo creato l'accesso alla FCR Suite, il gestionale di FCR General Contractor." if nuovo
+             else "l'amministratore ha reimpostato la tua password della FCR Suite.")
+    corpo = (f"{ben}\n\n{prima}\n\nIndirizzo: {url}\nNome utente: {auth.mostra_nome(nome)}  (maiuscole e minuscole non contano; lo spazio sì)\n"
+             f"Password provvisoria: {password}\n\n"
+             "Al primo accesso la suite ti chiede di scegliere una password tua (almeno 10 caratteri, con lettere e numeri): "
+             "è obbligatorio, poi la password provvisoria non funziona più.\n\n"
+             "Non dare la password a nessuno e cancella questa email dopo il primo accesso.\n"
+             "Se non riesci a entrare, scrivi all'amministratore.\n\nFCR Suite")
+    return "Il tuo accesso alla FCR Suite", corpo
+
+
+def _manda_accesso(nome, mail, password, nuovo=True):
+    ogg, corpo = testo_accesso(nome, password, nuovo)
+    if posta.invia_con_feedback([mail], ogg, corpo):
+        storage.log_evento("sistema", "email_accesso", f"{nome} -> {mail}")
+    else:
+        st.warning(f"L'email non è partita. Password provvisoria di **{nome}**: `{password}` — comunicala a voce (non verrà mostrata di nuovo).")
 
 
 def render(utente, utenti_secrets, audit):
@@ -66,6 +90,8 @@ def render(utente, utenti_secrets, audit):
                 tmp = auth.genera_password_temporanea()
                 auth.reimposta_password(sel, tmp, utente["username"])
                 st.session_state["adm_tmp"] = (sel, tmp)
+                if rec.get("email") and posta.smtp_pronto():
+                    _manda_accesso(sel, rec["email"], tmp, nuovo=False)
             if c3.button("🗑️ Elimina", key="adm_elimina", width="stretch"):
                 storage.elimina_utente(sel)
                 audit("utente_eliminato", sel)
@@ -75,8 +101,31 @@ def render(utente, utenti_secrets, audit):
                 storage.aggiorna_utente(sel, ruolo=nuovo_ruolo)
                 audit("ruolo_cambiato", f"{sel} -> {nuovo_ruolo}")
                 st.rerun()
+            with st.expander("✏️ Correggi nome o email di questa persona"):
+                st.caption("Se il nome ha un errore, correggilo qui: il cambio vale ovunque (accessi, timbrature, chat, permessi). "
+                           "La persona dovrà entrare con il nuovo nome.")
+                nuovo_nome = st.text_input("Nome e cognome (con lo spazio)", value=sel, key=f"adm_nome_{sel}")
+                if st.button("💾 Salva il nome", key=f"adm_nome_salva_{sel}"):
+                    try:
+                        auth.rinomina_utente(sel, nuovo_nome, utente["username"], utenti_secrets)
+                        st.session_state.pop("adm_sel", None)
+                        st.session_state["adm_msg"] = f"Nome cambiato in «{auth.normalizza_username(nuovo_nome)}»."
+                        st.rerun()
+                    except ValueError as e:
+                        st.error(str(e))
+                nuova_mail = st.text_input("Email", value=rec.get("email") or "", key=f"adm_mail_{sel}", placeholder="nome@fcrgeneralcontractor.eu")
+                if st.button("💾 Salva l'email", key=f"adm_mail_salva_{sel}"):
+                    try:
+                        auth.modifica_email(sel, nuova_mail, utente["username"])
+                        st.success("Email salvata.")
+                        st.rerun()
+                    except ValueError as e:
+                        st.error(str(e))
         else:
             st.caption("Nessun utente creato dal pannello.")
+        _m = st.session_state.pop("adm_msg", None)
+        if _m:
+            st.success(_m)
         with st.expander("🔐 Verifica in due passaggi"):
             import due_passaggi
             _ob = st.checkbox("Obbligatoria per tutti gli amministratori", value=due_passaggi.obbligatorio_admin(), key="adm_2fa_ob",
@@ -98,17 +147,39 @@ def render(utente, utenti_secrets, audit):
                        "e va cambiata al primo accesso (barra laterale → Account).")
 
         st.markdown("#### Nuovo utente")
+        _pronta = posta.smtp_pronto()
+        if _pronta:
+            st.caption("Scrivi nome, cognome ed email: la suite crea l'account con una password provvisoria e la spedisce alla persona per email. "
+                       "Al primo accesso dovrà sceglierne una sua.")
+        else:
+            st.info("La posta non è ancora configurata (servono SMTP_HOST, SMTP_USER, SMTP_PASSWORD): l'account si crea lo stesso e la password provvisoria "
+                    "la vedi qui sotto, da comunicare a voce.")
         with st.form("adm_nuovo", clear_on_submit=True):
-            n1, n2, n3 = st.columns([2, 2, 1])
-            nome = n1.text_input("Nome utente", placeholder="es. mario.rossi")
-            pw = n2.text_input("Password iniziale", type="password", help=f"Almeno {auth.LUNGHEZZA_MIN_PASSWORD} caratteri, con lettere e numeri.")
-            ruolo = n3.selectbox("Ruolo", list(auth.RUOLI), index=1)
-            if st.form_submit_button("Crea utente"):
-                try:
-                    auth.crea_utente(nome, pw, ruolo, utente["username"])
-                    st.success(f"Utente {auth.normalizza_username(nome)} creato.")
-                except ValueError as e:
-                    st.error(str(e))
+            n1, n2 = st.columns(2)
+            nome_p = n1.text_input("Nome", placeholder="Mario")
+            cogn_p = n2.text_input("Cognome", placeholder="Rossi")
+            m1, m2 = st.columns([3, 1])
+            mail = m1.text_input("Email della persona", placeholder="mario.rossi@fcrgeneralcontractor.eu")
+            ruolo = m2.selectbox("Ruolo", list(auth.RUOLI), index=1)
+            if st.form_submit_button("Crea utente e invia la password"):
+                nome = auth.nome_da_testo(nome_p, cogn_p)
+                if not nome_p.strip() or not cogn_p.strip():
+                    st.error("Scrivi sia il nome sia il cognome.")
+                elif _pronta and not posta.indirizzo_valido(mail):
+                    st.error("Scrivi un indirizzo email valido: serve per inviare la password.")
+                else:
+                    tmp = auth.genera_password_temporanea()
+                    try:
+                        auth.crea_utente(nome, tmp, ruolo, utente["username"], email=mail, cambio_pw=True)
+                    except ValueError as e:
+                        st.error(str(e))
+                    else:
+                        st.success(f"Utente «{nome}» creato.")
+                        if _pronta and posta.indirizzo_valido(mail):
+                            _manda_accesso(nome, mail, tmp, nuovo=True)
+                        else:
+                            st.session_state["adm_tmp"] = (nome, tmp)
+                            st.rerun()
 
     with t2:
         import datetime as _dt

@@ -240,6 +240,12 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.17.0
+- **Utenti con nome e cognome**: il nome utente si scrive con lo spazio (`mario rossi`), maiuscole e spazi doppi non contano.
+- **Email automatica**: creando un utente (Amministrazione → Utenti → Nuovo utente) si inseriscono nome, cognome ed email; la suite genera una password provvisoria e la spedisce (serve la posta configurata: SMTP_HOST, SMTP_USER, SMTP_PASSWORD). Senza posta la password provvisoria si vede a schermo.
+- **Primo accesso**: la password provvisoria va cambiata subito (vale anche dopo «Reimposta password», che se c'è l'email la rispedisce).
+- **Correggi nome o email**: scheda «✏️ Correggi nome o email», il nome cambia anche in timbrature, chat, permessi, due passaggi e registro. Vale per gli utenti creati dal pannello, non per quelli nei Secrets.
+
 ## Novità 3.16.1
 - **Menu laterale su telefono** (`theme.SIDEBAR_CSS`, blocco `@media (max-width: 768px)`): `sb_nav` in cima via `order` sul wrapper (`stLayoutWrapper:has(> .st-key-sb_nav)`), pulsante `stExpandSidebarButton` grande con scritta «Menu», voci da 50 px, fumetto assistente nascosto. Chiusura automatica del menu dopo la scelta (`_JS_MENU_TELEFONO` in `app.py`, componente `st.components.v2`, clic su `.st-key-sb_nav button` con viewport ≤ 768 px).
 - **Pagina del QR** (`ac_ui.stazione`): senza pulsante «Apri la suite»; resta solo il link all'accesso per chi è arrivato dal pulsante della pagina di login.

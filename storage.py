@@ -68,6 +68,8 @@ def _schema_pg(con):
         "CREATE TABLE IF NOT EXISTS pratiche_storico (id SERIAL PRIMARY KEY, nome TEXT, salvato TEXT, autore TEXT, payload TEXT)",
         "CREATE TABLE IF NOT EXISTS timbrature (id SERIAL PRIMARY KEY, ts TEXT, utente TEXT, tipo TEXT, metodo TEXT, distanza_m INTEGER, "
         "nota TEXT, autore TEXT, annullata INTEGER NOT NULL DEFAULT 0, motivo_annullo TEXT)",
+        "ALTER TABLE utenti ADD COLUMN IF NOT EXISTS email TEXT",
+        "ALTER TABLE utenti ADD COLUMN IF NOT EXISTS cambio_pw INTEGER NOT NULL DEFAULT 0",
     ):
         con.execute(ddl)
 
@@ -163,6 +165,11 @@ def _schema_sqlite(con):
     cols = [r[1] for r in con.execute("PRAGMA table_info(pratiche)")]
     if "autore" not in cols:
         con.execute("ALTER TABLE pratiche ADD COLUMN autore TEXT")
+    cu = [r[1] for r in con.execute("PRAGMA table_info(utenti)")]
+    if "email" not in cu:
+        con.execute("ALTER TABLE utenti ADD COLUMN email TEXT")
+    if "cambio_pw" not in cu:
+        con.execute("ALTER TABLE utenti ADD COLUMN cambio_pw INTEGER NOT NULL DEFAULT 0")
 
 
 @contextlib.contextmanager
@@ -508,33 +515,61 @@ def tentativi_falliti(utente, secondi, path=None):
 # ----------------------------------------------------------------------------
 # UTENTI
 # ----------------------------------------------------------------------------
+_COL_UTENTE = ("username", "hash", "ruolo", "attivo", "creato", "ultimo_accesso", "email", "cambio_pw")
+
+
 def utente_db(username, path=None):
     with _db(path) as con:
-        r = con.execute("SELECT username, hash, ruolo, attivo, creato, ultimo_accesso FROM utenti WHERE username=?", (username,)).fetchone()
-    return dict(zip(("username", "hash", "ruolo", "attivo", "creato", "ultimo_accesso"), r)) if r else None
+        r = con.execute("SELECT " + ", ".join(_COL_UTENTE) + " FROM utenti WHERE username=?", (username,)).fetchone()
+    return dict(zip(_COL_UTENTE, r)) if r else None
 
 
 def elenca_utenti(path=None):
+    cols = ("username", "ruolo", "attivo", "creato", "ultimo_accesso", "creato_da", "email", "cambio_pw")
     with _db(path) as con:
-        return [dict(zip(("username", "ruolo", "attivo", "creato", "ultimo_accesso", "creato_da"), r)) for r in
-                con.execute("SELECT username, ruolo, attivo, creato, ultimo_accesso, creato_da FROM utenti ORDER BY username")]
+        return [dict(zip(cols, r)) for r in con.execute("SELECT " + ", ".join(cols) + " FROM utenti ORDER BY username")]
 
 
-def salva_utente(username, hash_pw, ruolo="utente", creato_da="", path=None):
+def salva_utente(username, hash_pw, ruolo="utente", creato_da="", path=None, email="", cambio_pw=0):
     with _db(path) as con:
         if con.execute("SELECT 1 FROM utenti WHERE username=?", (username,)).fetchone():
             raise ValueError("Esiste gia' un utente con questo nome.")
-        con.execute("INSERT INTO utenti (username, hash, ruolo, attivo, creato, creato_da) VALUES (?,?,?,1,?,?)",
-                    (username, hash_pw, ruolo, _now(), creato_da))
+        con.execute("INSERT INTO utenti (username, hash, ruolo, attivo, creato, creato_da, email, cambio_pw) VALUES (?,?,?,1,?,?,?,?)",
+                    (username, hash_pw, ruolo, _now(), creato_da, email or "", int(bool(cambio_pw))))
 
 
 def aggiorna_utente(username, path=None, **campi):
-    ammessi = {"hash", "ruolo", "attivo", "ultimo_accesso"}
+    ammessi = {"hash", "ruolo", "attivo", "ultimo_accesso", "email", "cambio_pw"}
     campi = {k: v for k, v in campi.items() if k in ammessi}
     if not campi:
         return
     with _db(path) as con:
         con.execute("UPDATE utenti SET " + ", ".join(f"{k}=?" for k in campi) + " WHERE username=?", (*campi.values(), username))
+
+
+def rinomina_utente_db(vecchio, nuovo, path=None):
+    """Cambia il nome utente nelle tabelle che lo contengono (utenti, timbrature, registro attivita', salvataggi, chat)."""
+    with _db(path) as con:
+        if con.execute("SELECT 1 FROM utenti WHERE username=?", (nuovo,)).fetchone():
+            raise ValueError("Esiste gia' un utente con questo nome.")
+        con.execute("UPDATE utenti SET username=? WHERE username=?", (nuovo, vecchio))
+        for tab, col in (("timbrature", "utente"), ("audit_log", "utente"), ("pratiche", "autore"), ("pratiche_storico", "autore")):
+            con.execute(f"UPDATE {tab} SET {col}=? WHERE {col}=?", (nuovo, vecchio))
+        con.execute("UPDATE audit_log SET dettaglio=? WHERE azione='password_reimpostata' AND dettaglio=?", (nuovo, vecchio))
+    try:
+        import chat
+        with chat._db(path) as con:
+            for tab, col in (("chat_membri", "username"), ("chat_messaggi", "autore"), ("chat_letture", "username"), ("chat_avvisi", "username"),
+                             ("chat_reazioni", "username"), ("chat_conferme", "username"), ("chat_compiti", "assegnato"), ("chat_compiti", "creato_da"),
+                             ("chat_canali", "creato_da")):
+                con.execute(f"UPDATE {tab} SET {col}=? WHERE {col}=?", (nuovo, vecchio))
+            for cid, nome in con.execute("SELECT id, nome FROM chat_canali WHERE tipo='diretto'").fetchall():
+                parti = nome[3:].split("|")
+                if vecchio in parti:
+                    x, y = sorted([nuovo if p == vecchio else p for p in parti], key=str.lower)
+                    con.execute("UPDATE chat_canali SET nome=? WHERE id=?", (f"dm:{x}|{y}", cid))
+    except ImportError:
+        pass
 
 
 def elimina_utente(username, path=None):

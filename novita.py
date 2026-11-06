@@ -15,6 +15,12 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.17.0", "data": "2026-11-06", "titolo": "Nuovi utenti con nome e cognome e password inviata per email",
+     "voci": ["Il nome utente ora si scrive con lo spazio: «Mario Rossi» (niente punto o trattino).",
+              "Nuovo utente: si scrivono nome, cognome ed email e la suite spedisce da sola una password provvisoria.",
+              "Al primo accesso la persona deve scegliere una password sua.",
+              "In Amministrazione si può correggere il nome o l'email di una persona: il cambio vale anche per timbrature, chat e permessi."],
+     "strumenti": ["Amministrazione"]},
     {"id": "3.16.1", "data": "2026-11-06", "titolo": "Menu del telefono più comodo, pagina di timbratura più netta",
      "voci": ["Sul telefono il menu laterale mostra subito gli strumenti, senza passare da logo, orologio e profilo.",
               "Pulsante «Menu» grande e blu in alto a sinistra; voci e pulsanti più grandi da toccare.",

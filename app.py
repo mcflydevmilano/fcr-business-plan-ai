@@ -396,7 +396,10 @@ def _pannello_2fa(u, forzato=False):
 
 def _cambio_password_obbligato(u, giorni):
     st.markdown(theme.LOGIN_CSS, unsafe_allow_html=True)
-    st.warning("🔑 La tua password è scaduta: scegli una nuova password per continuare." if giorni < 0 else "La tua password è scaduta.")
+    if giorni is None:
+        st.warning("🔑 Benvenuto! Stai usando la password provvisoria ricevuta per email: scegline una tua per continuare.")
+    else:
+        st.warning("🔑 La tua password è scaduta: scegli una nuova password per continuare." if giorni < 0 else "La tua password è scaduta.")
     with st.form("form_pw_scaduta"):
         p0 = st.text_input("Password attuale", type="password")
         p1 = st.text_input("Nuova password", type="password", help=f"Almeno {auth.LUNGHEZZA_MIN_PASSWORD} caratteri, con lettere e numeri; diversa dall'attuale.")
@@ -413,6 +416,9 @@ def _cambio_password_obbligato(u, giorni):
 
 
 _gg_pw = auth.giorni_a_scadenza_password(ss["utente"], PASSWORD_SCADENZA_GG)
+if auth.deve_cambiare_password(ss["utente"]):
+    _cambio_password_obbligato(ss["utente"], None)
+    st.stop()
 if _gg_pw is not None and _gg_pw < 0:
     _cambio_password_obbligato(ss["utente"], _gg_pw)
     st.stop()

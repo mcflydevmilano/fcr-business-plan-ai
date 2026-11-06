@@ -24,7 +24,8 @@ def test_regole_password_e_username():
     assert auth.valida_password("1234567890123") is not None
     assert auth.valida_password("mario.rossi2026", "mario.rossi") is not None
     assert auth.valida_password("Buona-Password-7") is None
-    assert auth.valida_username("Mario Rossi") is not None and auth.valida_username("mario.rossi") is None
+    assert auth.valida_username("mario rossi") is None and auth.valida_username("mario.rossi") is None
+    assert auth.valida_username("mario  ") is not None and auth.valida_username("ma") is not None and auth.valida_username("mario/rossi") is not None
 
 
 def test_login_utente_db_e_revoca(db):
@@ -90,3 +91,52 @@ def test_cambio_password(db):
 def test_pratiche_registrano_l_autore(db):
     storage.salva_pratica("P1", {"a": 1}, db, autore="luca")
     assert storage.elenca_pratiche(db)[0]["autore"] == "luca"
+
+
+def test_nome_con_spazio_e_password_provvisoria(db):
+    assert auth.nome_da_testo("  Mario ", "ROSSI") == "mario rossi" and auth.mostra_nome("mario rossi") == "Mario Rossi"
+    tmp = auth.genera_password_temporanea()
+    auth.crea_utente(auth.nome_da_testo("Mario", "Rossi"), tmp, "utente", "admin", db, email="mario@fcrgeneralcontractor.eu", cambio_pw=True)
+    u, err = auth.autentica("Mario  Rossi", tmp, path=db)
+    assert u and u["username"] == "mario rossi"
+    assert auth.deve_cambiare_password(u, db)
+    assert storage.utente_db("mario rossi", db)["email"] == "mario@fcrgeneralcontractor.eu"
+    auth.cambia_password("mario rossi", tmp, "Mia-Password-77", db)
+    assert not auth.deve_cambiare_password(u, db)
+    with pytest.raises(ValueError):
+        auth.crea_utente("luca bianchi", "Password-Lunga-1", email="non-una-mail", path=db)
+
+
+def test_rinomina_utente_riporta_il_nome_ovunque(db):
+    auth.crea_utente("mario rosi", "Password-Lunga-1", "utente", "admin", db)
+    storage.aggiungi_timbratura("mario rosi", "entrata", "rete", path=db)
+    storage.log_evento("mario rosi", "x", "", db)
+    auth.crea_utente("anna verdi", "Password-Lunga-1", "utente", "admin", db)
+    with pytest.raises(ValueError):
+        auth.rinomina_utente("mario rosi", "anna verdi", "admin", path=db)
+    with pytest.raises(ValueError):
+        auth.rinomina_utente("mario rosi", "mario rosi", "admin", path=db)
+    auth.rinomina_utente("mario rosi", "Mario Rossi", "admin", path=db)
+    assert storage.utente_db("mario rosi", db) is None and storage.utente_db("mario rossi", db)
+    assert [t["utente"] for t in storage.elenca_timbrature(path=db)] == ["mario rossi"]
+    u, _ = auth.autentica("mario rossi", "Password-Lunga-1", path=db)
+    assert u
+
+
+def test_rinomina_sposta_chat_e_permessi(db):
+    import chat, permessi
+    auth.crea_utente("mario rosi", "Password-Lunga-1", "utente", "admin", db)
+    auth.crea_utente("anna verdi", "Password-Lunga-1", "utente", "admin", db)
+    cid = chat.canale_diretto("anna verdi", "mario rosi", db)
+    cfg = permessi.carica_config(db)
+    cfg["utenti"]["mario rosi"] = list(cfg["profili"])[0]
+    permessi.salva_config(cfg, "admin", db)
+    auth.rinomina_utente("mario rosi", "mario rossi", "admin", path=db)
+    assert chat.canale_diretto("anna verdi", "mario rossi", db) == cid
+    assert "mario rossi" in permessi.carica_config(db)["utenti"] and "mario rosi" not in permessi.carica_config(db)["utenti"]
+
+
+def test_testo_email_accesso():
+    import admin_ui
+    ogg, corpo = admin_ui.testo_accesso("mario rossi", "Abc123xyz789", True)
+    assert "Abc123xyz789" in corpo and "Ciao Mario," in corpo and "password tua" in corpo and ogg

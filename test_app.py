@@ -229,3 +229,27 @@ def test_ai_bloccata_senza_accettare_privacy(monkeypatch):
     assert any("informativa privacy" in w.value for w in app.warning)
     rel = [c for c in app.checkbox if "relazione" in c.label][0]
     assert rel.value is False
+
+
+def test_admin_crea_utente_con_nome_cognome_e_mail(monkeypatch):
+    monkeypatch.setenv("APP_PASSWORD", "segreta")
+    for k, v in {"SMTP_HOST": "smtp.x", "SMTP_USER": "a@fcrgeneralcontractor.eu", "SMTP_PASSWORD": "pw"}.items():
+        monkeypatch.setenv(k, v)
+    import posta
+    import storage
+    monkeypatch.setattr(storage, "DB_PATH", os.path.join(tempfile.mkdtemp(), "a.db"))
+    inviate = []
+    monkeypatch.setattr(posta, "_spedisci", lambda msg, env: inviate.append(msg) or {})
+    app = AppTest.from_file(APP, default_timeout=60)
+    app.session_state["utente"] = {"username": "admin", "ruolo": "admin", "origine": "app_password"}
+    app.session_state["active_module"] = "admin"
+    app.run()
+    app.text_input[0].set_value("Mario")
+    app.text_input[1].set_value("Rossi")
+    app.text_input[2].set_value("mario.rossi@fcrgeneralcontractor.eu")
+    [b for b in app.button if "Crea utente" in b.label][0].click().run()
+    assert not app.exception
+    u = storage.utente_db("mario rossi")
+    assert u and u["cambio_pw"] == 1 and u["email"] == "mario.rossi@fcrgeneralcontractor.eu"
+    assert len(inviate) == 1 and "Password provvisoria:" in inviate[0].get_content()
+    assert inviate[0]["To"] == "mario.rossi@fcrgeneralcontractor.eu"

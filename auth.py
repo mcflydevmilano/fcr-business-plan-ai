@@ -25,7 +25,7 @@ MAX_TENTATIVI = 5
 FINESTRA_BLOCCO_S = 15 * 60
 LUNGHEZZA_MIN_PASSWORD = 10
 RUOLI = ("admin", "utente", "lettore")        # lettore = sola consultazione: niente modifica dei dati ne' salvataggi
-_RE_USER = re.compile(r"^[a-z0-9][a-z0-9._-]{2,39}$")
+_RE_USER = re.compile(r"^[a-z0-9][a-z0-9._-]*( [a-z0-9][a-z0-9._-]*)*$")   # anche con spazi: «mario rossi»
 
 
 def hash_password(password, salt=None, iterazioni=ITERAZIONI):
@@ -46,12 +46,23 @@ def verifica_password(password, memorizzato):
 
 
 def normalizza_username(u):
-    return (u or "").strip().lower()
+    """Minuscolo, spazi singoli: «  Mario   ROSSI » diventa «mario rossi»."""
+    return " ".join((u or "").split()).lower()
+
+
+def nome_da_testo(nome, cognome):
+    """Nome utente da nome e cognome: «Mario» + «Rossi» -> «mario rossi» (con lo spazio)."""
+    return normalizza_username(f"{nome} {cognome}")
+
+
+def mostra_nome(username):
+    """Per la lettura: «mario rossi» -> «Mario Rossi»."""
+    return " ".join(p.capitalize() for p in str(username or "").split())
 
 
 def valida_username(u):
-    if not _RE_USER.match(u or ""):
-        return "Nome utente non valido: 3-40 caratteri tra lettere minuscole, numeri, punto, trattino e underscore."
+    if not (3 <= len(u or "") <= 40) or not _RE_USER.match(u or ""):
+        return "Nome utente non valido: 3-40 caratteri, solo lettere, numeri e spazi (es. Mario Rossi)."
     return None
 
 
@@ -126,6 +137,14 @@ def autentica(username, password, utenti_secrets=None, app_password=None, path=N
     return utente, None
 
 
+def deve_cambiare_password(utente, path=None):
+    """True se l'utente (creato dal pannello) usa ancora la password temporanea ricevuta e deve sceglierne una sua."""
+    if not utente or utente.get("origine") != "db":
+        return False
+    rec = storage.utente_db(utente["username"], path)
+    return bool(rec and rec.get("cambio_pw"))
+
+
 def ancora_valido(utente, utenti_secrets=None, path=None):
     """Controllo a ogni esecuzione: un utente disattivato/eliminato perde l'accesso subito."""
     if not utente:
@@ -138,15 +157,78 @@ def ancora_valido(utente, utenti_secrets=None, path=None):
     return True
 
 
-def crea_utente(username, password, ruolo="utente", da="", path=None):
+def crea_utente(username, password, ruolo="utente", da="", path=None, email="", cambio_pw=False):
     u = normalizza_username(username)
     err = valida_username(u) or valida_password(password, u)
     if err:
         raise ValueError(err)
     if ruolo not in RUOLI:
         raise ValueError("Ruolo non valido.")
-    storage.salva_utente(u, hash_password(password), ruolo, da, path)
+    email = (email or "").strip()
+    if email:
+        import posta
+        if not posta.indirizzo_valido(email):
+            raise ValueError("L'indirizzo email non sembra valido.")
+    storage.salva_utente(u, hash_password(password), ruolo, da, path, email=email, cambio_pw=cambio_pw)
     storage.log_evento(da, "utente_creato", f"{u} ({ruolo})", path)
+
+
+def modifica_email(username, email, da="", path=None):
+    email = (email or "").strip()
+    if email:
+        import posta
+        if not posta.indirizzo_valido(email):
+            raise ValueError("L'indirizzo email non sembra valido.")
+    storage.aggiorna_utente(username, path, email=email)
+    storage.log_evento(da, "utente_email", f"{username}: {email or 'tolta'}", path)
+
+
+def _cfg_sposta(carica, salva, chiave, vecchio, nuovo, path=None):
+    """Sposta la chiave `vecchio` -> `nuovo` dentro un dizionario di impostazioni."""
+    try:
+        cfg = carica(path)
+    except Exception:
+        return
+    d = cfg.get(chiave) if isinstance(cfg, dict) else None
+    if isinstance(d, dict) and vecchio in d:
+        d[nuovo] = d.pop(vecchio)
+        salva(cfg, "rinomina", path)
+
+
+def rinomina_utente(vecchio, nuovo, da="", utenti_secrets=None, path=None):
+    """Corregge il nome di un utente creato dal pannello e lo riporta ovunque: accessi, timbrature, chat, permessi, due passaggi, registro."""
+    v, n = normalizza_username(vecchio), normalizza_username(nuovo)
+    err = valida_username(n)
+    if err:
+        raise ValueError(err)
+    if v == n:
+        raise ValueError("Il nome e' uguale a quello attuale.")
+    if n in (utenti_secrets or {}):
+        raise ValueError("Esiste gia' un utente con questo nome.")
+    if not storage.utente_db(v, path):
+        raise ValueError("Utente non trovato.")
+    storage.rinomina_utente_db(v, n, path)
+    import permessi, due_passaggi, chat, novita
+    try:
+        cfg = permessi.carica_config(path)
+        if v in (cfg.get("utenti") or {}):
+            cfg["utenti"][n] = cfg["utenti"].pop(v)
+            permessi.salva_config(cfg, da, path)
+    except Exception:
+        pass
+    _cfg_sposta(due_passaggi._carica, due_passaggi._salva, "utenti", v, n, path)
+    c = chat.carica_cfg(path)
+    if v in c["gestori"]:
+        chat.salva_cfg({"gestori": [n if g == v else g for g in c["gestori"]]}, da, path)
+    try:
+        lette = novita._lette(path)
+        if v in lette:
+            lette[n] = lette.pop(v)
+            storage.salva_pratica(novita.NOME_LETTE, lette, path, autore=da, modulo="cfg")
+    except Exception:
+        pass
+    storage.svuota_cache()
+    storage.log_evento(da, "utente_rinominato", f"{v} -> {n}", path)
 
 
 def cambia_password(username, vecchia, nuova, path=None):
@@ -156,7 +238,7 @@ def cambia_password(username, vecchia, nuova, path=None):
     err = valida_password(nuova, username)
     if err:
         raise ValueError(err)
-    storage.aggiorna_utente(username, path, hash=hash_password(nuova))
+    storage.aggiorna_utente(username, path, hash=hash_password(nuova), cambio_pw=0)
     storage.log_evento(username, "password_cambiata", "", path)
 
 
@@ -164,7 +246,7 @@ def reimposta_password(username, nuova, da="", path=None):
     err = valida_password(nuova, username)
     if err:
         raise ValueError(err)
-    storage.aggiorna_utente(username, path, hash=hash_password(nuova))
+    storage.aggiorna_utente(username, path, hash=hash_password(nuova), cambio_pw=1)
     # azzera i tentativi falliti: usa un evento che li sblocca
     storage.log_evento(da, "password_reimpostata", username, path)
 
