@@ -529,6 +529,8 @@ SIDEBAR_CSS = """
 [class*="st-key-cb_"] [data-testid="stChatMessage"] { background: #fff; border: 1px solid #e2e8f0; border-radius: 4px 18px 18px 18px; padding: 8px 14px 6px 12px; max-width: 86%; width: fit-content; min-width: 40%; box-shadow: 0 1px 2px rgba(15,23,42,.06); margin: 3px 0; }
 [class*="st-key-cb_m_"] [data-testid="stChatMessage"] { background: #dbeafe; border-color: #bfdbfe; border-radius: 18px 4px 18px 18px; margin-left: auto; flex-direction: row-reverse; }
 [class*="st-key-cb_"] [data-testid="stChatMessage"] p { color: #0f172a !important; margin-bottom: .2rem; }
+[class*="st-key-cb_"] [data-testid="stChatMessage"] button p, [class*="st-key-cb_"] [data-testid="stChatMessage"] button span { color: #fff !important; }
+[class*="st-key-cb_"] [data-testid="stChatMessage"] [data-testid="stBaseButton-tertiary"] p, [class*="st-key-cb_"] [data-testid="stChatMessage"] [data-testid="stBaseButton-tertiary"] span { color: #0f172a !important; }
 [class*="st-key-cb_"] [data-testid="stChatMessageAvatarUser"], [class*="st-key-cb_"] [data-testid="stChatMessageAvatarAssistant"] { width: 30px; height: 30px; }
 .cb-nome { font-weight: 800; font-size: .86rem; color: #1e40af; } .cb-ora { color: #64748b; font-size: .74rem; margin-left: 6px; } .cb-imp { color: #b91c1c; font-size: .76rem; font-weight: 700; margin-left: 6px; }
 /* compositore: campo tondo, tasto Invia pieno */

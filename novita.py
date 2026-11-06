@@ -17,6 +17,10 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.23.2", "data": "2026-11-06", "titolo": "Promemoria delle pause più affidabili; testo leggibile nella chat",
+     "voci": ["Pause e piccolo svago: i pulsanti di prova funzionano sempre e il riquadro dice da quanto lavori e tra quanto arriva il prossimo avviso; se i promemoria non sono attivi lo dice e come rimetterli (Ctrl+F5).",
+              "Chat: i pulsanti dentro le bolle (per esempio «Scarica la foto») hanno di nuovo il testo bianco ben leggibile."],
+     "strumenti": ["Chat interna"]},
     {"id": "3.23.1", "data": "2026-11-06", "titolo": "Chat con un aspetto nuovo",
      "voci": ["Messaggi a bolle: i tuoi a destra in azzurro, quelli dei colleghi a sinistra in bianco, su uno sfondo morbido.",
               "Elenco delle conversazioni più pulito, con la conversazione aperta evidenziata.",

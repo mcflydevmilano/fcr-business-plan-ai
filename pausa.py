@@ -114,12 +114,14 @@ export default function(component) {
     }
   }, 1000);
 
-  window.__fcrPausa = { mostra: t => mostra(t, true), riattiva: () => { SET('fcr_pausa_off', '0'); }, spento };
+  window.__fcrPausa = { mostra: t => mostra(t, true), riattiva: () => { SET('fcr_pausa_off', '0'); }, spento,
+    stato: () => { const [tipo, minuti] = CICLO[st.indice]; return { minuti: Math.floor(st.attivi / MIN), prossimo: tipo, tra: Math.max(0, Math.ceil(minuti - st.attivi / MIN)) }; } };
 }
 """
 
 _JS_PANNELLO = r"""
 export default function(component) {
+  avviaMotore();                                   // se il motore non era ancora partito (o la pagina e' stata ricaricata) lo avvia da qui
   const { parentElement } = component;
   parentElement.innerHTML = '';
   const stile = 'padding:8px 10px;border-radius:9px;border:1px solid #cbd5e1;background:#fff;color:#0f172a;font-size:13px;font-weight:600;cursor:pointer;';
@@ -128,15 +130,27 @@ export default function(component) {
   riga.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:4px';
   const nota = document.createElement('div');
   nota.style.cssText = 'font-size:12.5px;color:#475569;margin-top:8px';
-  const stato = () => { const p = window.__fcrPausa; nota.textContent = p && p.spento() ? 'I promemoria sono spenti su questo dispositivo.' : 'I promemoria sono accesi.'; };
+  const NOMI = { occhi: 'occhi', acqua: 'acqua', gambe: 'movimento', pausa: 'pausa lunga' };
+  const stato = () => {
+    const p = window.__fcrPausa;
+    if (!p) { nota.textContent = 'Promemoria non attivi: ricarica la pagina (Ctrl+F5).'; return; }
+    if (p.spento()) { nota.textContent = 'I promemoria sono spenti su questo dispositivo: premi «Riaccendi».'; return; }
+    const s = p.stato();
+    nota.textContent = 'Accesi. Hai lavorato ' + s.minuti + ' min di fila; prossimo avviso (' + NOMI[s.prossimo] + ') tra ' + s.tra + ' min.';
+  };
   const prova = t => () => { if (window.__fcrPausa) window.__fcrPausa.mostra(t); };
   riga.append(mk('👁️ Occhi', prova('occhi')), mk('💧 Acqua', prova('acqua')), mk('🚶 Gambe', prova('gambe')), mk('☕ Pausa', prova('pausa')));
   const ri = mk('🔔 Riaccendi i promemoria', () => { if (window.__fcrPausa) window.__fcrPausa.riattiva(); stato(); });
+  const agg = setInterval(() => { if (!parentElement.isConnected) clearInterval(agg); else stato(); }, 15000);
   ri.style.marginTop = '8px';
   parentElement.append(riga, ri, nota);
   stato();
 }
 """
+
+
+_JS_MOTORE_FN = _JS_MOTORE.replace("export default function(component) {", "function avviaMotore() {", 1)
+_JS_PANNELLO_COMPLETO = _JS_MOTORE_FN + "\n" + _JS_PANNELLO
 
 
 def inietta():
@@ -164,7 +178,7 @@ def pannello():
             "☕ **ogni 2 ore** pausa di 15 minuti (è la regola per chi usa il computer: art. 175 D.Lgs. 81/2008)  \n\n"
             "Il conteggio riparte se ti fermi più di 5 minuti. Prova gli avvisi:")
         try:
-            st.components.v2.component("fcr_pausa_pannello", js=_JS_PANNELLO)(key="fcr_pausa_pannello_c")
+            st.components.v2.component("fcr_pausa_pannello", js=_JS_PANNELLO_COMPLETO)(key="fcr_pausa_pannello_c")
         except Exception:
             pass
         st.markdown("---")

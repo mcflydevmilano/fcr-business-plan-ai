@@ -240,6 +240,9 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.23.2
+- Pause: motore avviato anche dal riquadro, stato visibile (minuti lavorati, prossimo avviso). Chat: contrasto dei pulsanti nelle bolle.
+
 ## Novità 3.23.1
 - Chat ridisegnata: bolle (mie a destra), elenco conversazioni pulito, allegati/collegamento/importante in un riquadro a scomparsa.
 
