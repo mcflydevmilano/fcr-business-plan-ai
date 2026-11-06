@@ -113,24 +113,38 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None, utente=""):
                         st.rerun()
         st.download_button("📥 Scarica il modello Excel per l'import", modello_excel(pv.COLONNE_VOCI, pv.ETICHETTE_VOCI, ESEMPIO[:3]),
                            file_name="modello_computo.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        up = st.file_uploader("Importa un computo da Excel/CSV (colonne: Descrizione, Quantità, Materiali, Manodopera…)", type=["xlsx", "csv"], key="up_pv")
+        up = st.file_uploader("Importa un computo o preventivo già fatto (Excel o CSV): le colonne le riconosco io", type=["xlsx", "xlsm", "csv"], key="up_pv",
+                              help="Non serve rinominare niente: trovo da solo la riga delle intestazioni, leggo tutti i fogli, uso i titoli di capitolo come categorie "
+                                   "e salto i totali. Capisco nomi come Tariffa, Designazione dei lavori, Q.tà, Prezzo unitario, Importo.")
         if up is not None and st.button("Importa il file", key="imp_pv"):
+            dati_up = up.getvalue()
             try:
-                d = pd.read_csv(up, sep=None, engine="python") if up.name.lower().endswith(".csv") else pd.read_excel(up)
-                righe, avv = pv.voci_da_dataframe(d)
+                righe, avv, info = pv.leggi_computo(dati_up, up.name)
                 voci, av2 = pv.normalizza_voci(righe)
                 if not voci:
-                    st.error("Nessuna voce valida nel file.")
+                    st.error("Ho letto il file ma non ci sono voci con una quantità.")
                 else:
                     sostituisci_tabella("pv_df", pd.DataFrame(voci, columns=pv.COLONNE_VOCI))
-                    audit("pv_import", up.name)
-                    for x in (avv + av2)[:5]:
-                        st.warning(x)
+                    audit("pv_import", f"{up.name}: {len(voci)} voci")
+                    ss["pv_imp_esito"] = (f"Importate **{len(voci)} voci** da {up.name}.", info, (avv + av2)[:6])
+                    ss.pop("pv_imp_manuale", None)
                     st.rerun()
+            except pv.ColonneNonRiconosciute as e:
+                ss["pv_imp_manuale"] = (up.name, dati_up)
+                st.warning(str(e))
             except ValueError as e:
                 st.error(str(e))
             except Exception as e:
                 st.error(f"File non leggibile: {e}")
+        _esito = ss.pop("pv_imp_esito", None)
+        if _esito:
+            st.success(_esito[0])
+            for x in _esito[1]:
+                st.caption("📄 " + x)
+            for x in _esito[2]:
+                st.warning(x)
+        if ss.get("pv_imp_manuale") and up is not None and ss["pv_imp_manuale"][0] == up.name:
+            _importa_a_mano(*ss["pv_imp_manuale"], sostituisci_tabella, audit)
         with st.expander("📚 Aggiungi voci dal prezziario"):
             _nuove = pz_ui.scegli_voci("voce_prezziario", ss.get("pv_sg_pct", pv.PV_DEFAULT["sg_pct"]), ss.get("pv_utile_pct", pv.PV_DEFAULT["utile_pct"]))
             if _nuove:
@@ -254,3 +268,46 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None, utente=""):
                 c2.download_button("📥 Excel interno con formule", rep["xlsx"], file_name=f"Preventivo_interno_{rep['id']}.xlsx",
                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", width="stretch")
                 st.caption("Il PDF per il cliente NON contiene costi, spese generali né utile. L'Excel interno sì: non inviarlo al cliente.")
+
+
+def _importa_a_mano(nome, dati, sostituisci_tabella, audit):
+    """Quando le intestazioni non si riconoscono: si indicano le colonne guardando le prime righe del file (una volta sola)."""
+    try:
+        foglio, prime, fogli = pv.anteprima_foglio(dati, nome)
+    except ValueError as e:
+        st.error(str(e))
+        return
+    from openpyxl.utils import get_column_letter
+    st.markdown("**Indica le colonne** (prime righe del foglio «%s»)" % foglio)
+    st.dataframe(prime, width="stretch", hide_index=False)
+    n = prime.shape[1]
+    opz = [None] + list(range(n))
+    nomi = {None: "— nessuna —", **{j: f"Colonna {get_column_letter(j + 1)}" for j in range(n)}}
+    riga = st.number_input("Riga delle intestazioni (0 se i dati partono dalla prima riga)", 0, max(len(prime), 1), 1, key="pv_man_riga",
+                           help="Il numero della riga che contiene i titoli delle colonne, come nella tabella qui sopra (la prima riga è 1).")
+    c1, c2, c3 = st.columns(3)
+    sel = {"Descrizione": c1.selectbox("Descrizione dei lavori *", opz, format_func=nomi.get, key="pv_man_d"),
+           "Quantita": c2.selectbox("Quantità *", opz, format_func=nomi.get, key="pv_man_q"),
+           "UM": c3.selectbox("Unità di misura", opz, format_func=nomi.get, key="pv_man_u"),
+           "Codice": c1.selectbox("Codice o tariffa", opz, format_func=nomi.get, key="pv_man_c"),
+           "Prezzo": c2.selectbox("Prezzo unitario", opz, format_func=nomi.get, key="pv_man_p"),
+           "Importo": c3.selectbox("Importo", opz, format_func=nomi.get, key="pv_man_i")}
+    if st.button("Importa con queste colonne", key="pv_man_ok", type="primary"):
+        col = {k: v for k, v in sel.items() if v is not None}
+        if "Descrizione" not in col or "Quantita" not in col:
+            st.error("Servono almeno la colonna della descrizione e quella della quantità.")
+            return
+        try:
+            righe, avv, _ = pv.leggi_computo(dati, nome, {"foglio": foglio, "riga": int(riga) - 1, "colonne": col})
+            voci, av2 = pv.normalizza_voci(righe)
+        except ValueError as e:
+            st.error(str(e))
+            return
+        if not voci:
+            st.error("Con queste colonne non trovo voci: controlla la riga delle intestazioni.")
+            return
+        sostituisci_tabella("pv_df", pd.DataFrame(voci, columns=pv.COLONNE_VOCI))
+        audit("pv_import", f"{nome}: {len(voci)} voci (colonne indicate a mano)")
+        ss["pv_imp_esito"] = (f"Importate **{len(voci)} voci** da {nome}.", [], (avv + av2)[:6])
+        ss.pop("pv_imp_manuale", None)
+        st.rerun()

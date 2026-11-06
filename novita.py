@@ -15,6 +15,18 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.17.2", "data": "2026-11-06", "titolo": "Computo e Preventivo: importa un computo già fatto senza riclassificare le colonne",
+     "voci": ["Carichi il tuo Excel (o CSV) così com'è: la suite trova da sola la riga delle intestazioni, anche sotto titoli e dati dell'azienda.",
+              "Capisce nomi come Tariffa, Designazione dei lavori, Q.tà, Prezzo unitario, Importo, e legge tutti i fogli del file.",
+              "I titoli dei capitoli (DEMOLIZIONI, OPERE MURARIE…) diventano la categoria delle voci; totali e riporti vengono saltati.",
+              "Se il prezzo manca ma c'è l'importo, il prezzo unitario si calcola da solo. Se proprio non riconosce le colonne, le indichi una volta guardando le prime righe."],
+     "strumenti": ["Computo e Preventivo"]},
+    {"id": "3.17.1", "data": "2026-11-06", "titolo": "Timbratura anche da fuori sede",
+     "voci": ["Chi lavora fuori dall'ufficio (cantiere, sopralluogo, da casa) può timbrare scrivendo dove va e cosa fa.",
+              "La giustificazione resta nel registro, segnata come «fuori sede», e la vede la direzione.",
+              "L'amministratore sceglie quali persone sono abilitate (Accessi del personale → Impostazioni).",
+              "Nuovo pulsante tondo ↻ in basso a destra, su tutte le pagine: aggiorna la suite come il tasto F5."],
+     "strumenti": ["Accessi del personale"]},
     {"id": "3.17.0", "data": "2026-11-06", "titolo": "Nuovi utenti con nome e cognome e password inviata per email",
      "voci": ["Il nome utente ora si scrive con lo spazio: «Mario Rossi» (niente punto o trattino).",
               "Nuovo utente: si scrivono nome, cognome ed email e la suite spedisce da sola una password provvisoria.",

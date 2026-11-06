@@ -106,3 +106,59 @@ def test_passaggio_al_cash_flow():
     assert puliti and not av
     m = cf.calcola_cf(puliti, {"mesi": 12})["kpi"]["margine_lordo"]
     assert m == pytest.approx(o["kpi"]["utile"], abs=0.5)
+
+
+def _xlsx(fogli):
+    import io
+    import openpyxl
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    for nome, righe in fogli.items():
+        ws = wb.create_sheet(nome)
+        for r in righe:
+            ws.append(r)
+    b = io.BytesIO()
+    wb.save(b)
+    return b.getvalue()
+
+
+def test_leggi_computo_gia_fatto_senza_riclassificare():
+    dati = _xlsx({"Computo": [
+        ["FCR General Contractor", None, None, None, None, None],
+        ["Computo metrico estimativo - Villa Lago", None, None, None, None, None],
+        [None] * 6,
+        ["Tariffa", "Designazione dei lavori", "U.M.", "Q.tà", "Prezzo unitario", "Importo"],
+        [None, "DEMOLIZIONI", None, None, None, None],
+        ["D.01", "Demolizione tramezzi in laterizio", "mq", "45,5", "18,50", 841.75],
+        ["D.02", "Rimozione pavimenti", "mq", 120, 12, 1440],
+        ["Totale demolizioni", None, None, None, None, 2281.75],
+        [None, "OPERE MURARIE", None, None, None, None],
+        ["M.01", "Muratura in blocchi", "mq", 30, None, 1800],
+        [None, "Totale generale", None, None, None, 4081.75],
+    ]})
+    righe, avv, info = pv.leggi_computo(dati, "x.xlsx")
+    voci, _ = pv.normalizza_voci(righe)
+    assert [v["Descrizione"] for v in voci] == ["Demolizione tramezzi in laterizio", "Rimozione pavimenti", "Muratura in blocchi"]
+    assert [v["Categoria"] for v in voci] == ["DEMOLIZIONI", "DEMOLIZIONI", "OPERE MURARIE"]
+    assert voci[0]["Quantita"] == 45.5 and voci[0]["Materiali"] == 18.5 and voci[0]["Codice"] == "D.01" and voci[0]["UM"] == "mq"
+    assert voci[2]["Materiali"] == 60                                             # prezzo ricavato da importo / quantita'
+    assert "riga 4" in info[0] and any("Materiali" in a for a in avv)
+
+
+def test_leggi_computo_piu_fogli_e_csv_e_manuale():
+    dati = _xlsx({"Edile": [["Descrizione", "Qta", "Manodopera", "Materiali"], ["Cappotto", 100, 20, 35]],
+                  "Impianti": [["Voce", "Quantità", "Costo unitario"], ["Caldaia", 1, 3000]],
+                  "Note": [["solo testo"]]})
+    righe, _, info = pv.leggi_computo(dati, "x.xlsx")
+    voci, _ = pv.normalizza_voci(righe)
+    assert [(v["Descrizione"], v["Categoria"]) for v in voci] == [("Cappotto", "Edile"), ("Caldaia", "Impianti")] and len(info) == 2
+    csv = "Articolo;Descrizione dei lavori;UM;Quantita;Prezzo\nA1;Tinteggiatura;mq;250;7,5\n".encode()
+    righe, _, _ = pv.leggi_computo(csv, "x.csv")
+    assert righe[0]["Quantita"] == 250 and righe[0]["Materiali"] == 7.5
+    strano = _xlsx({"F": [["a", "b", "c"], ["Posa pavimento", "mq", 40]]})
+    with pytest.raises(pv.ColonneNonRiconosciute):
+        pv.leggi_computo(strano, "x.xlsx")
+    righe, _, _ = pv.leggi_computo(strano, "x.xlsx", {"foglio": "F", "riga": 0, "colonne": {"Descrizione": 0, "UM": 1, "Quantita": 2}})
+    assert righe[0]["Descrizione"] == "Posa pavimento" and righe[0]["Quantita"] == 40
+    with pytest.raises(ValueError):
+        pv.leggi_computo(b"non e' un excel", "x.xlsx")

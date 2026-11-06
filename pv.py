@@ -95,6 +95,204 @@ def voci_da_dataframe(df):
     return righe, avvisi
 
 
+# ----------------------------------------------------------------------------
+# LETTURA ELASTICA DI UN COMPUTO / PREVENTIVO GIA' FATTO (Excel o CSV)
+# ----------------------------------------------------------------------------
+import io
+import re
+
+MAX_RIGHE_FILE = 5000
+
+_SIN = {
+    "Codice": {"codice", "cod", "cod.", "codice voce", "articolo", "art", "art.", "tariffa", "n. tariffa", "n.tariffa", "num.tar.", "num. tar.",
+               "n.", "n", "nr", "nr.", "n°", "num", "num.", "riferimento", "rif", "rif.", "voce n.", "n. voce"},
+    "Categoria": {"categoria", "categoria lavori", "capitolo", "wbs", "sezione", "gruppo", "lotto", "area", "opera", "tipologia"},
+    "Descrizione": {"descrizione", "descrizione lavori", "descrizione dei lavori", "descrizione lavorazione", "descrizione lavorazioni", "descrizione voce",
+                    "descrizione articolo", "designazione", "designazione dei lavori", "designazione lavori", "designazione delle opere", "voce", "lavorazione",
+                    "lavorazioni", "lavori", "oggetto", "opere", "descrizione opere", "articolo descrizione", "dettaglio", "descr.", "descr"},
+    "UM": {"um", "u.m.", "u.m", "u/m", "unita di misura", "unità di misura", "unita", "unità", "un", "un.", "misura"},
+    "Quantita": {"quantita", "quantità", "qta", "q.ta", "q.tà", "qt", "qt.", "qtà", "quantita'", "q.tà totale", "quantità totale", "quantita totale", "q.", "q"},
+    "Materiali": {"materiali", "materiale", "costo materiali", "costo materiale", "materiali €/u"},
+    "Manodopera": {"manodopera", "mano d'opera", "mano d opera", "costo manodopera", "manodopera €/u"},
+    "Noli_altro": {"noli", "noli e altro", "noli_altro", "nolo", "noli e altro €/u", "altro"},
+    "Prezzo": {"prezzo unitario", "prezzo unit", "prezzo unit.", "prezzo", "p.u.", "p.u", "pu", "costo unitario", "costo unit", "costo unit.", "costo",
+               "importo unitario", "tariffa unitaria", "prezzo unitario €", "€/u", "euro/u", "prezzo €", "prezzo/um", "p. unitario", "prezzo di tariffa"},
+    "Importo": {"importo", "importo €", "totale", "totale €", "importo totale", "totale riga", "totale voce", "importo lavori", "valore", "totale importo", "importo complessivo"},
+}
+_ETICHETTA_CAMPO = {"Codice": "Codice", "Categoria": "Categoria", "Descrizione": "Descrizione", "UM": "Unità di misura", "Quantita": "Quantità",
+                    "Materiali": "Materiali €/u", "Manodopera": "Manodopera €/u", "Noli_altro": "Noli e altro €/u", "Prezzo": "Prezzo unitario", "Importo": "Importo"}
+_RE_TOTALE = re.compile(r"^\s*(sub\s*-?\s*totale|totale|riporto|a riportare|da riportare|importo (totale|lavori)|iva\b|totale generale)", re.I)
+
+
+def _chiave_col(v):
+    t = str(v if v is not None else "").strip().lower()
+    t = re.sub(r"\(.*?\)", " ", t).replace("€", " ")
+    t = re.sub(r"\s+", " ", t).strip(" :;-_")
+    return t
+
+
+def _campo_di(intest):
+    k = _chiave_col(intest)
+    if not k or k in ("nan", "none"):
+        return None
+    for campo, sin in _SIN.items():
+        if k in sin:
+            return campo
+    if "descri" in k or "designaz" in k:
+        return "Descrizione"
+    if k.startswith("quant") or k.startswith("q.t") or k.startswith("qta"):
+        return "Quantita"
+    if "prezzo" in k and ("unit" in k or k == "prezzo"):
+        return "Prezzo"
+    if "importo" in k or k.startswith("totale"):
+        return "Importo"
+    return None
+
+
+def _mappa_riga(valori):
+    """{campo: indice colonna} per una riga di intestazioni (prima occorrenza di ogni campo)."""
+    m = {}
+    for j, v in enumerate(valori):
+        c = _campo_di(v)
+        if c and c not in m:
+            m[c] = j
+    return m
+
+
+def _riga_intestazioni(df):
+    """(indice riga, mappa) della riga che sembra l'intestazione, o (None, {})."""
+    migliore, mappa = None, {}
+    for i in range(min(40, len(df))):
+        m = _mappa_riga(df.iloc[i].tolist())
+        ok = "Descrizione" in m and ("Quantita" in m or ("Prezzo" in m and "Importo" in m))
+        if ok and len(m) > len(mappa):
+            migliore, mappa = i, m
+    return migliore, mappa
+
+
+def _testo(v):
+    t = "" if v is None else str(v).strip()
+    return "" if t.lower() in ("nan", "none", "nat") else t
+
+
+def _estrai_righe(df, nome_foglio, riga_int, mappa, categoria_foglio=""):
+    """Righe voce da un foglio con intestazioni note. Le righe-titolo (testo senza numeri) diventano la categoria delle voci seguenti;
+    le righe di totale e di riporto si saltano; un testo lungo senza numeri prolunga la descrizione della voce precedente."""
+    righe, avvisi = [], []
+    cat = categoria_foglio
+    ultima = None
+    prezzi_da_importo = 0
+    for i in range(riga_int + 1, min(len(df), riga_int + 1 + MAX_RIGHE_FILE)):
+        r = df.iloc[i].tolist()
+
+        def g(c):
+            j = mappa.get(c)
+            return r[j] if j is not None and j < len(r) else None
+        desc = _testo(g("Descrizione"))
+        if not desc and not any(_testo(x) for x in r):
+            continue
+        if _RE_TOTALE.match(desc):
+            continue
+        qta, prezzo, importo = to_float(g("Quantita"), 0.0), to_float(g("Prezzo"), 0.0), to_float(g("Importo"), 0.0)
+        mat, man, nol = (to_float(g(k), 0.0) for k in ("Materiali", "Manodopera", "Noli_altro"))
+        ha_costi = bool(prezzo or importo or mat or man or nol)
+        if qta <= 0 and prezzo > 0 and importo > 0:
+            qta = importo / prezzo
+        if qta <= 0 and not ha_costi:
+            if not desc:
+                continue
+            if len(desc) <= 80 or ultima is None:
+                if "Categoria" not in mappa:
+                    cat = desc[:60]
+            else:
+                ultima["Descrizione"] = (ultima["Descrizione"] + " " + desc)[:400]
+            continue
+        if qta <= 0:
+            avvisi.append(f"Foglio «{nome_foglio}», riga {i + 1}: quantità mancante, riga ignorata.")
+            continue
+        if not (mat or man or nol):
+            if prezzo <= 0 and importo > 0:
+                prezzo = importo / qta
+                prezzi_da_importo += 1
+            mat = prezzo
+        voce = {"Codice": _testo(g("Codice")), "Categoria": _testo(g("Categoria")) or cat, "Descrizione": desc, "UM": _testo(g("UM")),
+                "Quantita": qta, "Materiali": mat, "Manodopera": man, "Noli_altro": nol}
+        righe.append(voce)
+        ultima = voce
+    if prezzi_da_importo:
+        avvisi.append(f"Foglio «{nome_foglio}»: per {prezzi_da_importo} voci il prezzo unitario è stato calcolato dividendo l'importo per la quantità.")
+    return righe, avvisi
+
+
+def _fogli_da_file(dati, nome_file):
+    import pandas as pd
+    nome = str(nome_file or "").lower()
+    if nome.endswith(".csv"):
+        try:
+            return {"CSV": pd.read_csv(io.BytesIO(dati), sep=None, engine="python", header=None, dtype=object, nrows=MAX_RIGHE_FILE + 60)}
+        except Exception as e:
+            raise ValueError("Non riesco a leggere il file CSV.") from e
+    try:
+        import ddt
+        if not ddt._zip_sicuro(dati):
+            raise ValueError("Il file Excel è troppo grande una volta aperto: non lo leggo.")
+    except ImportError:
+        pass
+    try:
+        return pd.read_excel(io.BytesIO(dati), sheet_name=None, header=None, dtype=object, nrows=MAX_RIGHE_FILE + 60)
+    except Exception as e:
+        raise ValueError("Non riesco ad aprire il file: potrebbe essere rovinato o protetto da password.") from e
+
+
+class ColonneNonRiconosciute(ValueError):
+    """Il file e' leggibile ma le intestazioni non sono state riconosciute: l'interfaccia chiede di indicarle a mano."""
+
+
+def leggi_computo(dati, nome_file="", manuale=None):
+    """Legge un computo o preventivo gia' fatto (Excel, tutti i fogli, o CSV) senza obbligare a rinominare le colonne.
+    Cerca da sola la riga delle intestazioni (anche sotto titoli e dati dell'azienda), riconosce molti nomi di colonna
+    (Tariffa, Designazione dei lavori, Q.tà, Prezzo unitario, Importo...), usa i titoli di capitolo come categoria e salta i totali.
+    `manuale` = {"foglio", "riga" (0 = prima), "colonne": {campo: indice}} quando le colonne vanno indicate a mano.
+    Restituisce (righe, avvisi, info). Solleva ColonneNonRiconosciute se non trova niente."""
+    fogli = _fogli_da_file(dati, nome_file)
+    righe, avvisi, info = [], [], []
+    if manuale:
+        df = fogli.get(manuale["foglio"])
+        if df is None:
+            raise ValueError("Foglio non trovato.")
+        r, a = _estrai_righe(df, manuale["foglio"], int(manuale["riga"]), dict(manuale["colonne"]))
+        return r, a, [f"Foglio «{manuale['foglio']}»: colonne indicate a mano"]
+    trovati = []
+    for nome_f, df in fogli.items():
+        if df is None or df.empty:
+            continue
+        riga, mappa = _riga_intestazioni(df)
+        if riga is not None:
+            trovati.append((nome_f, df, riga, mappa))
+    if not trovati:
+        raise ColonneNonRiconosciute("Non ho riconosciuto le colonne del file: indicale tu qui sotto (basta una volta).")
+    for nome_f, df, riga, mappa in trovati:
+        r, a = _estrai_righe(df, nome_f, riga, mappa, nome_f if len(trovati) > 1 else "")
+        righe += r
+        avvisi += a
+        cols = ", ".join(_ETICHETTA_CAMPO[c] for c in mappa)
+        info.append(f"Foglio «{nome_f}»: intestazioni alla riga {riga + 1} ({cols}) — {len(r)} voci")
+    mat_solo = [c for c in ("Materiali", "Manodopera", "Noli_altro") if all(c not in m for _, _, _, m in trovati)]
+    if len(mat_solo) == 3 and righe:
+        avvisi.append("Il file ha un solo prezzo per voce: l'ho messo nella colonna Materiali. La suite aggiunge spese generali e utile ai costi: "
+                      "se i prezzi del file sono già prezzi di vendita, metti a 0 spese generali e utile, oppure ripartisci i costi.")
+    return righe, avvisi, info
+
+
+def anteprima_foglio(dati, nome_file="", righe=25):
+    """(nome foglio, DataFrame delle prime righe come testo) per scegliere le colonne a mano."""
+    fogli = _fogli_da_file(dati, nome_file)
+    for nome_f, df in fogli.items():
+        if df is not None and not df.empty:
+            return nome_f, df.head(righe).map(_testo) if hasattr(df, "map") else df.head(righe).applymap(_testo), fogli
+    raise ValueError("Il file non contiene dati.")
+
+
 def normalizza_voci_ai(raw):
     """Voci proposte dall'AI (JSON): lista di oggetti o {"voci": [...]}. Restituisce (voci, note)."""
     note = ""

@@ -240,6 +240,15 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.17.2
+- **Computo e Preventivo, import elastico**: si carica un computo o preventivo già fatto (Excel, tutti i fogli, o CSV) senza rinominare le colonne. La suite cerca la riga delle intestazioni (nelle prime 40 righe), riconosce molti nomi (Tariffa, Designazione dei lavori, Q.tà, Prezzo unitario, Importo…), usa i titoli di capitolo come categoria, salta totali e riporti, ricava il prezzo da importo ÷ quantità se manca. Se non riconosce nulla, mostra le prime righe e si scelgono le colonne a mano. Attenzione: il prezzo del file entra in «Materiali» e la suite ci aggiunge spese generali e utile; per un preventivo già a prezzi di vendita, azzera quelle percentuali.
+
+## Novità 3.17.1
+- **Timbratura da fuori sede**: in *Accessi del personale → Impostazioni* si scelgono le persone abilitate. Queste vedono «🚗 Lavoro fuori sede»: l'entrata richiede di scrivere dove vanno e cosa fanno (obbligatorio), l'uscita ha una nota facoltativa. Non si legge nessuna posizione; nel registro la timbratura risulta «fuori sede» con la giustificazione scritta, anche nell'Excel. Chi non è abilitato non può usarla.
+
+- **Pulsante ↻ «Aggiorna»**: in basso a destra su ogni pagina della suite, sopra la foto dell'assistente; ricarica la pagina come F5 (utile dopo un aggiornamento).
+- **Registro presenze**: in cima compare «Fuori sede oggi» con chi ha timbrato da fuori e la sua giustificazione.
+
 ## Novità 3.17.0
 - **Utenti con nome e cognome**: il nome utente si scrive con lo spazio (`mario rossi`), maiuscole e spazi doppi non contano.
 - **Email automatica**: creando un utente (Amministrazione → Utenti → Nuovo utente) si inseriscono nome, cognome ed email; la suite genera una password provvisoria e la spedisce (serve la posta configurata: SMTP_HOST, SMTP_USER, SMTP_PASSWORD). Senza posta la password provvisoria si vede a schermo.
