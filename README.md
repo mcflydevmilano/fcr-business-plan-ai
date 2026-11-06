@@ -240,6 +240,9 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.23.1
+- Chat ridisegnata: bolle (mie a destra), elenco conversazioni pulito, allegati/collegamento/importante in un riquadro a scomparsa.
+
 ## Novità 3.23.0
 - **Bollino NEW automatico**: ogni voce aggiunta a `novita.NOVITE` con `strumenti` accende il bollino sugli strumenti citati (Hub, menu laterale, striscia «Dove sono le novità»). Si spegne per persona quando apre lo strumento e dopo `GIORNI_NEW` (14) giorni. Cfg `novita_viste`.
 - Telefono: riquadri dei numeri a due colonne, titoli più piccoli.

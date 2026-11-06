@@ -139,10 +139,10 @@ def _azioni(m, utente, audit, sel, utenti_noti):
 
 def _riga_messaggio(m, utente, audit, vai_a, consentiti, nomi_strumenti, foto=None, sel=None, utenti_noti=(), con_azioni=False):
     mio = m["autore"] == utente["username"]
-    with st.chat_message("user" if mio else "assistant", avatar=_avatar(m["autore"], foto or {})):
-        st.markdown(f"**{html.escape(m['autore'])}** · <span style='color:#64748b;font-size:.8rem'>{_ora_locale(m['ts'])}</span>"
-                    + (" · <span style='color:#64748b;font-size:.8rem'>modificato</span>" if m["modificato"] else "")
-                    + (" · <span style='color:#b91c1c;font-size:.8rem'>❗ importante</span>" if m["importante"] else ""), unsafe_allow_html=True)
+    with st.container(key=f"cb_{'m' if mio else 'a'}_{m['id']}"), st.chat_message("user" if mio else "assistant", avatar=_avatar(m["autore"], foto or {})):
+        st.markdown(f"<span class='cb-nome'>{html.escape(m['autore'])}</span> <span class='cb-ora'>{_ora_locale(m['ts'])}</span>"
+                    + (" <span class='cb-ora'>· modificato</span>" if m["modificato"] else "")
+                    + (" <span class='cb-imp'>❗ importante</span>" if m["importante"] else ""), unsafe_allow_html=True)
         if m["eliminato"]:
             st.caption("🚫 Messaggio eliminato")
             return
@@ -216,10 +216,10 @@ def _conversazioni_corpo(utente, utenti_noti, audit, vai_a, consentiti, nomi_str
             elenco = [c for c in canali if c["tipo"] == tipo]
             if not elenco and tipo != "diretto":
                 continue
-            st.markdown(f"<div class='sb-label' style='margin-top:.4rem'>{titolo}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='ch-gruppo'>{titolo}</div>", unsafe_allow_html=True)
             for c in elenco:
-                badge = f"  🔴 {c['non_letti']}" if c["non_letti"] else ""
-                pre = ("▶ " if c["id"] == sel else "") + ("# " if tipo == "pubblico" else ("🔒 " if tipo == "privato" else ""))
+                badge = f"   ● {c['non_letti']}" if c["non_letti"] else ""
+                pre = "# " if tipo == "pubblico" else ("🔒 " if tipo == "privato" else "")
                 if st.button(f"{pre}{c['etichetta']}{badge}", key=f"chc_{c['id']}", width="stretch", type="primary" if c["id"] == sel else "secondary"):
                     ss["chat_cid"] = c["id"]
                     _rerun()
@@ -248,14 +248,14 @@ def _conversazioni_corpo(utente, utenti_noti, audit, vai_a, consentiti, nomi_str
         cur = next((c for c in canali if c["id"] == sel), None)
         if cur:
             titolo = ("# " if cur["tipo"] == "pubblico" else "🔒 " if cur["tipo"] == "privato" else "💬 ") + cur["etichetta"]
-            st.markdown(f"#### {html.escape(titolo)}")
+            st.markdown(f"<div class='ch-titolo'>{html.escape(titolo)}</div>", unsafe_allow_html=True)
             if cur["tipo"] == "pubblico":
                 st.caption(cur["descrizione"] or "Canale pubblico: lo vedono tutti.")
             elif cur["tipo"] == "privato":
                 st.caption("Membri: " + ", ".join(chat.membri(sel)) + " · nessun altro, amministratori compresi, può leggere questo gruppo.")
             else:
                 st.caption("Chat diretta: la leggete solo voi due.")
-        with st.container(height=470, border=True):
+        with st.container(height=560, border=False, key="ch_area"):
             if not msgs:
                 st.caption("Nessun messaggio: scrivi tu il primo.")
             foto = _foto_utenti()
@@ -273,20 +273,20 @@ def _conversazioni_corpo(utente, utenti_noti, audit, vai_a, consentiti, nomi_str
                 ss["chat_risposta"] = None
                 _rerun()
         with st.form("chat_invio", clear_on_submit=True, border=False):
-            testo = st.text_area("Scrivi un messaggio", key="chat_testo", height=80, max_chars=chat.MAX_TESTO, label_visibility="collapsed",
+            testo = st.text_area("Scrivi un messaggio", key="chat_testo", height=90, max_chars=chat.MAX_TESTO, label_visibility="collapsed",
                                  placeholder="Scrivi un messaggio… usa @nome per citare qualcuno")
-            c1, c2 = st.columns([2, 2])
-            with c1:
-                allegato = st.file_uploader("Allega una foto o un PDF", type=["jpg", "jpeg", "png", "webp", "pdf"], key="up_chat_allegato",
-                                            help=f"Foto ridotte automaticamente; PDF fino a {chat.LIMITE_PDF_MB} MB.")
-            with c2:
-                strumenti = [s for s in consentiti if s in nomi_strumenti and s != "ch"]
-                sc = st.selectbox("Collega uno strumento (facoltativo)", strumenti, index=None, format_func=lambda s: nomi_strumenti[s],
-                                  placeholder="Nessuno", key="chat_link",
-                                  help="Aggiunge sotto il messaggio un pulsante «Apri» che porta chi legge direttamente a quello strumento "
-                                       "(per esempio Scadenzario o Scheda cantiere). Se vuoi che un collega guardi una cosa precisa, scegli lo strumento: gli risparmi la ricerca nel menu.")
-            st.caption("💡 «Collega uno strumento» = sotto il messaggio compare un pulsante che apre quello strumento. Facoltativo.")
-            imp = st.checkbox("❗ Importante: chiedi a chi legge di confermare", key="chat_importante")
+            with st.expander("➕ Allega un file, collega uno strumento, segna come importante"):
+                c1, c2 = st.columns([2, 2])
+                with c1:
+                    allegato = st.file_uploader("Allega una foto o un PDF", type=["jpg", "jpeg", "png", "webp", "pdf"], key="up_chat_allegato",
+                                                help=f"Foto ridotte automaticamente; PDF fino a {chat.LIMITE_PDF_MB} MB.")
+                with c2:
+                    strumenti = [s for s in consentiti if s in nomi_strumenti and s != "ch"]
+                    sc = st.selectbox("Collega uno strumento (facoltativo)", strumenti, index=None, format_func=lambda s: nomi_strumenti[s],
+                                      placeholder="Nessuno", key="chat_link",
+                                      help="Aggiunge sotto il messaggio un pulsante «Apri» che porta chi legge direttamente a quello strumento "
+                                           "(per esempio Scadenzario o Scheda cantiere). Se vuoi che un collega guardi una cosa precisa, scegli lo strumento: gli risparmi la ricerca nel menu.")
+                imp = st.checkbox("❗ Importante: chiedi a chi legge di confermare", key="chat_importante")
             if st.form_submit_button("Invia", type="primary"):
                 try:
                     info = chat.invia(sel, u, utente["ruolo"], testo, (allegato.name, allegato.getvalue()) if allegato else None,
@@ -485,9 +485,7 @@ def render(fcr_uri, audit=None, utente=None, utenti_secrets=None, consentiti=Non
     nomi_strumenti = nomi_strumenti or {}
     vai_a = vai_a or (lambda m: None)
     st.markdown(theme.hero(fcr_uri, "Chat interna", "Canali per i temi comuni, chat dirette tra colleghi e avvisi sul telefono."), unsafe_allow_html=True)
-    if not ss.get("_finestra_chat"):
-        st.link_button("🗗  Apri la chat in una finestra separata", "?finestra=chat", help="Si apre in una nuova scheda del browser: trascinala accanto alla suite e chatti mentre lavori.")
-    else:
+    if ss.get("_finestra_chat"):
         st.caption("Finestra della chat: puoi lasciarla accanto alla suite. Chiudila quando non ti serve.")
     guida.mostra("ch")
     noti = _utenti_noti(utenti_secrets)

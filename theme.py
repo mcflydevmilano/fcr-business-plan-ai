@@ -509,12 +509,31 @@ SIDEBAR_CSS = """
 .st-key-hub_chat_apri button, .st-key-hub_ch button { background: linear-gradient(135deg, #059669, #10b981) !important; border: 0 !important; box-shadow: 0 6px 14px rgba(5,150,105,.35) !important; }
 .st-key-hub_chat_apri button p, .st-key-hub_ch button p { color: #fff !important; }
 .st-key-hub_chat_apri button:hover, .st-key-hub_ch button:hover { background: linear-gradient(135deg, #047857, #059669) !important; }
-/* canali della chat: quello aperto e' pieno, gli altri sono chiari */
-[class*="st-key-chc_"] button[data-testid="stBaseButton-secondary"] { background: #f0fdf4 !important; border: 1px solid #86efac !important; box-shadow: none !important; justify-content: flex-start !important; }
-[class*="st-key-chc_"] button[data-testid="stBaseButton-secondary"] p { color: #166534 !important; font-weight: 600; text-align: left; width: 100%; }
-[class*="st-key-chc_"] button[data-testid="stBaseButton-secondary"]:hover { background: #dcfce7 !important; }
-[class*="st-key-chc_"] button[data-testid="stBaseButton-primary"] { background: linear-gradient(135deg, #059669, #10b981) !important; justify-content: flex-start !important; }
-[class*="st-key-chc_"] button p { text-align: left; width: 100%; }
+/* ---- Chat: stile messaggistica moderna ---- */
+.ch-gruppo { font-size: .7rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: #94a3b8; margin: 14px 4px 4px 4px; }
+.ch-titolo { font-size: 1.35rem; font-weight: 800; color: var(--ink); margin: 2px 0 2px 2px; }
+/* elenco conversazioni: righe pulite, quella aperta ha la barra colorata */
+[class*="st-key-chc_"] button { border: 0 !important; box-shadow: none !important; border-radius: 12px !important; justify-content: flex-start !important; min-height: 2.35rem; transform: none !important; }
+[class*="st-key-chc_"] button[data-testid="stBaseButton-secondary"] { background: transparent !important; }
+[class*="st-key-chc_"] button[data-testid="stBaseButton-secondary"] p { color: #334155 !important; font-weight: 600; }
+[class*="st-key-chc_"] button[data-testid="stBaseButton-secondary"]:hover { background: #eef2ff !important; }
+[class*="st-key-chc_"] button[data-testid="stBaseButton-primary"] { background: #e0e7ff !important; box-shadow: inset 4px 0 0 #4f46e5 !important; }
+[class*="st-key-chc_"] button[data-testid="stBaseButton-primary"] p { color: #3730a3 !important; font-weight: 800; }
+[class*="st-key-chc_"] button > div, [class*="st-key-chc_"] button [data-testid="stMarkdownContainer"] { justify-content: flex-start !important; width: 100%; text-align: left !important; }
+[class*="st-key-chc_"] button p { text-align: left !important; width: 100%; }
+[class*="st-key-chc_"] { margin-bottom: -12px; }
+/* area dei messaggi: sfondo morbido, nessun bordo */
+.st-key-ch_area { background: #f1f5f9; border-radius: 18px; padding: 10px 6px; }
+@media (prefers-color-scheme: dark) { .st-key-ch_area { background: #1e293b; } }
+/* bolle: le mie a destra in blu, quelle degli altri a sinistra in bianco */
+[class*="st-key-cb_"] [data-testid="stChatMessage"] { background: #fff; border: 1px solid #e2e8f0; border-radius: 4px 18px 18px 18px; padding: 8px 14px 6px 12px; max-width: 86%; width: fit-content; min-width: 40%; box-shadow: 0 1px 2px rgba(15,23,42,.06); margin: 3px 0; }
+[class*="st-key-cb_m_"] [data-testid="stChatMessage"] { background: #dbeafe; border-color: #bfdbfe; border-radius: 18px 4px 18px 18px; margin-left: auto; flex-direction: row-reverse; }
+[class*="st-key-cb_"] [data-testid="stChatMessage"] p { color: #0f172a !important; margin-bottom: .2rem; }
+[class*="st-key-cb_"] [data-testid="stChatMessageAvatarUser"], [class*="st-key-cb_"] [data-testid="stChatMessageAvatarAssistant"] { width: 30px; height: 30px; }
+.cb-nome { font-weight: 800; font-size: .86rem; color: #1e40af; } .cb-ora { color: #64748b; font-size: .74rem; margin-left: 6px; } .cb-imp { color: #b91c1c; font-size: .76rem; font-weight: 700; margin-left: 6px; }
+/* compositore: campo tondo, tasto Invia pieno */
+.st-key-chat_testo textarea, [data-testid="stForm"] textarea { border-radius: 16px !important; }
+[data-testid="stForm"] [data-testid="stExpander"] { border-radius: 14px; }
 @media (prefers-reduced-motion: reduce) { .sb-brand { animation: none; } }
 """
 

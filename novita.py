@@ -17,6 +17,11 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.23.1", "data": "2026-11-06", "titolo": "Chat con un aspetto nuovo",
+     "voci": ["Messaggi a bolle: i tuoi a destra in azzurro, quelli dei colleghi a sinistra in bianco, su uno sfondo morbido.",
+              "Elenco delle conversazioni più pulito, con la conversazione aperta evidenziata.",
+              "Allegati, collegamento a uno strumento e «Importante» stanno in un riquadro che si apre solo quando servono: il campo per scrivere resta semplice."],
+     "strumenti": ["Chat interna"]},
     {"id": "3.23.0", "data": "2026-11-06", "titolo": "Bollino NEW sugli strumenti nuovi e suite più chiara",
      "voci": ["Bollino NEW: gli strumenti nuovi o cambiati da poco hanno un bollino rosso nell'Hub e nel menu laterale; una striscia «Dove sono le novità» in alto li elenca. Il bollino si spegne quando apri lo strumento (per te soltanto) e dopo 14 giorni.",
               "Dentro lo strumento nuovo compare un avviso che dice cosa è cambiato.",
