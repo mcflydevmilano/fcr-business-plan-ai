@@ -1,4 +1,5 @@
 """Moduli Cash Flow di cantiere e Computo e Preventivo: UI (AppTest) e report."""
+import permessi
 import io
 
 import pytest
@@ -43,6 +44,9 @@ def test_preventivo_invia_al_cash_flow(monkeypatch):
 def test_parametri_preventivo_sopravvivono_al_cambio_modulo(monkeypatch):
     at = _nuovo(monkeypatch, modulo="pv")
     at.number_input(key="pv_sconto_pct").set_value(4.0).run()
+    for k in [k for k in ("_bz_" + m for m in permessi.NOMI) if k in at.session_state]:                 # (come dopo un Salva: l'avviso «modifiche non salvate» ha una prova a parte)
+        if k.startswith("_bz_") and isinstance(at.session_state[k], dict):
+            at.session_state[k]["sporco"] = False
     _btn(at, "Torna all'Hub").click().run()
     _btn(at, "Apri Computo").click().run()
     assert at.number_input(key="pv_sconto_pct").value == 4.0

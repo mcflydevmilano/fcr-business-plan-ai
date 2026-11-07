@@ -87,3 +87,23 @@ def test_nessuna_bozza_senza_modifiche(modulo):
     assert not at.exception, [e.value for e in at.exception]
     at.run()
     assert not _bozze(), f"{modulo}: scrive bozze anche se nessuno ha cambiato niente"
+
+
+def test_avviso_modifiche_non_salvate_e_conferma_uscita():
+    at = _app("pe")
+    assert at.session_state["_bz_pe"]["sporco"] is False                          # appena aperto: niente da salvare
+    df = pd.DataFrame([{c: "" for c in __import__("pe").COLONNE_PERSONE}])
+    df.loc[0, ["Persona", "Ruolo", "Attivo"]] = ["Anna Verdi", "Geometra", "Sì"]
+    at.session_state["pe_pers"] = df
+    at.run()
+    assert at.session_state["_bz_pe"]["sporco"] is True
+    at.button(key="nav_hub").click().run()                                         # cambio strumento con modifiche: chiede conferma
+    assert not at.exception
+    assert at.session_state["active_module"] == "pe"
+    assert {b.key for b in at.button} >= {"usc_resta", "usc_esci"}                  # la finestra di conferma e' aperta (il clic su «Esci comunque» e' provato nel browser)
+
+
+def test_cambio_strumento_senza_modifiche_non_chiede_nulla():
+    at = _app("pe")
+    at.button(key="nav_hub").click().run()
+    assert at.session_state["active_module"] is None

@@ -240,6 +240,12 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.24.2
+- `ui_util.bozza_fine` calcola `sporco` (dati diversi dall'apertura/ultimo salvataggio); `avviso_modifiche` mostra il chip e arma `beforeunload`; `app.vai_a` chiede conferma (`_conferma_uscita`) prima di cambiare strumento. Hub: gruppi chiusi.
+
+## Novità 3.24.1
+- Lo strumento aperto è nell'URL (`?s=sigla`): F5 non riporta più all'Hub. Letto una sola volta a inizio sessione, scritto a ogni esecuzione (`app.py`).
+
 ## Novità 3.24.0
 - `salute.py`: RAM/CPU/uptime da /proc e prova di velocità (calcolo, RAM, disco, database) con storico `salute_storico` (ultime 20). Interfaccia in Amministrazione > Spazio.
 

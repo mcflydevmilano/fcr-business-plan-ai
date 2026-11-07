@@ -680,7 +680,7 @@ def render(vai_a, consentiti=None, freschezza_righe=None, non_letti_chat=0, gior
         n_new = len([s for s in sigle if s in (nuove or {})])
         with st.expander(f"{icona}  {titolo}  ·  {len(sigle)} " + ("strumento" if len(sigle) == 1 else "strumenti") +
                          (f"  ·  🆕 {n_new} " + ("novità" if n_new > 1 else "novità") if n_new else ""),
-                         expanded=(n == 0 or bool(n_new))):
+                         expanded=False):                    # all'apertura i gruppi sono chiusi; il bollino NEW sul titolo dice dove guardare
             st.caption(sotto)
             for i in range(0, len(sigle), 2):
                 riga = sigle[i:i + 2]

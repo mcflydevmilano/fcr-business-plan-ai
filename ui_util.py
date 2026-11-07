@@ -167,9 +167,11 @@ def bozza_fine(max_byte=3_000_000):
             h = _hash_payload(p)
         except Exception:
             continue
+        s["sporco"] = False
         if s.get("nuovo"):                                  # fine del primo passaggio: i campi si sono appena inizializzati, questo e' il vero punto di partenza
             s["nuovo"], s["base"] = False, h
             continue
+        s["sporco"] = h != s["base"]                        # modifiche rispetto a quando lo strumento e' stato aperto/salvato: serve all'avviso «salva prima di uscire»
         if h == s["base"] or h == s["ultimo"]:
             continue
         try:
@@ -179,6 +181,17 @@ def bozza_fine(max_byte=3_000_000):
             s["ultimo"], s["ora"] = h, _ora_adesso()
         except Exception:
             pass
+    _mostra_avviso(reg)
+
+
+def _mostra_avviso(reg):
+    try:
+        import permessi
+        for modulo in reg:
+            avviso_modifiche(modulo, permessi.NOMI.get(modulo, ""), chiave="fcr_sporco_f")
+            break
+    except Exception:
+        pass
 
 
 def _bozza_inizio(modulo, raccogli, applica, utente):
@@ -552,3 +565,44 @@ def azzera(*chiavi):
     """Svuota delle caselle (da chiamare PRIMA di crearle, nell'esecuzione successiva a un inserimento)."""
     for k in chiavi:
         ss[k] = None
+
+
+_JS_SPORCO = r"""
+export default function(c) {
+  const dati = c.data || {};
+  window.__fcrSporco = !!dati.sporco;
+  if (!window.__fcrSporcoPronto) {
+    window.__fcrSporcoPronto = true;
+    window.addEventListener('beforeunload', e => { if (window.__fcrSporco) { e.preventDefault(); e.returnValue = ''; } });
+    const css = document.createElement('style');
+    css.textContent = `#fcr-sporco{position:fixed;left:18px;bottom:18px;z-index:99990;max-width:min(380px,calc(100vw - 110px));background:#fff7ed;color:#7c2d12;border:1px solid #fdba74;
+      border-radius:14px;padding:10px 14px;font:600 13px/1.35 inherit;box-shadow:0 10px 28px rgba(124,45,18,.25);cursor:pointer;display:none}
+    #fcr-sporco b{color:#c2410c} #fcr-sporco small{display:block;font-weight:500;color:#9a3412;margin-top:2px}
+    @keyframes fcrEvid{0%,100%{box-shadow:0 0 0 0 rgba(234,88,12,.0)}50%{box-shadow:0 0 0 8px rgba(234,88,12,.35)}}
+    .fcr-evid{animation:fcrEvid 1s ease 3;outline:2px solid #ea580c;outline-offset:2px}`;
+    document.head.appendChild(css);
+  }
+  let el = document.getElementById('fcr-sporco');
+  if (!el) {
+    el = document.createElement('div'); el.id = 'fcr-sporco'; el.setAttribute('role', 'status');
+    el.onclick = () => {                                                       // porta al pulsante di salvataggio dello strumento, se c'e'
+      const m = document.querySelector('[data-testid="stMain"]') || document;
+      const b = [...m.querySelectorAll('button')].filter(x => /salva/i.test(x.innerText) && !/scarica|esporta/i.test(x.innerText))[0];
+      if (b) { b.scrollIntoView({ behavior: 'smooth', block: 'center' }); b.classList.add('fcr-evid'); setTimeout(() => b.classList.remove('fcr-evid'), 3500); }
+    };
+    document.body.appendChild(el);
+  }
+  el.innerHTML = '<b>● Modifiche non salvate</b> in «' + (dati.nome || 'questo strumento') + '»<small>Premi qui per andare al pulsante Salva.' + (dati.ora ? ' Copia automatica alle ' + dati.ora + '.' : '') + '</small>';
+  el.style.display = dati.sporco ? 'block' : 'none';
+}
+"""
+
+
+def avviso_modifiche(modulo, nome, chiave="fcr_sporco_c"):
+    """Indicatore fluttuante «Modifiche non salvate» + avviso del browser se si aggiorna o si chiude la pagina.
+    Si chiama a inizio pagina con lo stato vuoto (Hub, strumenti senza bozza) e a fine strumento, da bozza_fine, con lo stato aggiornato."""
+    s = ss.get(f"_bz_{modulo}") or {} if modulo else {}
+    try:
+        st.components.v2.component("fcr_sporco", js=_JS_SPORCO)(data={"sporco": bool(s.get("sporco")), "nome": nome or "", "ora": s.get("ora") or ""}, key=chiave)
+    except Exception:
+        pass

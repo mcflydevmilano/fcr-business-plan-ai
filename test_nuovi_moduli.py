@@ -292,6 +292,9 @@ def test_uscire_e_rientrare_nello_strumento_non_da_errore(modulo):
             b.click()
             at.run()
             assert not at.exception, (b.label, [e.value for e in at.exception])
+    for k in [k for k in ("_bz_" + m for m in permessi.NOMI) if k in at.session_state]:                 # (come dopo un Salva: l'avviso «modifiche non salvate» ha una prova a parte)
+        if k.startswith("_bz_") and isinstance(at.session_state[k], dict):
+            at.session_state[k]["sporco"] = False
     nomi = [b for b in at.button if "Torna all'Hub" in b.label]
     nomi[0].click().run()
     assert not at.exception

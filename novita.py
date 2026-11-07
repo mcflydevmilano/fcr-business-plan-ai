@@ -17,6 +17,15 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.24.2", "data": "2026-11-07", "titolo": "Avviso «modifiche non salvate» e Hub più ordinato",
+     "voci": ["Se in uno strumento ci sono modifiche non salvate compare in basso a sinistra «Modifiche non salvate»: toccalo e ti porta al pulsante Salva.",
+              "Se aggiorni o chiudi la pagina con modifiche non salvate, il browser ti chiede conferma.",
+              "Se cambi strumento con modifiche non salvate, una finestra ti chiede se restare a salvare o uscire comunque (la copia automatica resta).",
+              "Hub: i gruppi di strumenti si aprono chiusi; il bollino NEW sul titolo del gruppo dice dove guardare."],
+     "strumenti": []},
+    {"id": "3.24.1", "data": "2026-11-07", "titolo": "Aggiorna la pagina senza perdere lo strumento",
+     "voci": ["Se aggiorni la pagina (F5, ↻ o il tasto del browser) resti nello strumento in cui eri, invece di tornare all'Hub. Lo strumento è scritto nell'indirizzo, quindi puoi anche salvare il link di uno strumento tra i preferiti del browser."],
+     "strumenti": []},
     {"id": "3.24.0", "data": "2026-11-07", "titolo": "Controllo della memoria e prova di velocità del server",
      "voci": ["Amministrazione, scheda «Spazio»: quanta RAM sta usando il server (con un giudizio in parole semplici), carico del processore, da quanto è acceso e quanta memoria occupa la suite.",
               "Pulsante «Misura la velocità adesso»: calcolo, memoria, disco e tempi del database. Ogni prova resta salvata e mostra di quanto è cambiata rispetto alla precedente, così si vede la differenza dopo una modifica come più RAM."],

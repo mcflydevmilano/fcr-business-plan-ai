@@ -71,6 +71,8 @@ def test_bp_calcola_e_ricorda_le_ipotesi(monkeypatch):
     at.radio(key="bp_n_anni").set_value(5).run()
     assert not at.exception
     assert at.session_state["bp_n_anni"] == 5
+    assert at.session_state["_bz_bp"]["sporco"] is True                         # con modifiche non salvate, uscendo si chiede conferma
+    at.session_state["_bz_bp"]["sporco"] = False                                # (qui simuliamo di aver salvato: il clic nella finestra e' provato nel browser)
     _btn(at, "Torna all'Hub").click().run()
     _btn(at, "Apri Business Plan Studio").click().run()
     assert not at.exception

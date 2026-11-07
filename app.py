@@ -742,6 +742,12 @@ except Exception:
     pass
 PERM = permessi.carica_config()
 CONSENTITI = permessi.moduli_consentiti(ss["utente"], PERM)
+if "_mod_init" not in ss:                                         # pagina ricaricata (F5, ↻): si torna allo strumento in cui si era, scritto nell'indirizzo (?s=sigla)
+    ss["_mod_init"] = True
+    _s_url = st.query_params.get("s")
+    if _s_url and ss.get("active_module") is None and (_s_url in CONSENTITI or (_s_url == "admin" and ss["utente"].get("ruolo") == "admin")):
+        ss["active_module"] = _s_url
+        MODULO = _s_url
 if st.query_params.get("finestra") == "chat" and "ch" in CONSENTITI:     # chat in una finestra staccata: solo la chat, senza menu
     ss["_finestra_chat"] = True
     ss["active_module"] = "ch"
@@ -751,11 +757,33 @@ if ss.get("_finestra_chat"):
 PROFILO = "accesso completo" if ss["utente"].get("ruolo") == "admin" else permessi.profilo_di(ss["utente"], PERM)
 
 
+@st.dialog("Hai modifiche non salvate")
+def _conferma_uscita(modulo):
+    nome = permessi.NOMI.get(MODULO, MODULO)
+    ora = (ss.get(f"_bz_{MODULO}") or {}).get("ora")
+    st.markdown(f"In **{nome}** ci sono modifiche che non hai ancora salvato.  \n"
+                "Per tenerle nell'archivio, resta qui e premi **Salva**." +
+                (f"  \nUna copia automatica è stata fatta alle {ora}: te la propongo quando riapri lo strumento." if ora else ""))
+    a, b = st.columns(2)
+    if a.button("Resta qui e salvo", key="usc_resta", type="primary", width="stretch"):
+        st.rerun()
+    if b.button("Esci comunque", key="usc_esci", width="stretch"):
+        _vai_ora(modulo)
+
+
 def vai_a(modulo):
-    """Cambia modulo ripristinando i valori dei widget che Streamlit altrimenti dimentica."""
+    """Cambia modulo; se nello strumento aperto ci sono modifiche non salvate chiede prima conferma."""
     if modulo not in (None, "admin") and modulo not in CONSENTITI:
         st.toast("Questo strumento non è abilitato per il tuo profilo.", icon="🔒")
         return
+    if MODULO and modulo != MODULO and (ss.get(f"_bz_{MODULO}") or {}).get("sporco"):
+        _conferma_uscita(modulo)
+        return
+    _vai_ora(modulo)
+
+
+def _vai_ora(modulo):
+    """Cambia modulo ripristinando i valori dei widget che Streamlit altrimenti dimentica."""
     if MODULO in PREFISSI_STATO:
         pf = PREFISSI_STATO[MODULO]
         ss["_snap_" + MODULO] = {k: v for k, v in ss.items() if isinstance(k, str) and k.startswith(pf) and not _e_pulsante(k)}
@@ -1000,6 +1028,17 @@ if MODULO is not None and MODULO not in CONSENTITI:            # anche se qualcu
         st.rerun()
     st.stop()
 
+if not ss.get("_finestra_chat"):                                   # l'indirizzo ricorda lo strumento aperto, cosi' un aggiornamento della pagina non riporta all'Hub
+    try:
+        if MODULO and st.query_params.get("s") != MODULO:
+            st.query_params["s"] = MODULO
+        elif not MODULO and "s" in st.query_params:
+            del st.query_params["s"]
+    except Exception:
+        pass
+
+if not (MODULO and ss.get(f"_bz_{MODULO}")):                      # Hub e strumenti senza bozza: nessun avviso (gli altri lo mostra bozza_fine a fine strumento, con lo stato aggiornato)
+    ui_util.avviso_modifiche(None, "")
 assistenza.render((ss.get("utente") or {}).get("username", ""), MODULO or "Hub")
 
 if not MODULO:
