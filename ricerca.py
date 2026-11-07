@@ -8,6 +8,8 @@ import unicodedata
 # argomenti collegati a ogni strumento: chi cerca «fattura» deve trovare lo Scadenzario anche se il nome non lo dice
 SINONIMI = {
     "ac": "accessi timbratura timbrare badge presenze entrata uscita pausa qr ore ritardi orari ufficio",
+    "pc": "portale cliente link segreto stato lavori foto documenti accettare offerta firma condividere cliente",
+    "mi": "impianti esco fotovoltaico produzione attesa letture canone incassato manutenzione contatore inverter dopo vendita monitoraggio",
     "fe": "fatture elettroniche xml fatturapa sdi fornitore cliente scadenza pagamento importa cassetto fiscale p7m zip",
     "sp": "sopralluogo telefono foto tetto fotovoltaico quadro elettrico contatore superficie moduli preventivo cliente sul posto",
     "bd": "bando gara capitolato appalto cig cup soa dgue durc scadenza offerte importo base requisiti pdf",

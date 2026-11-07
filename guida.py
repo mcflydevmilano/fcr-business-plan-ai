@@ -67,6 +67,18 @@ PASSI = {
         ("Approvazione", "Il responsabile approva o respinge, con una nota, dalla scheda «Da approvare».", None),
         ("Riepilogo", "L'amministrazione vede il mese per persona, cantiere e categoria, scarica l'Excel e gli scontrini e segna le spese rimborsate.", None),
     ], "Senza ricevuta la spesa si invia solo spiegando bene cosa è stato pagato."),
+    "pc": ("Dare al cliente una pagina con lo stato dei lavori, senza dargli accesso alla suite.", [
+        ("Crea il link", "Nella scheda «2» scrivi il nome del cliente e per quanti giorni vale. Copia il link: si vede una volta sola.", None),
+        ("Scegli cosa vede", "Nella scheda «3» scrivi a che punto siamo, aggiungi foto e PDF e, se vuoi, un'offerta da accettare.", None),
+        ("Mandalo al cliente", "Per email o WhatsApp. Il cliente non ha bisogno di password.", None),
+        ("Controlla e chiudi", "Nella scheda «1» vedi se ha accettato (con firma) e puoi revocare o prorogare il link.", None),
+    ], "Chi ha il link vede la pagina: metti solo foto e documenti adatti al cliente."),
+    "mi": ("Controllare gli impianti venduti: produzione, canoni e manutenzione.", [
+        ("Aggiungi l'impianto", "Nella scheda «3» scrivi nome, cliente, kWp, data di inizio, canone mensile e prossima manutenzione.", None),
+        ("Scrivi le letture", "Nella scheda «2» ogni mese scrivi quanto ha prodotto (dal portale dell'inverter) e quanto hai incassato.", None),
+        ("Guarda la situazione", "Nella scheda «1» vedi chi produce meno del 85% dell'atteso, i canoni non incassati e le manutenzioni in arrivo.", None),
+        ("Lascia fare al riepilogo", "I problemi arrivano ogni mattina nel riepilogo, se è acceso.", None),
+    ], "Se non conosci la produzione attesa, lascia 0: uso 1.200 kWh per ogni kWp."),
     "fe": ("Portare le fatture dei fornitori nello Scadenzario senza riscriverle a mano.", [
         ("Scarica le fatture", "Dal cassetto fiscale o dal programma di fatturazione, in formato XML (anche tante in uno ZIP).", None),
         ("Caricale qui", "Trascinale nel riquadro e scegli se sono ricevute (da pagare) o emesse (da incassare).", None),

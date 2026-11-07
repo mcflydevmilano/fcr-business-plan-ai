@@ -17,6 +17,10 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.27.0", "data": "2026-11-07", "titolo": "Controllo impianti ESCo e portale cliente",
+     "voci": ["Controllo impianti ESCo (nuovo): per ogni impianto venduto scrivi ogni mese la produzione e il canone incassato. Vedi se produce meno dell'85% dell'atteso, quali canoni mancano e le manutenzioni in scadenza. I problemi arrivano anche nel riepilogo del mattino.",
+              "Portale cliente (nuovo): un link segreto per ogni cliente, senza password. Vede lo stato dei lavori, le foto e i documenti che scegli tu e può accettare l'offerta firmando col dito. Il link scade e si può revocare."],
+     "strumenti": ["Controllo impianti ESCo", "Portale cliente"]},
     {"id": "3.26.0", "data": "2026-11-07", "titolo": "Fatture elettroniche, sopralluogo da telefono, lettura bandi",
      "voci": ["Fatture elettroniche (nuovo): carichi i file XML (anche .p7m o uno ZIP con tante fatture) e le scadenze vanno nello Scadenzario, col cantiere giusto se nel testo c'è il suo codice. Le fatture già presenti non vengono doppiate.",
               "Sopralluogo da telefono (nuovo): domande guidate sul posto, foto di tetto e quadro, avvisi su amianto, potenza e distanze. Un tasto porta tutto nel Preventivo fotovoltaico, già compilato; riepilogo in Word.",

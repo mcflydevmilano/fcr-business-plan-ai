@@ -88,6 +88,18 @@ def sezioni(utente, profilo, consentiti, oggi=None, path=None):
             if len(lista) > MAX_PER_SEZIONE:
                 righe.append(f"…e altre {len(lista) - MAX_PER_SEZIONE} scadenze")
             out.append(("Scadenze di persone e mezzi", righe))
+    # 3b) impianti ESCo da controllare
+    if "mi" in consentiti:
+        try:
+            import mi
+            av = mi.avvisi(mi.carica(path), oggi)
+        except Exception:
+            av = []
+        if av:
+            righe = [f"{ICONA.get(s, '•')} {f}" for s, f in av[:MAX_PER_SEZIONE]]
+            if len(av) > MAX_PER_SEZIONE:
+                righe.append(f"…e altri {len(av) - MAX_PER_SEZIONE} avvisi sugli impianti")
+            out.append(("Impianti ESCo", righe))
     # 4) chi manca oggi
     if "fp" in consentiti:
         try:
