@@ -34,6 +34,9 @@ MODELLI_BASE = {
                          "La presente vale come formale messa in mora.\n\nDistinti saluti."},
     "risposta": {"titolo": "Risposta tipo (conferma di ricezione)", "oggetto": "Riscontro alla Vostra comunicazione del {{data_comunicazione}}",
                  "corpo": "Gentile {{destinatario}},\n\nconfermiamo di aver ricevuto la Vostra comunicazione del {{data_comunicazione}} riguardo a {{argomento}}.\n\nLa stiamo esaminando e Vi daremo una risposta entro {{giorni}} giorni.\n\nCordiali saluti."},
+    "sollecito_offerta": {"titolo": "Seguito a un'offerta inviata", "oggetto": "Seguito alla nostra offerta del {{data_offerta}} - {{cantiere}}",
+                          "corpo": "Gentile {{destinatario}},\n\nLe scriviamo in merito all'offerta che Le abbiamo inviato il {{data_offerta}} per {{cantiere}}.\n\n"
+                                   "Vorremmo sapere se ha avuto modo di valutarla e se desidera chiarimenti, una revisione dei punti dell'offerta o un nuovo sopralluogo. Restiamo a disposizione per qualsiasi domanda.\n\nCordiali saluti."},
     "sollecito": {"titolo": "Sollecito di pagamento", "oggetto": "Sollecito di pagamento - fattura {{fattura}}",
                   "corpo": "Spett.le {{destinatario}},\n\nrisulta ancora aperta la fattura n. {{fattura}} del {{data_fattura}} di importo {{importo}}, scaduta il {{scadenza}}.\n\n"
                            "Vi chiediamo di provvedere al pagamento entro {{giorni}} giorni, o di segnalarci eventuali motivi di contestazione. Se avete già pagato, Vi preghiamo di ignorare questa comunicazione e di inviarci la contabile.\n\nCordiali saluti."},

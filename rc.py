@@ -301,3 +301,75 @@ def vista_commerciale(righe, nome, oggi=None, params=None):
     out["da_fare"] = [d for d in tutto["da_fare"] if _chiave_nome(d["Chi"]) == _chiave_nome(nome)]
     out["mie"] = mie
     return out
+
+
+# ----------------------------------------------------------------------------
+# Offerte da seguire: offerte inviate da qualche giorno senza risposta
+# ----------------------------------------------------------------------------
+NOME_SOLLECITI = "offerte_solleciti"
+GIORNI_SOLLECITO = 7        # dopo quanti giorni dall'offerta ricordare di fare il seguito
+GIORNI_RIPETI = 14          # dopo un seguito, quanti giorni prima di riproporlo
+
+
+def da_sollecitare(righe, oggi=None, giorni=GIORNI_SOLLECITO, solleciti=None, ripeti=GIORNI_RIPETI):
+    """Pratiche in stato «S2-Offerta» con offerta inviata da almeno `giorni` giorni e nessun seguito recente. Le piu' vecchie e di valore alto per prime."""
+    oggi = oggi or dt.date.today()
+    solleciti = solleciti or {}
+    out = []
+    for r in righe or []:
+        if r.get("Archivio") == "Eliminata" or r.get("Stato") != "S2-Offerta":
+            continue
+        d = data_da(r.get("Offerta"))
+        if not d:
+            continue
+        eta = (oggi - d).days
+        if eta < giorni:
+            continue
+        ult = data_da(solleciti.get(r.get("Codice") or ""))
+        if ult and (oggi - ult).days < ripeti:
+            continue
+        out.append({"Codice": r["Codice"], "Indirizzo": r["Indirizzo"], "Citta": r["Citta"], "Amministratore": r["Amministratore"], "Commerciale": r["Commerciale"],
+                    "Valore": r["Valore"], "Offerta": d.isoformat(), "Giorni": eta, "Ultimo": ult.isoformat() if ult else ""})
+    out.sort(key=lambda x: (-x["Giorni"], -x["Valore"]))
+    return out
+
+
+def carica_solleciti(path=None):
+    import storage
+    try:
+        raw = storage.carica_pratica(NOME_SOLLECITI, path, modulo="cfg")
+    except Exception:
+        raw = None
+    return {str(k): str(v) for k, v in (raw or {}).items() if isinstance(raw, dict)}
+
+
+def segna_sollecito(codice, quando=None, autore="", path=None):
+    import storage
+    s = carica_solleciti(path)
+    s[str(codice)] = (quando or dt.date.today()).isoformat()
+    storage.salva_pratica(NOME_SOLLECITI, s, path, autore=autore, modulo="cfg")
+    storage.svuota_cache()
+
+
+def righe_registro(path=None):
+    """Righe normalizzate dell'ULTIMO salvataggio del Registro commerciale (vuoto se non c'e')."""
+    import storage
+    try:
+        el = storage.elenca_pratiche(path, modulo="rc")
+        if not el:
+            return []
+        p = storage.carica_pratica(el[0]["nome"], path, "rc") or {}
+        return normalizza(p.get("pratiche") or [])[0]
+    except Exception:
+        return []
+
+
+def lettera_seguito(riga, azienda=None, oggi=None):
+    """(oggetto, corpo) della lettera di seguito per una pratica."""
+    import lm
+    mod = lm.MODELLI_BASE["sollecito_offerta"]
+    cant = ", ".join(x for x in (riga.get("Indirizzo"), riga.get("Citta")) if x) or "l'intervento proposto"
+    val = lm.valori_automatici(azienda or lm.AZIENDA_BASE, {"Nome": riga.get("Amministratore") or "Cliente"}, {"Cantiere": cant}, oggi)
+    val["data_offerta"] = data_da(riga.get("Offerta"))
+    o, c, _m = lm.compila(mod, val)
+    return o, c

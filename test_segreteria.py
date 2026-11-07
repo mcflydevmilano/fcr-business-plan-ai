@@ -164,7 +164,7 @@ def test_compilazione_lettera_e_campi_mancanti():
 
 def test_modelli_personalizzati_e_word(tmp_path):
     cfg = lm.carica_cfg()
-    assert len(lm.modelli(cfg)) == 6
+    assert len(lm.modelli(cfg)) == 7
     cfg["modelli"]["mio_x"] = {"titolo": "Mio", "oggetto": "Ciao {{destinatario}}", "corpo": "Testo {{codice_cantiere}} e {{altro_dato}}"}
     cfg["modelli"]["diffida"] = {"titolo": "Diffida mia", "oggetto": "O", "corpo": "C {{giorni}}"}
     cfg["azienda"]["firmatario"] = "Ing. Rossi"

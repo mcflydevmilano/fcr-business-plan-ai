@@ -1,0 +1,9 @@
+[Unit]
+Description=FCR Suite - riepilogo del mattino, dal lunedi al venerdi alle 7:30
+
+[Timer]
+OnCalendar=Mon..Fri 07:30
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -60,6 +60,35 @@ def _euro(v):
     return f"{v:,.0f} €".replace(",", ".")
 
 
+def _offerte_da_seguire(righe, utente, audit):
+    """Offerte inviate da qualche giorno senza risposta: per ognuna la lettera di seguito gia' scritta."""
+    import lm
+    solleciti = rc.carica_solleciti()
+    giorni = st.number_input("Ricorda le offerte senza risposta dopo (giorni)", 3, 60, rc.GIORNI_SOLLECITO, key="rc_gg_seguito")
+    lista = rc.da_sollecitare(righe, dt.date.today(), int(giorni), solleciti)
+    st.markdown(f"##### 📞 Offerte da seguire ({len(lista)})")
+    if not lista:
+        st.success("Nessuna offerta in attesa da troppo tempo. Le offerte compaiono qui quando sono in stato «S2-Offerta» con la data offerta compilata.")
+        return
+    st.caption("Offerte inviate da qualche giorno, senza risposta. Apri una riga, copia o scarica la lettera di seguito e poi segna «Fatto»: la pratica sparisce per due settimane.")
+    az = lm.carica_cfg()["azienda"]
+    for i, o in enumerate(lista[:20]):
+        with st.expander(f"{o['Codice']} · {o['Indirizzo'] or o['Citta']} · {o['Amministratore'] or '(senza referente)'} · {_euro(o['Valore'])} · {o['Giorni']} giorni"):
+            ogg, corpo = rc.lettera_seguito(o, az)
+            st.text_input("Oggetto", ogg, key=f"rc_seg_o_{i}")
+            txt = st.text_area("Lettera", corpo, height=220, key=f"rc_seg_c_{i}")
+            c1, c2 = st.columns(2)
+            try:
+                doc = lm.docx_lettera(az, o["Amministratore"] or "", ogg, txt, f"{az.get('luogo', '')}, {dt.date.today().strftime('%d/%m/%Y')}", az.get("firmatario", ""), az.get("ruolo_firmatario", ""))
+                c1.download_button("⬇️ Scarica in Word", doc, f"seguito_{o['Codice'] or i}.docx", key=f"rc_seg_d_{i}", width="stretch")
+            except Exception:
+                pass
+            if c2.button("✔ Fatto: segna come sollecitata", key=f"rc_seg_ok_{i}", width="stretch"):
+                rc.segna_sollecito(o["Codice"], dt.date.today(), utente)
+                audit("offerta_seguita", o["Codice"])
+                st.rerun()
+
+
 def render(fcr_uri, audit=None, utente=""):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Registro commerciale", "Tutte le pratiche dalla prima richiesta al contratto: a che punto sono, quanto valgono e cosa va fatto adesso."), unsafe_allow_html=True)
@@ -119,6 +148,8 @@ def render(fcr_uri, audit=None, utente=""):
             st.caption("Per eliminare una pratica dal registro senza perderla, cambia «Archivio» in «Eliminata». Il cestino della tabella la cancella del tutto.")
 
     with t3:
+        _offerte_da_seguire(righe, utente, audit)
+        st.markdown("##### Prossimi interventi")
         st.number_input("Preavviso (giorni)", 0, 60, step=1, key="rc_preavviso_gg")
         df_ = out["da_fare"]
         if not df_:

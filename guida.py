@@ -67,6 +67,17 @@ PASSI = {
         ("Approvazione", "Il responsabile approva o respinge, con una nota, dalla scheda «Da approvare».", None),
         ("Riepilogo", "L'amministrazione vede il mese per persona, cantiere e categoria, scarica l'Excel e gli scontrini e segna le spese rimborsate.", None),
     ], "Senza ricevuta la spesa si invia solo spiegando bene cosa è stato pagato."),
+    "sd": ("Non farsi mai sorprendere da una scadenza di persone, ditte o mezzi.", [
+        ("Aggiungi le scadenze", "Nella scheda «2» scrivi tipo, persona o mezzo e data. Oppure carica il tuo Excel dalla scheda «3».", None),
+        ("Guarda cosa scade", "Nella scheda «1» il semaforo ti dice cosa è scaduto, cosa scade presto e cosa è più avanti.", None),
+        ("Scegli quando avvisare", "Nella scheda «3» scegli i giorni di preavviso (di solito 60, 30 e 7).", None),
+        ("Lascia fare al riepilogo", "Le scadenze vicine arrivano ogni mattina nel tuo riepilogo, se è acceso.", None),
+    ], "Rinnova prima della scadenza e aggiorna la data qui: l'avviso sparisce da solo."),
+    "rm": ("Sapere ogni mattina, senza cercare, cosa richiede la tua attenzione.", [
+        ("Leggi il riepilogo", "Nella scheda «Il riepilogo di oggi» vedi cosa conta oggi: scadenze, offerte da seguire, chi manca.", None),
+        ("Scegli se riceverlo per email", "Se hai un indirizzo email nel profilo, puoi decidere se riceverlo ogni mattina.", None),
+        ("Amministratore: accendilo", "Nelle impostazioni accendi l'invio, provalo su di te e invia a tutti.", None),
+    ], "Il riepilogo mostra solo gli strumenti che puoi aprire."),
     "lm": ("Scrivere in pochi secondi le lettere che si ripetono, senza ricopiare i dati.", [
         ("Scegli il modello", "Incarico, richiesta di preventivo, convocazione, diffida, risposta tipo o sollecito di pagamento.", None),
         ("Scegli destinatario e cantiere", "Si prendono dalla Rubrica: nome, referente, indirizzo e cliente si compilano da soli.", None),

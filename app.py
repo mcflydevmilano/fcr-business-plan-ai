@@ -83,6 +83,8 @@ import ee_ui
 import fp_ui
 import ns_ui
 import lm_ui
+import mattino_ui
+import sd_ui
 import theme
 import ui_util
 import xbrl
@@ -721,7 +723,7 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",), "ch": ("chat_",), "mc": ("mc_",), "sa": ("sa_",), "pr": ("pr_",), "mt": ("mt_",), "vr": ("vr_",), "ad": ("ad_",), "fc": ("fc_",), "ta": ("ta_",), "sk": ("sk_",), "nv": ("nv_",), "ac": ("ac_",), "fv": ("fv_",), "es": ("es_",), "ee": ("ee_",), "fp": ("fp_",), "ns": ("ns_",), "lm": ("lm_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",), "ch": ("chat_",), "mc": ("mc_",), "sa": ("sa_",), "pr": ("pr_",), "mt": ("mt_",), "vr": ("vr_",), "ad": ("ad_",), "fc": ("fc_",), "ta": ("ta_",), "sk": ("sk_",), "nv": ("nv_",), "ac": ("ac_",), "fv": ("fv_",), "es": ("es_",), "ee": ("ee_",), "fp": ("fp_",), "ns": ("ns_",), "lm": ("lm_",), "sd": ("sd_",), "rm": ("rm_",)}
 
 
 pwa.inietta()
@@ -1123,7 +1125,7 @@ if MODULO == "ca":
     ui_util.bozza_fine()
     st.stop()
 
-for _m, _ui in (("fp", fp_ui), ("ns", ns_ui), ("lm", lm_ui)):
+for _m, _ui in (("fp", fp_ui), ("ns", ns_ui), ("lm", lm_ui), ("sd", sd_ui), ("rm", mattino_ui)):
     if MODULO == _m:
         _ui.render(FCR_URI, audit, ss["utente"], PROFILO, UTENTI_SECRETS)
         ui_util.bozza_fine()

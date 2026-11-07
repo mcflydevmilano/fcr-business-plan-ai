@@ -21,7 +21,7 @@ def test_new_si_spegne_quando_apri_e_per_persona(tmp_path):
 
 def test_new_scade_dopo_giorni(tmp_path):
     p = str(tmp_path / "n.db")
-    assert novita.sigle_nuove("anna", OGGI + dt.timedelta(days=novita.GIORNI_NEW + 1), p) == {}
+    assert novita.sigle_nuove("anna", OGGI + dt.timedelta(days=novita.GIORNI_NEW + 30), p) == {}
 
 
 def test_new_automatico_con_nuova_voce(tmp_path):

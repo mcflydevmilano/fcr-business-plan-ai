@@ -17,6 +17,12 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.25.0", "data": "2026-11-07", "titolo": "Riepilogo del mattino, offerte da seguire, scadenze di persone e mezzi",
+     "voci": ["Il mio riepilogo (nuovo): ogni mattina solo le cose che ti riguardano, in base ai tuoi strumenti: semafori urgenti, offerte da seguire, scadenze vicine, chi manca oggi. Per email a chi ha l'indirizzo e, per l'azienda, su Slack. Lo accende l'amministratore; ognuno può scegliere se riceverlo.",
+              "Registro commerciale, scheda «Da fare»: nuova sezione «Offerte da seguire» con le offerte inviate da più di 7 giorni senza risposta. Per ognuna la lettera di seguito è già scritta (si scarica in Word) e, dopo il seguito, la pratica sparisce per due settimane.",
+              "Scadenze di persone e mezzi (nuovo): formazione sulla sicurezza, visite mediche, DURC, assicurazioni, revisioni in un elenco con semaforo e avvisi a 60, 30 e 7 giorni. Importi il tuo Excel e scarichi l'elenco.",
+              "Lettere e modelli: nuovo modello «Seguito a un'offerta inviata»."],
+     "strumenti": ["Il mio riepilogo", "Scadenze di persone e mezzi", "Registro commerciale", "Lettere e modelli"]},
     {"id": "3.24.2", "data": "2026-11-07", "titolo": "Avviso «modifiche non salvate» e Hub più ordinato",
      "voci": ["Se in uno strumento ci sono modifiche non salvate compare in basso a sinistra «Modifiche non salvate»: toccalo e ti porta al pulsante Salva.",
               "Se aggiorni o chiudi la pagina con modifiche non salvate, il browser ti chiede conferma.",
