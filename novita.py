@@ -17,6 +17,11 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.26.0", "data": "2026-11-07", "titolo": "Fatture elettroniche, sopralluogo da telefono, lettura bandi",
+     "voci": ["Fatture elettroniche (nuovo): carichi i file XML (anche .p7m o uno ZIP con tante fatture) e le scadenze vanno nello Scadenzario, col cantiere giusto se nel testo c'è il suo codice. Le fatture già presenti non vengono doppiate.",
+              "Sopralluogo da telefono (nuovo): domande guidate sul posto, foto di tetto e quadro, avvisi su amianto, potenza e distanze. Un tasto porta tutto nel Preventivo fotovoltaico, già compilato; riepilogo in Word.",
+              "Lettura bandi (nuovo): carichi il PDF del bando e trovi CIG, importo, scadenza, categorie SOA e l'elenco dei documenti da preparare. Va sempre controllato sull'originale."],
+     "strumenti": ["Fatture elettroniche", "Sopralluogo da telefono", "Lettura bandi"]},
     {"id": "3.25.0", "data": "2026-11-07", "titolo": "Riepilogo del mattino, offerte da seguire, scadenze di persone e mezzi",
      "voci": ["Il mio riepilogo (nuovo): ogni mattina solo le cose che ti riguardano, in base ai tuoi strumenti: semafori urgenti, offerte da seguire, scadenze vicine, chi manca oggi. Per email a chi ha l'indirizzo e, per l'azienda, su Slack. Lo accende l'amministratore; ognuno può scegliere se riceverlo.",
               "Registro commerciale, scheda «Da fare»: nuova sezione «Offerte da seguire» con le offerte inviate da più di 7 giorni senza risposta. Per ognuna la lettera di seguito è già scritta (si scarica in Word) e, dopo il seguito, la pratica sparisce per due settimane.",

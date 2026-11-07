@@ -67,6 +67,23 @@ PASSI = {
         ("Approvazione", "Il responsabile approva o respinge, con una nota, dalla scheda «Da approvare».", None),
         ("Riepilogo", "L'amministrazione vede il mese per persona, cantiere e categoria, scarica l'Excel e gli scontrini e segna le spese rimborsate.", None),
     ], "Senza ricevuta la spesa si invia solo spiegando bene cosa è stato pagato."),
+    "fe": ("Portare le fatture dei fornitori nello Scadenzario senza riscriverle a mano.", [
+        ("Scarica le fatture", "Dal cassetto fiscale o dal programma di fatturazione, in formato XML (anche tante in uno ZIP).", None),
+        ("Caricale qui", "Trascinale nel riquadro e scegli se sono ricevute (da pagare) o emesse (da incassare).", None),
+        ("Controlla il cantiere", "Se nel testo c'è il codice del cantiere lo propongo io; altrimenti lo scegli dall'elenco.", None),
+        ("Aggiungi allo Scadenzario", "Premi il pulsante e poi, nello Scadenzario, Salva. Le fatture già presenti non vengono doppiate.", None),
+    ], "Le note di credito non vengono aggiunte."),
+    "sp": ("Fare il sopralluogo con il telefono e partire già col preventivo.", [
+        ("Compila sul posto", "Rispondi alle domande: tetto, esposizione, superficie, ombre, potenza impegnata.", None),
+        ("Scatta le foto", "Tetto, quadro elettrico, contatore e posto dell'inverter.", None),
+        ("Leggi gli avvisi", "Ti dico cosa controllare (amianto, potenza, distanza dal quadro).", None),
+        ("Crea il preventivo", "Un tasto porta tutto nel Preventivo fotovoltaico, già compilato.", None),
+    ], "Salva sempre il sopralluogo prima di andare via."),
+    "bd": ("Leggere un bando in pochi secondi e sapere cosa preparare.", [
+        ("Carica il PDF", "Il bando o il capitolato con testo selezionabile (non una scansione).", None),
+        ("Guarda cosa ho trovato", "CIG, importo, scadenza, categorie SOA e documenti richiesti.", None),
+        ("Segui l'elenco", "Spunta le cose da preparare una a una.", None),
+    ], "Controlla sempre sul documento originale: la lettura può sbagliare."),
     "sd": ("Non farsi mai sorprendere da una scadenza di persone, ditte o mezzi.", [
         ("Aggiungi le scadenze", "Nella scheda «2» scrivi tipo, persona o mezzo e data. Oppure carica il tuo Excel dalla scheda «3».", None),
         ("Guarda cosa scade", "Nella scheda «1» il semaforo ti dice cosa è scaduto, cosa scade presto e cosa è più avanti.", None),

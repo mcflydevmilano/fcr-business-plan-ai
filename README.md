@@ -240,6 +240,11 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.26.0
+- `fe.py` / `fe_ui.py` (sigla `fe`): lettura FatturaPA (XML, .p7m, ZIP) → righe per lo Scadenzario (`sc_df`), cantiere dal codice, anti-duplicati.
+- `sp.py` / `sp_ui.py` (sigla `sp`): sopralluogo guidato con foto (cfg `sopralluoghi`), controlli e passaggio al Preventivo fotovoltaico via `ss["_pending"]`.
+- `bd.py` / `bd_ui.py` (sigla `bd`): estrazione da bandi PDF con regole (CIG, CUP, importo, scadenza, SOA, documenti) e, se c'è la chiave, con l'IA.
+
 ## Novità 3.25.0
 - `mattino.py` / `mattino_ui.py` (sigla `rm`): riepilogo personale (sezioni per permessi: semafori, offerte da seguire, scadenze, assenti), invio email a chi ha l'indirizzo e Slack (`SLACK_RIEPILOGO_WEBHOOK_URL`). Cfg `mattino_cfg`, stato `mattino_stato`. Script `invia_mattino.py` + `deploy/fcr-mattino.service|timer` (lun-ven 7:30). Il `riepilogo.py` del Cruscotto resta invariato.
 - `rc.da_sollecitare` + sezione «Offerte da seguire» in Registro commerciale (cfg `offerte_solleciti`), modello lettera `sollecito_offerta`.
