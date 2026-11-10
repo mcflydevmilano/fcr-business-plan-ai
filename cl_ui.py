@@ -40,22 +40,12 @@ def _euro(v):
     return "€ " + fmt_num(v, 2)
 
 
-def _carica_esempio():
-    e = cl.esempio()
-    ss["cl_extra"] = []
-    sostituisci_tabella("cl_df", _df(cl.normalizza(e["voci"])))
-    ss["_pending"] = {"cl_titolo": e["titolo"], "cl_et_base": e["etichetta_base"], "cl_et_agg": e["etichetta_agg"]}
-
-
 def _scheda_voci():
     extra = _extra()
     if ss["cl_df"].empty:
-        st.info("Il computo è vuoto. Scrivi le voci nella tabella, importa un Excel, oppure carica il computo di Sommacampagna già ricopiato dal PDF del Comune.")
-        if st.button("📥 Carica il computo di Sommacampagna (ex limonaia, 55 voci)", key="cl_esempio", type="primary", disabled=sola_lettura()):
-            _carica_esempio()
-            st.rerun()
+        st.info("Il computo è vuoto. Scrivi le voci nella tabella oppure importa un Excel.")
     a, b = st.columns(2)
-    a.text_input("Titolo del computo", key="cl_titolo", placeholder="es. Sommacampagna - lavori rimanenti", disabled=sola_lettura())
+    a.text_input("Titolo del computo", key="cl_titolo", placeholder="es. Via Roma 12 - lavori rimanenti", disabled=sola_lettura())
     cant = [""] + [c["Codice"] for c in cantieri_rubrica() if c.get("Codice")]
     if ss.get("cl_cantiere") not in cant:
         cant.append(ss.get("cl_cantiere") or "")
@@ -112,12 +102,6 @@ def _scheda_voci():
                 st.rerun()
             for x in avv:
                 st.warning(x)
-    if not ss["cl_df"].empty:
-        with st.expander("📥 Carica il computo di Sommacampagna"):
-            st.caption("Sostituisce quello che vedi con le 55 voci ricopiate dal PDF del Comune (prot. 0025905/2025 del 06/11/2025).")
-            if st.button("Sostituisci con il computo di Sommacampagna", key="cl_esempio2", disabled=sola_lettura()):
-                _carica_esempio()
-                st.rerun()
 
 
 def _scheda_risultato(out, audit):

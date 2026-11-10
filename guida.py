@@ -68,7 +68,7 @@ PASSI = {
         ("Riepilogo", "L'amministrazione vede il mese per persona, cantiere e categoria, scarica l'Excel e gli scontrini e segna le spese rimborsate.", None),
     ], "Senza ricevuta la spesa si invia solo spiegando bene cosa è stato pagato."),
     "cl": ("Tenere il computo dei lavori rimanenti di un cantiere, con i prezzi aggiornati al nuovo prezzario.", [
-        ("Scrivi o carica le voci", "Nella scheda «1» scrivi le voci, importa un Excel oppure carica il computo di Sommacampagna già pronto.", None),
+        ("Scrivi o carica le voci", "Nella scheda «1» scrivi le voci oppure importa un Excel.", None),
         ("Aggiorna i prezzi", "Per ogni voce metti coefficiente, prezzario nuovo e % di aumento: il prezzo aggiornato si calcola da solo.", None),
         ("Aggiungi le tue colonne", "Con «Aggiungi o togli una colonna» metti le colonne che ti servono (es. subappaltatore, stato).", None),
         ("Guarda i totali", "Nella scheda «2» vedi il computo completo, il totale di progetto, quello aggiornato e la differenza. Scarichi l'Excel.", None),

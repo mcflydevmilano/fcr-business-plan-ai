@@ -35,21 +35,32 @@ def test_senza_prezzario_il_prezzo_resta_e_i_valori_a_mano_vincono():
     assert cl._n("1.234,56") == 1234.56 and cl._n("(8,82)") == -8.82 and cl._n("") is None and cl._n("€ 12,50") == 12.5
 
 
-def test_il_computo_di_sommacampagna_torna_al_centesimo():
-    e = cl.esempio()
-    o = cl.calcola(cl.normalizza(e["voci"]))
-    assert len(o["righe"]) == 55 and o["tot_esecutivo"] == 684155.49 and o["tot_aggiornato"] == 844141.38
-    assert o["righe"][0]["Codice E.P.U."] == "E.13.002.00" and "finito a frattazzo" in o["righe"][0]["Descrizione"]
+def _righe_prova():
+    """Tre voci come nel computo del Comune (stessa formula, numeri verificati a mano)."""
+    return cl.normalizza([
+        {"N.": "2", "Capitolo": "VESPAI - MASSETTI", "Codice E.P.U.": "E.13.002.00", "Descrizione": "Massetto formato da sabbia e cemento", "U.M.": "m²", "Quantità": 617.78,
+         "Prezzo unitario €": 17.24, "Zona / note": "Sottofondi pavimenti", "Coefficiente": 1.05, "Prezzario nuovo €": 23.26, "% di aumento": 0.8},
+        {"N.": "3", "Capitolo": "VESPAI - MASSETTI", "Codice E.P.U.": "E.13.003.00", "Descrizione": "Massetto in conglomerato cementizio", "U.M.": "m²", "Quantità": 150.0,
+         "Prezzo unitario €": 34.52, "Zona / note": "Massetto pav esterne", "Coefficiente": 1.05, "Prezzario nuovo €": 45.58, "% di aumento": 0.8},
+        {"N.": "15", "Capitolo": "TETTI", "Codice E.P.U.": "E.04.12.b", "Descrizione": "Fornitura e posa di doppio tavolato strutturale", "U.M.": "m²", "Quantità": 122.0,
+         "Prezzo unitario €": 54.60, "Zona / note": "TETTO EX LIMONAIA", "Coefficiente": 1.05, "Prezzario nuovo €": 59.13, "% di aumento": 0.8},
+    ])
+
+
+def test_i_totali_di_tre_voci_tornano_al_centesimo():
+    o = cl.calcola(_righe_prova())
+    assert len(o["righe"]) == 3 and o["tot_esecutivo"] == 22489.73 and o["tot_aggiornato"] == 26334.69
+    assert o["righe"][0]["Codice E.P.U."] == "E.13.002.00" and "Massetto" in o["righe"][0]["Descrizione"]
 
 
 def test_excel_andata_e_ritorno_con_colonna_aggiunta():
-    righe = cl.normalizza([dict(v, Subappaltatore="Edilmar") for v in cl.esempio()["voci"][:5]], ["Subappaltatore"])
+    righe = cl.normalizza([dict(v, Subappaltatore="Edilmar") for v in _righe_prova()], ["Subappaltatore"])
     x = cl.excel_bytes(righe, ["Subappaltatore"])
     assert {"Computo", "Riepilogo", "Per capitolo", "Dati da reimportare"} <= set(pd.ExcelFile(io.BytesIO(x)).sheet_names)
     b = io.BytesIO()
     pd.read_excel(io.BytesIO(x), sheet_name="Dati da reimportare").to_excel(b, index=False)
     lette, extra, _ = cl.da_excel(b.getvalue())
-    assert extra == ["Subappaltatore"] and len(lette) == 5 and lette[0]["Subappaltatore"] == "Edilmar"
+    assert extra == ["Subappaltatore"] and len(lette) == 3 and lette[0]["Subappaltatore"] == "Edilmar"
     assert cl.calcola(lette)["tot_aggiornato"] == cl.calcola(righe)["tot_aggiornato"]
     vuoto = io.BytesIO()
     pd.DataFrame([["a", "b"], [1, 2]]).to_excel(vuoto, index=False, header=False)
@@ -64,13 +75,10 @@ def _admin():
     return at.run()
 
 
-def test_interfaccia_carica_sommacampagna_e_aggiunge_una_colonna():
+def test_interfaccia_apre_vuoto_e_aggiunge_una_colonna():
     at = _admin()
     assert not at.exception, [e.value for e in at.exception]
-    at.button(key="cl_esempio").click().run()
-    assert not at.exception, [e.value for e in at.exception]
-    assert len(at.session_state["cl_df"]) == 55 and at.session_state["cl_titolo"].startswith("Sommacampagna")
-    assert any("844.141,38" in m.value for m in at.markdown)
+    assert any("computo è vuoto" in i.value for i in at.info)
     at.text_input(key="cl_col_nuova").set_value("Subappaltatore")
     at.button(key="cl_col_add").click().run()
     assert not at.exception, [e.value for e in at.exception]
@@ -81,11 +89,10 @@ def test_interfaccia_carica_sommacampagna_e_aggiunge_una_colonna():
 
 def test_salva_e_riapre():
     import cl_ui  # noqa: F401
-    e = cl.esempio()
-    storage.salva_pratica("Sommacampagna", {"voci": e["voci"], "extra": ["Stato"], "campi": {"cl_titolo": "Somma"}}, autore="x", modulo="cl")
+    storage.salva_pratica("Sommacampagna", {"voci": _righe_prova(), "extra": ["Stato"], "campi": {"cl_titolo": "Somma"}}, autore="x", modulo="cl")
     assert storage.elenca_pratiche(modulo="cl")[0]["nome"] == "Sommacampagna"
     at = _admin()
     at.session_state["_apri_pratica"] = {"modulo": "cl", "nome": "Sommacampagna"}
     at.run()
     assert not at.exception, [e.value for e in at.exception]
-    assert len(at.session_state["cl_df"]) == 55 and "Stato" in at.session_state["cl_df"].columns and at.session_state["cl_titolo"] == "Somma"
+    assert len(at.session_state["cl_df"]) == 3 and "Stato" in at.session_state["cl_df"].columns and at.session_state["cl_titolo"] == "Somma"

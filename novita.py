@@ -17,6 +17,8 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.28.2", "data": "2026-11-10", "titolo": "Tolto il computo di esempio da «Computo di cantiere»", "voci": [
+        "Tolto il pulsante che caricava il computo di Sommacampagna come esempio: lo strumento ora parte sempre vuoto, pronto per i vostri cantieri veri."], "strumenti": []},
     {"id": "3.28.1", "data": "2026-11-10", "titolo": "Corretto un errore cambiando strumento dopo aver aperto un caricamento file", "voci": [
         "Se uscivi da uno strumento con un caricamento file (es. Computo di cantiere, Fatture elettroniche, Lettura bandi, Scadenze di persone e mezzi, Sopralluogo) e poi ci tornavi, a volte compariva un errore tecnico (\u00abis read-only\u00bb). Ora non succede più."], "strumenti": []},
     {"id": "3.28.0", "data": "2026-11-10", "titolo": "Computo di cantiere con i prezzi aggiornati",

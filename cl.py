@@ -2,8 +2,6 @@
 Colonne di base come nel computo del Comune (N., codice E.P.U., descrizione, U.M., quantita', prezzo unitario, totale da esecutivo, coefficiente,
 F x I, prezzario nuovo, differenza, % di aumento, prezzo aggiornato, totale aggiornato). Si possono aggiungere colonne libere."""
 import io
-import json
-import os
 
 COLONNE = ["N.", "Capitolo", "Codice E.P.U.", "Descrizione", "U.M.", "Quantità", "Prezzo unitario €", "Zona / note", "Coefficiente", "Prezzario nuovo €", "% di aumento",
            "Totale esecutivo a mano €", "Prezzo aggiornato a mano €", "Totale aggiornato a mano €"]
@@ -13,7 +11,6 @@ COLONNE_RISULTATO = ["N.", "Capitolo", "Codice E.P.U.", "Descrizione", "U.M.", "
                      "Prezzario nuovo €", "Differenza €", "% di aumento", "Aumento €", "Prezzo aggiornato €", "Totale aggiornato €"]
 COEFF_BASE, PERC_BASE = 1.05, 0.8
 MAX_EXTRA = 12
-ESEMPIO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "computo_sommacampagna.json")
 # nomi di colonna accettati quando si importa un Excel (minuscolo, senza spazi doppi)
 ALIAS = {"n.": "N.", "n": "N.", "capitolo": "Capitolo", "codice e.p.u.": "Codice E.P.U.", "codice": "Codice E.P.U.", "codice epu": "Codice E.P.U.", "descrizione": "Descrizione",
          "u.m.": "U.M.", "um": "U.M.", "quantità": "Quantità", "quantita": "Quantità", "prezzo unitario €": "Prezzo unitario €", "prezzo unitario": "Prezzo unitario €",
@@ -105,12 +102,6 @@ def calcola(righe, extra=()):
             avvisi.append(f"{nome}: il prezzario nuovo è più basso del prezzo di progetto rivalutato, quindi il prezzo scende.")
     return {"righe": out, "tot_esecutivo": round(te, 2), "tot_aggiornato": round(ta, 2), "differenza": round(ta - te, 2), "aumento_pct": round((ta / te - 1) * 100, 2) if te else 0.0,
             "per_capitolo": [{"Capitolo": k, "Totale da esecutivo €": round(v[0], 2), "Totale aggiornato €": round(v[1], 2)} for k, v in capitoli.items()], "avvisi": avvisi}
-
-
-def esempio():
-    """Il computo dei lavori rimanenti di Sommacampagna (ex limonaia), ricopiato dal PDF del Comune del 06/11/2025."""
-    with open(ESEMPIO, encoding="utf-8") as f:
-        return json.load(f)
 
 
 def da_excel(dati, extra=()):
