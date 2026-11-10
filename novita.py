@@ -17,6 +17,8 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.28.1", "data": "2026-11-10", "titolo": "Corretto un errore cambiando strumento dopo aver aperto un caricamento file", "voci": [
+        "Se uscivi da uno strumento con un caricamento file (es. Computo di cantiere, Fatture elettroniche, Lettura bandi, Scadenze di persone e mezzi, Sopralluogo) e poi ci tornavi, a volte compariva un errore tecnico (\u00abis read-only\u00bb). Ora non succede più."], "strumenti": []},
     {"id": "3.28.0", "data": "2026-11-10", "titolo": "Computo di cantiere con i prezzi aggiornati",
      "voci": ["Computo di cantiere (nuovo): i lavori rimanenti con le colonne del computo del Comune (codice E.P.U., descrizione, quantità, prezzo, totale da esecutivo, coefficiente, prezzario nuovo, % di aumento, prezzo e totale aggiornati). Il prezzo aggiornato si calcola da solo.",
               "Puoi aggiungere le tue colonne, importare ed esportare in Excel e salvare un computo per ogni cantiere.",

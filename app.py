@@ -637,7 +637,9 @@ export default function(c) {
 
 @st.cache_resource(show_spinner=False)
 def _chiavi_pulsanti():
-    """Chiavi (esatte e prefissi di quelle con f-string) dei pulsanti dichiarati nel codice: i loro valori non vanno mai ripristinati."""
+    """Chiavi (esatte e prefissi di quelle con f-string) dei widget dichiarati nel codice il cui valore Streamlit non permette di ripristinare
+    tramite session_state: pulsanti (il click non e' un valore da riassegnare) e caricamento file/foto/audio (assegnarli da' errore anche se il
+    nuovo valore e' uguale al vecchio, e l'errore compare solo quando il widget viene ricreato, non al momento dell'assegnazione)."""
     import glob
     esatte, prefissi = set(), set()
     for f in glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), "*.py")):
@@ -647,7 +649,7 @@ def _chiavi_pulsanti():
             src = open(f, encoding="utf-8").read()
         except OSError:
             continue
-        for mm in re.finditer(r"(?:button|form_submit_button|download_button)\(", src):
+        for mm in re.finditer(r"(?:button|form_submit_button|download_button|file_uploader|camera_input|audio_input|data_editor)\(", src):
             i, prof = mm.end(), 1
             while i < len(src) and prof:
                 prof += (src[i] == "(") - (src[i] == ")")
@@ -664,6 +666,7 @@ def _chiavi_pulsanti():
 
 
 def _e_pulsante(chiave):
+    """Nonostante il nome (storico), copre anche gli altri widget che non si possono ripristinare: vedi _chiavi_pulsanti."""
     esatte, prefissi = _chiavi_pulsanti()
     return isinstance(chiave, str) and (chiave in esatte or (bool(prefissi) and chiave.startswith(prefissi)))
 
