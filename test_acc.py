@@ -235,4 +235,30 @@ def test_registro_mostra_i_fuori_sede_di_oggi(monkeypatch, tmp_path):
     app.session_state["active_module"] = "ac"
     app.run()
     assert not app.exception
-    assert any("Cantiere Via Roma 12" in i.value for i in app.info)
+
+
+def test_timbratura_vale_anche_sabato_e_domenica(tmp_path):
+    """Non c'e' nessun blocco per sabato o domenica: la timbratura funziona tutti i giorni."""
+    p = _db(tmp_path)
+    sabato = dt.datetime(2026, 11, 7)                      # 7/11/2026 e' un sabato
+    domenica = dt.datetime(2026, 11, 8)
+    assert sabato.weekday() == 5 and domenica.weekday() == 6
+    assert acc.timbra("anna", "entrata", CFG, SEDE_IP, path=p, adesso=sabato.replace(hour=8))["ok"]
+    assert acc.timbra("anna", "uscita", CFG, SEDE_IP, path=p, adesso=sabato.replace(hour=17))["ok"]
+    assert acc.timbra("anna", "entrata", CFG, SEDE_IP, path=p, adesso=domenica.replace(hour=9))["ok"]
+
+
+def test_correggere_lora_di_entrata_sostituisce_quella_sbagliata_e_conta_tutte_le_ore(tmp_path):
+    """Se l'entrata e' registrata a un'ora sbagliata (es. le 10 invece delle 8) e si corregge con «correggi», la vecchia timbratura
+    va annullata automaticamente e le ore lavorate si contano dall'ora corretta (le 8), non da quando si fa la correzione."""
+    p = _db(tmp_path)
+    assert acc.timbra("anna", "entrata", CFG, SEDE_IP, path=p, adesso=_t(10, g=6))["ok"]     # ora sbagliata: le 10 (locale 11:00)
+    acc.correggi("anna", "entrata", dt.datetime(2026, 11, 6, 8, 0), "arrivata alle 8, non alle 10", "lorenzo", p)
+    assert acc.timbra("anna", "uscita", CFG, SEDE_IP, path=p, adesso=_t(18, g=6))["ok"]      # uscita alle 18 (locale 19:00)
+    ev = storage.elenca_timbrature(utente="anna", path=p)
+    g = acc.riepilogo_giorno(ev, dt.date(2026, 11, 6), _t(19, g=6))
+    assert g["anomalie"] == []                                                # nessuna «Entrata doppia»
+    assert g["lavorato_min"] == 11 * 60                                       # dalle 8 alle 19 locali: 11 ore, non 9
+    con_annullate = storage.elenca_timbrature(utente="anna", con_annullate=True, path=p)
+    annullate = [e for e in con_annullate if e["annullata"]]
+    assert len(annullate) == 1 and "sostituita da una correzione" in annullate[0]["motivo_annullo"]

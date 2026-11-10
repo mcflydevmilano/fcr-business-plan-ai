@@ -228,12 +228,21 @@ def timbra(utente, tipo, cfg, ip, pos=None, path=None, adesso=None, esterno=None
 
 
 def correggi(utente, tipo, quando_locale, nota, autore, path=None):
-    """Inserimento a mano (dimenticanze): richiede il motivo. quando_locale = datetime italiano."""
+    """Inserimento a mano (dimenticanze) o modifica dell'ora di Entrata/Uscita: richiede il motivo. quando_locale = datetime italiano.
+    Per Entrata e Uscita, se quel giorno c'e' gia' una timbratura dello stesso tipo (non annullata), viene annullata automaticamente
+    prima di inserire quella corretta: cosi' la correzione SOSTITUISCE l'ora sbagliata invece di aggiungersi, ed e' da quell'ora
+    corretta (non da quando si fa la correzione) che si calcolano le ore lavorate."""
     if tipo not in TIPI:
         raise ValueError("Tipo non valido.")
     if not str(nota or "").strip():
         raise ValueError("Scrivi il motivo della correzione.")
-    return storage.aggiungi_timbratura(utente, tipo, "manuale", None, str(nota).strip()[:300], autore, da_locale(quando_locale), path)
+    nota = str(nota).strip()[:300]
+    if tipo in ("entrata", "uscita"):
+        giorno = quando_locale.date()
+        for e in storage.elenca_timbrature(utente=utente, path=path):
+            if e["tipo"] == tipo and a_locale(e["ts"]).date() == giorno:
+                storage.annulla_timbratura(e["id"], f"ora sbagliata, sostituita da una correzione: {nota}"[:300], autore, path)
+    return storage.aggiungi_timbratura(utente, tipo, "manuale", None, nota, autore, da_locale(quando_locale), path)
 
 
 def annulla(id_, motivo, autore, path=None):
@@ -261,8 +270,9 @@ def riepilogo_giorno(eventi, giorno, adesso=None):
         k = e["tipo"]
         if k == "entrata":
             if inizio is not None:
-                anomalie.append("Entrata doppia")
-            inizio = t
+                anomalie.append("Entrata doppia")      # resta valida la prima: le ore si contano da quella, non dalla doppia
+            else:
+                inizio = t
         elif k == "rientro":
             if ini_pausa is not None:
                 m_ = (t - ini_pausa).total_seconds() / 60

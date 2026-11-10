@@ -17,6 +17,8 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.28.3", "data": "2026-11-10", "titolo": "Corretta la correzione dell'orario in «Accessi del personale»", "voci": [
+        "Quando si corregge l'ora di Entrata o Uscita di qualcuno (es. una timbratura dimenticata o sbagliata), la vecchia timbratura di quel giorno viene ora sostituita invece di restare insieme a quella nuova: prima, se restavano entrambe, le ore lavorate tra le due non venivano contate."], "strumenti": ["Accessi del personale"]},
     {"id": "3.28.2", "data": "2026-11-10", "titolo": "Tolto il computo di esempio da «Computo di cantiere»", "voci": [
         "Tolto il pulsante che caricava il computo di Sommacampagna come esempio: lo strumento ora parte sempre vuoto, pronto per i vostri cantieri veri."], "strumenti": []},
     {"id": "3.28.1", "data": "2026-11-10", "titolo": "Corretto un errore cambiando strumento dopo aver aperto un caricamento file", "voci": [
