@@ -21,9 +21,22 @@ import sys
 import tempfile
 
 import chat
+import ddt
+import richieste
 import storage
 
 VERSIONE_FORMATO = 1
+
+
+def _assicura_schema(path):
+    """Crea le tabelle di tutti i moduli che le creano al primo uso (chat, richieste, DDT), cosi' anche un database
+    appena creato (es. quello temporaneo usato per verificare un backup) le ha gia' tutte, anche quelle oggi vuote."""
+    with chat._db(path):
+        pass
+    with richieste._db(path):
+        pass
+    with ddt._db(path):
+        pass
 
 
 def _fernet(chiave=None):
@@ -44,6 +57,7 @@ def _tabelle(con):
 
 def esporta(path=None):
     """Tutte le tabelle: {nome: {"colonne": [...], "righe": [[...]]}}."""
+    _assicura_schema(path)
     with chat._db(path) as con:                 # crea anche le tabelle della chat, se mancano
         out = {}
         for t in _tabelle(con):
@@ -72,6 +86,7 @@ def conteggi(dati):
 
 def ripristina(dati, path=None):
     """SOSTITUISCE il contenuto delle tabelle del database con quello del backup."""
+    _assicura_schema(path)
     with chat._db(path) as con:
         pg = isinstance(con, storage._ConPG)
         esistenti = set(_tabelle(con))

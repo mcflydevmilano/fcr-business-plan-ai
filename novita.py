@@ -17,6 +17,10 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.29.3", "data": "2026-11-10", "titolo": "Corretto il backup automatico del database", "voci": [
+        "Il backup cifrato notturno falliva sempre il suo stesso controllo di sicurezza (il «ripristino di prova») quando nel database c'erano "
+        "tabelle ancora vuote (es. ferie/permessi o DDT mai usati): ora il controllo crea prima tutte le tabelle dei vari strumenti, così il "
+        "backup si verifica correttamente anche quando qualcosa è vuoto, e arriva davvero per email ogni notte."], "strumenti": []},
     {"id": "3.29.2", "data": "2026-11-10", "titolo": "Il Registro commerciale stima da solo la «% successo»", "voci": [
         "Se nel tuo file Excel non c'è la colonna «% successo» (o è vuota), l'app ora la stima da sola in base allo stato della pratica "
         "(es. «S2-Offerta» 40%, «S3-Contratto» 90%, «S5-Esecuzione» 100%, «S7-Annullato» 0%), così la «Pipeline pesata» non resta più a 0 €.",
