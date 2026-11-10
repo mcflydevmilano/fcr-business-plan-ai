@@ -17,6 +17,9 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.29.1", "data": "2026-11-10", "titolo": "Sistemato l'avviso «Modifiche non salvate»", "voci": [
+        "L'avviso in basso a sinistra («Modifiche non salvate in...») poteva restare coperto o tagliato da altri elementi della pagina "
+        "in certi casi: ora ha la stessa priorità del pulsante «Aggiorna» e del fumetto di assistenza, così resta sempre leggibile."], "strumenti": []},
     {"id": "3.29.0", "data": "2026-11-10", "titolo": "Nuovo strumento: «Richiesta documenti»", "voci": [
         "Nuovo strumento (nel gruppo «2 · Dalla gara al contratto»): crei un link segreto per un condominio e glielo mandi; l'amministratore "
         "apre il link (senza password, senza vedere nient'altro della suite) e carica i documenti dell'elenco per l'istruttoria di un "

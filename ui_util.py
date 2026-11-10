@@ -575,7 +575,7 @@ export default function(c) {
     window.__fcrSporcoPronto = true;
     window.addEventListener('beforeunload', e => { if (window.__fcrSporco) { e.preventDefault(); e.returnValue = ''; } });
     const css = document.createElement('style');
-    css.textContent = `#fcr-sporco{position:fixed;left:18px;bottom:18px;z-index:99990;max-width:min(380px,calc(100vw - 110px));background:#fff7ed;color:#7c2d12;border:1px solid #fdba74;
+    css.textContent = `#fcr-sporco{position:fixed;left:18px;bottom:18px;z-index:999990;max-width:min(380px,calc(100vw - 36px));background:#fff7ed;color:#7c2d12;border:1px solid #fdba74;
       border-radius:14px;padding:10px 14px;font:600 13px/1.35 inherit;box-shadow:0 10px 28px rgba(124,45,18,.25);cursor:pointer;display:none}
     #fcr-sporco b{color:#c2410c} #fcr-sporco small{display:block;font-weight:500;color:#9a3412;margin-top:2px}
     @keyframes fcrEvid{0%,100%{box-shadow:0 0 0 0 rgba(234,88,12,.0)}50%{box-shadow:0 0 0 8px rgba(234,88,12,.35)}}
