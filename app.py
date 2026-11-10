@@ -91,6 +91,7 @@ import bd_ui
 import mi_ui
 import pc_ui
 import cl_ui
+import dc_ui
 import theme
 import ui_util
 import xbrl
@@ -370,6 +371,11 @@ def check_login():
 _tk = st.query_params.get("cliente")
 if _tk and not ss.get("utente"):          # portale cliente: pagina pubblica col link segreto, senza accesso alla suite
     pc_ui.render_pubblico(str(_tk)[:80])
+    st.stop()
+
+_tkd = st.query_params.get("documenti")
+if _tkd and not ss.get("utente"):          # richiesta documenti: pagina pubblica col link segreto, senza accesso alla suite
+    dc_ui.render_pubblico(str(_tkd)[:80])
     st.stop()
 
 if not check_login():
@@ -737,7 +743,7 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",), "ch": ("chat_",), "mc": ("mc_",), "sa": ("sa_",), "pr": ("pr_",), "mt": ("mt_",), "vr": ("vr_",), "ad": ("ad_",), "fc": ("fc_",), "ta": ("ta_",), "sk": ("sk_",), "nv": ("nv_",), "ac": ("ac_",), "fv": ("fv_",), "es": ("es_",), "ee": ("ee_",), "fp": ("fp_",), "ns": ("ns_",), "lm": ("lm_",), "sd": ("sd_",), "rm": ("rm_",), "fe": ("fe_",), "sp": ("sp_",), "bd": ("bd_",), "mi": ("mi_",), "pc": ("pc_",), "cl": ("cl_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",), "ch": ("chat_",), "mc": ("mc_",), "sa": ("sa_",), "pr": ("pr_",), "mt": ("mt_",), "vr": ("vr_",), "ad": ("ad_",), "fc": ("fc_",), "ta": ("ta_",), "sk": ("sk_",), "nv": ("nv_",), "ac": ("ac_",), "fv": ("fv_",), "es": ("es_",), "ee": ("ee_",), "fp": ("fp_",), "ns": ("ns_",), "lm": ("lm_",), "sd": ("sd_",), "rm": ("rm_",), "fe": ("fe_",), "sp": ("sp_",), "bd": ("bd_",), "mi": ("mi_",), "pc": ("pc_",), "cl": ("cl_",), "dc": ("dc_",)}
 
 
 pwa.inietta()
@@ -1145,7 +1151,7 @@ for _m, _ui in (("fp", fp_ui), ("ns", ns_ui), ("lm", lm_ui), ("sd", sd_ui), ("rm
         ui_util.bozza_fine()
         st.stop()
 
-for _m, _ui in (("fe", fe_ui), ("sp", sp_ui), ("bd", bd_ui), ("mi", mi_ui), ("pc", pc_ui), ("cl", cl_ui)):
+for _m, _ui in (("fe", fe_ui), ("sp", sp_ui), ("bd", bd_ui), ("mi", mi_ui), ("pc", pc_ui), ("cl", cl_ui), ("dc", dc_ui)):
     if MODULO == _m:
         _ui.render(FCR_URI, audit, ss["utente"] if _m in ("sp", "mi", "pc") else ss["utente"]["username"])
         ui_util.bozza_fine()

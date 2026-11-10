@@ -17,6 +17,13 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.29.0", "data": "2026-11-10", "titolo": "Nuovo strumento: «Richiesta documenti»", "voci": [
+        "Nuovo strumento (nel gruppo «2 · Dalla gara al contratto»): crei un link segreto per un condominio e glielo mandi; l'amministratore "
+        "apre il link (senza password, senza vedere nient'altro della suite) e carica i documenti dell'elenco per l'istruttoria di un "
+        "finanziamento (è già precompilato con la lista richiesta da RETE).",
+        "Non si può inviare finché mancano documenti: prima deve caricarli tutti, poi conferma due volte prima dell'invio definitivo.",
+        "Tu vedi quanti documenti sono arrivati, scarichi i file, togli le voci che non si applicano a quel caso, e se serve riapri la "
+        "richiesta per far correggere qualcosa dopo l'invio."], "strumenti": ["Richiesta documenti"]},
     {"id": "3.28.3", "data": "2026-11-10", "titolo": "Corretta la correzione dell'orario in «Accessi del personale»", "voci": [
         "Quando si corregge l'ora di Entrata o Uscita di qualcuno (es. una timbratura dimenticata o sbagliata), la vecchia timbratura di quel giorno viene ora sostituita invece di restare insieme a quella nuova: prima, se restavano entrambe, le ore lavorate tra le due non venivano contate."], "strumenti": ["Accessi del personale"]},
     {"id": "3.28.2", "data": "2026-11-10", "titolo": "Tolto il computo di esempio da «Computo di cantiere»", "voci": [

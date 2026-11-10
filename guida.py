@@ -80,6 +80,12 @@ PASSI = {
         ("Mandalo al cliente", "Per email o WhatsApp. Il cliente non ha bisogno di password.", None),
         ("Controlla e chiudi", "Nella scheda «1» vedi se ha accettato (con firma) e puoi revocare o prorogare il link.", None),
     ], "Chi ha il link vede la pagina: metti solo foto e documenti adatti al cliente."),
+    "dc": ("Far caricare all'amministratore di un condominio i documenti di una pratica (es. finanziamento), senza dargli accesso alla suite.", [
+        ("Crea la richiesta", "Nella scheda «2» scrivi il nome (es. il condominio) e per quanti giorni vale il link. Copia il link: si vede una volta sola.", None),
+        ("Togli le voci che non servono", "Nella scheda «3», se qualche documento non si applica a questo caso, togli la spunta: non verrà mostrato e non blocca l'invio.", None),
+        ("Mandalo all'amministratore", "Per email o WhatsApp. Non serve nessuna password: il link apre solo questa lista.", None),
+        ("Controlla l'arrivo", "Nella scheda «1» vedi quanti documenti sono stati caricati e, quando è tutto pronto, se è stato inviato: scarichi i file da lì.", None),
+    ], "Se manca qualcosa dopo l'invio, riapri la richiesta nella scheda «1»: l'amministratore potrà correggere o aggiungere documenti."),
     "mi": ("Controllare gli impianti venduti: produzione, canoni e manutenzione.", [
         ("Aggiungi l'impianto", "Nella scheda «3» scrivi nome, cliente, kWp, data di inizio, canone mensile e prossima manutenzione.", None),
         ("Scrivi le letture", "Nella scheda «2» ogni mese scrivi quanto ha prodotto (dal portale dell'inverter) e quanto hai incassato.", None),

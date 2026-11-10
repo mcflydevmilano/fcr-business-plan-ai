@@ -10,6 +10,7 @@ SINONIMI = {
     "ac": "accessi timbratura timbrare badge presenze entrata uscita pausa qr ore ritardi orari ufficio",
     "cl": "computo cantiere lavori rimanenti voci epu prezzario prezzi aggiornati coefficiente esecutivo quantita totale comune revisione prezzi colonne",
     "pc": "portale cliente link segreto stato lavori foto documenti accettare offerta firma condividere cliente",
+    "dc": "richiesta documenti condominio amministratore link segreto finanziamento rete istruttoria carica upload checklist invio esterno",
     "mi": "impianti esco fotovoltaico produzione attesa letture canone incassato manutenzione contatore inverter dopo vendita monitoraggio",
     "fe": "fatture elettroniche xml fatturapa sdi fornitore cliente scadenza pagamento importa cassetto fiscale p7m zip",
     "sp": "sopralluogo telefono foto tetto fotovoltaico quadro elettrico contatore superficie moduli preventivo cliente sul posto",
