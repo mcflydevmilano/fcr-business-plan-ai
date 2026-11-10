@@ -90,6 +90,7 @@ import sp_ui
 import bd_ui
 import mi_ui
 import pc_ui
+import cl_ui
 import theme
 import ui_util
 import xbrl
@@ -492,7 +493,7 @@ if ss.pop("_avviso_emergenza", None) is not None:
 # AI (google-genai)
 # ----------------------------------------------------------------------------
 MODEL_NAME = get_secret("GEMINI_MODEL", "gemini-3.8-flash")
-FALLBACK_MODELS = ["gemini-flash-latest"]
+FALLBACK_MODELS = [m.strip() for m in get_secret("GEMINI_FALLBACK", "gemini-flash-latest,gemini-flash-lite-latest,gemini-2.5-flash").split(",") if m.strip()]     # se il primo modello e' sovraccarico si provano questi, uno dopo l'altro
 SERVER_API_KEY = get_secret("GEMINI_API_KEY", "")
 
 
@@ -733,7 +734,7 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",), "ch": ("chat_",), "mc": ("mc_",), "sa": ("sa_",), "pr": ("pr_",), "mt": ("mt_",), "vr": ("vr_",), "ad": ("ad_",), "fc": ("fc_",), "ta": ("ta_",), "sk": ("sk_",), "nv": ("nv_",), "ac": ("ac_",), "fv": ("fv_",), "es": ("es_",), "ee": ("ee_",), "fp": ("fp_",), "ns": ("ns_",), "lm": ("lm_",), "sd": ("sd_",), "rm": ("rm_",), "fe": ("fe_",), "sp": ("sp_",), "bd": ("bd_",), "mi": ("mi_",), "pc": ("pc_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",), "ch": ("chat_",), "mc": ("mc_",), "sa": ("sa_",), "pr": ("pr_",), "mt": ("mt_",), "vr": ("vr_",), "ad": ("ad_",), "fc": ("fc_",), "ta": ("ta_",), "sk": ("sk_",), "nv": ("nv_",), "ac": ("ac_",), "fv": ("fv_",), "es": ("es_",), "ee": ("ee_",), "fp": ("fp_",), "ns": ("ns_",), "lm": ("lm_",), "sd": ("sd_",), "rm": ("rm_",), "fe": ("fe_",), "sp": ("sp_",), "bd": ("bd_",), "mi": ("mi_",), "pc": ("pc_",), "cl": ("cl_",)}
 
 
 pwa.inietta()
@@ -1141,7 +1142,7 @@ for _m, _ui in (("fp", fp_ui), ("ns", ns_ui), ("lm", lm_ui), ("sd", sd_ui), ("rm
         ui_util.bozza_fine()
         st.stop()
 
-for _m, _ui in (("fe", fe_ui), ("sp", sp_ui), ("bd", bd_ui), ("mi", mi_ui), ("pc", pc_ui)):
+for _m, _ui in (("fe", fe_ui), ("sp", sp_ui), ("bd", bd_ui), ("mi", mi_ui), ("pc", pc_ui), ("cl", cl_ui)):
     if MODULO == _m:
         _ui.render(FCR_URI, audit, ss["utente"] if _m in ("sp", "mi", "pc") else ss["utente"]["username"])
         ui_util.bozza_fine()

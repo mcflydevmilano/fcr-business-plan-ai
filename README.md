@@ -240,6 +240,9 @@ In cima all'Hub: poche caselle scelte in base al profilo (amministrazione: credi
 - **Controlli prima del Reboot** (`controlli.yml`): a ogni caricamento GitHub compila con Python 3.11/3.12 e lancia i test.
 - Workflow da mettere in `.github/workflows/`: `backup.yml`, `controlli.yml`, `avvisi.yml`.
 
+## Novità 3.28.0
+- `cl.py` / `cl_ui.py` (sigla `cl`, archivio con prefisso `cl`): computo di cantiere con prezzi aggiornati. Formula: prezzo + (prezzario nuovo - prezzo x coefficiente) x %. Tre colonne «a mano» per i casi particolari; colonne libere (`extra`, max 12); import/export Excel. `computo_sommacampagna.json`: 55 voci ricopiate dal PDF del Comune (totali 684.155,49 e 844.141,38).
+
 ## Novità 3.27.0
 - `mi.py` / `mi_ui.py` (sigla `mi`): impianti ESCo, produzione reale contro attesa (profilo mensile, soglie 95/85%), canoni incassati, manutenzione; cfg `impianti_esco`; sezione «Impianti ESCo» nel riepilogo del mattino.
 - `pc.py` / `pc_ui.py` (sigla `pc`): portale cliente. Pagina pubblica `/?cliente=<token>` gestita in `app.py` PRIMA del login. Il token (192 bit) non è salvato, solo SHA-256; scadenza, revoca, contenuto scelto (cfg `portale_cliente` e `portale_c_<id>`), accettazione offerta con firma (una volta sola, non modificabile). Variabile `FCR_PUBLIC_URL` per l'indirizzo base.

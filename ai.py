@@ -21,8 +21,8 @@ genai = _Pigro("google.genai")
 types = _Pigro("google.genai.types")
 
 
-# secondi di attesa tra i tentativi quando il servizio e' sovraccarico (503/500/504): 3 tentativi per modello
-ATTESE_RIPROVA = (2.0, 5.0)
+# secondi di attesa tra i tentativi quando il servizio e' sovraccarico (503/500/504): 4 tentativi per modello
+ATTESE_RIPROVA = (2.0, 5.0, 10.0)
 
 
 # attesa massima per una singola richiesta e per l'intera operazione (tentativi e modelli di ripiego inclusi)

@@ -17,6 +17,14 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.28.0", "data": "2026-11-10", "titolo": "Computo di cantiere con i prezzi aggiornati",
+     "voci": ["Computo di cantiere (nuovo): i lavori rimanenti con le colonne del computo del Comune (codice E.P.U., descrizione, quantità, prezzo, totale da esecutivo, coefficiente, prezzario nuovo, % di aumento, prezzo e totale aggiornati). Il prezzo aggiornato si calcola da solo.",
+              "Puoi aggiungere le tue colonne, importare ed esportare in Excel e salvare un computo per ogni cantiere.",
+              "Il computo di Sommacampagna (ex limonaia, 55 voci) è già pronto: si carica con un pulsante."],
+     "strumenti": ["Computo di cantiere"]},
+    {"id": "3.27.1", "data": "2026-11-09", "titolo": "Lettura del bilancio con l'AI più resistente ai momenti di sovraccarico",
+     "voci": ["Se il servizio AI di Google è sovraccarico (errore 503), la suite ora riprova con più pazienza e passa da sola a due modelli di riserva prima di arrendersi. Con un PDF con testo la lettura resta rapida. Se non basta, premi di nuovo il pulsante dopo qualche minuto o inserisci i dati a mano."],
+     "strumenti": []},
     {"id": "3.27.0", "data": "2026-11-07", "titolo": "Controllo impianti ESCo e portale cliente",
      "voci": ["Controllo impianti ESCo (nuovo): per ogni impianto venduto scrivi ogni mese la produzione e il canone incassato. Vedi se produce meno dell'85% dell'atteso, quali canoni mancano e le manutenzioni in scadenza. I problemi arrivano anche nel riepilogo del mattino.",
               "Portale cliente (nuovo): un link segreto per ogni cliente, senza password. Vede lo stato dei lavori, le foto e i documenti che scegli tu e può accettare l'offerta firmando col dito. Il link scade e si può revocare."],

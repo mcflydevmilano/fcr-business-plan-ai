@@ -67,6 +67,13 @@ PASSI = {
         ("Approvazione", "Il responsabile approva o respinge, con una nota, dalla scheda «Da approvare».", None),
         ("Riepilogo", "L'amministrazione vede il mese per persona, cantiere e categoria, scarica l'Excel e gli scontrini e segna le spese rimborsate.", None),
     ], "Senza ricevuta la spesa si invia solo spiegando bene cosa è stato pagato."),
+    "cl": ("Tenere il computo dei lavori rimanenti di un cantiere, con i prezzi aggiornati al nuovo prezzario.", [
+        ("Scrivi o carica le voci", "Nella scheda «1» scrivi le voci, importa un Excel oppure carica il computo di Sommacampagna già pronto.", None),
+        ("Aggiorna i prezzi", "Per ogni voce metti coefficiente, prezzario nuovo e % di aumento: il prezzo aggiornato si calcola da solo.", None),
+        ("Aggiungi le tue colonne", "Con «Aggiungi o togli una colonna» metti le colonne che ti servono (es. subappaltatore, stato).", None),
+        ("Guarda i totali", "Nella scheda «2» vedi il computo completo, il totale di progetto, quello aggiornato e la differenza. Scarichi l'Excel.", None),
+        ("Salva", "In alto, «Salva e riapri il computo»: dai un nome (es. il cantiere) e lo ritrovano anche i colleghi.", None),
+    ], "Le colonne «a mano» servono solo per casi particolari: se le lasci vuote calcolo io."),
     "pc": ("Dare al cliente una pagina con lo stato dei lavori, senza dargli accesso alla suite.", [
         ("Crea il link", "Nella scheda «2» scrivi il nome del cliente e per quanti giorni vale. Copia il link: si vede una volta sola.", None),
         ("Scegli cosa vede", "Nella scheda «3» scrivi a che punto siamo, aggiungi foto e PDF e, se vuoi, un'offerta da accettare.", None),
