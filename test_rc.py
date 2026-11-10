@@ -69,6 +69,20 @@ def test_importa_excel_legge_registro_ed_eliminati():
     assert rc.pipeline(r["001-MI-ROSSI"]) == 50000
 
 
+def test_successo_mancante_si_stima_dallo_stato_e_resta_modificabile():
+    # file senza la colonna "% successo": l'app la stima dallo stato, cosi' la pipeline non e' piu' sempre 0
+    righe, avvisi = rc.normalizza([{"Codice": "A1", "Indirizzo": "Via X", "Stato": "S2-Offerta", "Valore": 100000},
+                                    {"Codice": "A2", "Indirizzo": "Via Y", "Stato": "S3-Contratto", "Valore": 80000},
+                                    {"Codice": "A3", "Indirizzo": "Via Z", "Stato": "S7-Annullato", "Valore": 20000}])
+    r = {x["Codice"]: x for x in righe}
+    assert r["A1"]["Successo"] == rc.DEFAULT_SUCCESSO["S2-Offerta"] and rc.pipeline(r["A1"]) > 0
+    assert r["A2"]["Successo"] == rc.DEFAULT_SUCCESSO["S3-Contratto"]
+    assert r["A3"]["Successo"] == 0                                   # pratica annullata: nessuna stima, resta a 0
+    # se nel file c'e' gia' un valore, quello vince sempre sulla stima
+    righe2, _ = rc.normalizza([{"Codice": "A4", "Indirizzo": "Via W", "Stato": "S0-Apertura Pratica", "Valore": 100000, "Successo": "5%"}])
+    assert righe2[0]["Successo"] == 5
+
+
 def test_cruscotto_e_avvisi():
     righe, _, _ = rc.importa_excel(_file())
     o = rc.calcola(righe, OGGI)

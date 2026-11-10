@@ -28,6 +28,10 @@ ALIAS = {"codice": "Codice", "data inserimento pratica": "Inserita", "data inser
          "% successo stimata": "Successo", "% successo": "Successo", "note": "Note", "banca": "Banca"}
 COLONNE_DATE = ("Inserita", "Sopralluogo", "Offerta", "Scadenza")
 RC_DEFAULT = {"preavviso_gg": 7}
+# stima automatica della «% successo» quando il file non la riporta, in base allo stato della pratica
+# (resta comunque modificabile a mano riga per riga nella tabella).
+DEFAULT_SUCCESSO = {"S0-Apertura Pratica": 10.0, "S1-Sopralluogo": 20.0, "S2-Offerta": 40.0, "S3-Contratto": 90.0, "S4-Progetto": 95.0, "S5-Esecuzione": 100.0,
+                     "S6-Offerta KO": 0.0, "S7-Annullato": 0.0, "S8-Da Validare": 10.0, "S9-Sospeso": 15.0}
 
 
 def _t(v):
@@ -105,7 +109,7 @@ def normalizza(righe):
         f = _n(z["Finanziamento"])
         z["Finanziamento"] = "sì" if f in ("si", "x", "yes", "true") else "no" if f in ("no", "n") else z["Finanziamento"]
         z["Valore"] = _num(r["Valore"])
-        z["Successo"] = percentuale(r["Successo"])
+        z["Successo"] = percentuale(r["Successo"]) or DEFAULT_SUCCESSO.get(z["Stato"], 20.0)
         z["UI"] = int(_num(r["UI"]))
         z["Revisioni"] = int(_num(r["Revisioni"]))
         z["Archivio"] = "Eliminata" if _n(z["Archivio"]).startswith("elimin") else "Attiva"

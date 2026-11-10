@@ -17,6 +17,11 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.29.2", "data": "2026-11-10", "titolo": "Il Registro commerciale stima da solo la «% successo»", "voci": [
+        "Se nel tuo file Excel non c'è la colonna «% successo» (o è vuota), l'app ora la stima da sola in base allo stato della pratica "
+        "(es. «S2-Offerta» 40%, «S3-Contratto» 90%, «S5-Esecuzione» 100%, «S7-Annullato» 0%), così la «Pipeline pesata» non resta più a 0 €.",
+        "La stima resta comunque modificabile a mano riga per riga nella scheda «2. Pratiche»: se scrivi un valore tu, quello vince sempre."],
+     "strumenti": ["Registro commerciale"]},
     {"id": "3.29.1", "data": "2026-11-10", "titolo": "Sistemato l'avviso «Modifiche non salvate»", "voci": [
         "L'avviso in basso a sinistra («Modifiche non salvate in...») poteva restare coperto o tagliato da altri elementi della pagina "
         "in certi casi: ora ha la stessa priorità del pulsante «Aggiorna» e del fumetto di assistenza, così resta sempre leggibile."], "strumenti": []},
