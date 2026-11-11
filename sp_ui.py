@@ -17,7 +17,7 @@ def render(fcr_uri, audit=None, utente=""):
     username = utente.get("username", "") if isinstance(utente, dict) else str(utente or "")
     st.markdown(theme.hero(fcr_uri, "Sopralluogo da telefono", "Compili sul posto, scatti le foto e il preventivo fotovoltaico parte già precompilato."), unsafe_allow_html=True)
     guida.mostra("sp")
-    t1, t2 = st.tabs(["1 · Nuovo sopralluogo", "2 · Sopralluoghi fatti"])
+    t1, t2 = st.tabs(["📱 1. Nuovo sopralluogo", "📋 2. Sopralluoghi fatti"])
     with t1:
         r = ss.get("sp_rec") or sp.nuovo()
         ss["sp_rec"] = r

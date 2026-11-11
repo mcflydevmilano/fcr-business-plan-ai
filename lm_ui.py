@@ -122,7 +122,7 @@ def render(fcr_uri, audit, utente, profilo, utenti_secrets=None):
     guida.mostra("lm")
     cfg = lm.carica_cfg()
     gestore = utente.get("ruolo") == "admin" or profilo in ("presidente", "direzione", "amministrazione", "commerciale", "accesso completo")
-    tabs = st.tabs(["✉️ Scrivi una lettera", "📚 Modelli"] + (["🏢 Dati azienda"] if gestore else []))
+    tabs = st.tabs(["✉️ 1. Scrivi una lettera", "📚 2. Modelli"] + (["🏢 3. Dati azienda"] if gestore else []))
     with tabs[0]:
         _scrivi(cfg, utente, audit)
     with tabs[1]:

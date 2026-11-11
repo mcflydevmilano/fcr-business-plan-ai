@@ -33,6 +33,7 @@ def render(fcr_uri, audit=None, utente=""):
     if nuova:
         st.success(f"🆕 Hai delle novità da leggere: ultimo aggiornamento, versione {nuova['id']}.")
         novita.segna_lette(utente)                              # da questo momento l'avviso nell'Hub sparisce
+    novita.segna_tutte_viste(utente)                            # e anche i bollini NEW sugli strumenti citati, senza doverli aprire uno per uno
     f1, f2 = st.columns([3, 2])
     q = f1.text_input("Cerca nelle novità", key="nv_cerca", placeholder="es. compiti, bolle, rubrica…")
     tutti_str = sorted({s for v in tutte for s in v["strumenti"]})

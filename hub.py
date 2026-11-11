@@ -402,27 +402,29 @@ CARDS = {'credit': {'icona': '📊',
 
 # (titolo sezione, sottotitolo, [sigle])  -  ogni gruppo ha un numero pari di schede, tranne l'ultimo (a tutta larghezza)
 GRUPPI = [
-    ("1 · Si parte da qui", "I cantieri e le persone con cui lavori: prima di tutto si scrivono qui",
-     ["ru", "fo"]),
+    ("1 · Anagrafiche", "Cantieri, fornitori e persone: la base da cui parte tutto il resto",
+     ["ru", "fo", "pe"]),
     ("2 · Dalla gara al contratto", "Opportunità, gare, preventivi e prezziario",
-     ["rc", "bd", "ga", "pv", "fv", "sp", "ee", "es", "pz", "of", "pc", "dc"]),
-    ("3 · Il cantiere in corso", "Avanzamento lavori, subappalti, ordini, documenti, sicurezza e mezzi",
-     ["cl", "gt", "sl", "sa", "oa", "ad", "da", "sx", "mz"]),
+     ["bd", "ga", "sp", "rc", "pv", "fv", "es", "ee", "pz", "of", "pc", "dc"]),
+    ("3 · Il cantiere in corso", "Avanzamento lavori, subappalti, ordini, documenti di commessa, sicurezza e mezzi",
+     ["cl", "gt", "sl", "sa", "oa", "ad", "sx", "mz"]),
     ("4 · Ogni giorno in cantiere", "Rapportini, ore, materiali e organico: da fare dal telefono",
      ["rp", "pr", "mt", "og"]),
     ("5 · I soldi", "Dott. Claudio Arosio: fatture e scadenze, banche, cassa, rating e business plan",
      ["sc", "fe", "bk", "cf", "credit", "bp"]),
     ("6 · Controllo e cose da fare", "La situazione di ogni cantiere, le scadenze, il flusso delle commesse e i compiti",
      ["sk", "mc", "ca", "sd", "mi", "dd", "fc", "ta"]),
-    ("Studio legale", "Riserve, contratti e passaggio dei crediti allo studio",
-     ["lg"]),
-    ("Persone e comunicazione", "Utenti e permessi, timbratura, chat, verbali e novità",
-     ["pe", "ac", "fp", "ns", "lm", "rm", "ch", "vr", "nv"]),
+    ("7 · Azienda e legale", "Le cose dell'azienda, non di un singolo cantiere: documenti, riserve e contratti",
+     ["da", "lg"]),
+    ("8 · Persone", "Ferie, permessi, timbratura, note spese e il tuo riepilogo personale",
+     ["ac", "fp", "ns", "rm"]),
+    ("9 · Comunicazione", "Chat interna, verbali, lettere e modelli, novità della suite",
+     ["ch", "vr", "lm", "nv"]),
 ]
 
 
-ICONE_GRUPPO = {"1 · Si parte da qui": "🚀", "2 · Dalla gara al contratto": "📝", "3 · Il cantiere in corso": "🏗️", "4 · Ogni giorno in cantiere": "👷",
-                "5 · I soldi": "💰", "6 · Controllo e cose da fare": "📊", "Studio legale": "⚖️", "Persone e comunicazione": "💬"}
+ICONE_GRUPPO = {"1 · Anagrafiche": "🚀", "2 · Dalla gara al contratto": "📝", "3 · Il cantiere in corso": "🏗️", "4 · Ogni giorno in cantiere": "👷",
+                "5 · I soldi": "💰", "6 · Controllo e cose da fare": "📊", "7 · Azienda e legale": "⚖️", "8 · Persone": "🪪", "9 · Comunicazione": "💬"}
 
 
 def numero(sigla):

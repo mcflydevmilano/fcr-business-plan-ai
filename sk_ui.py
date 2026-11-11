@@ -217,7 +217,7 @@ def render(fcr_uri, audit=None, utente=""):
         {"label": "Costi sostenuti", "value": EUR(s["costi_totali"]), "sub": "materiali, ore, mezzi, subappalti", "tono": "info"},
         {"label": "Margine corrente", "value": EUR(s["margine_corrente"]), "sub": "fatturato − costi", "tono": "bad" if s["margine_corrente"] < 0 else "ok"},
         {"label": "Contratto", "value": EUR(t["contratto"]) if t else "—", "sub": f"avanzamento {fmt_num(t['avanzamento'], 1)}%" if t else "non in SAL", "tono": "info"}]), unsafe_allow_html=True)
-    t1, t2, t3, t5, t6, t4, t7 = st.tabs(["💶 Entrate e uscite", "🧱 Costi", "📋 SAL e margine", "🤝 Subappaltatori", "🏦 Conti correnti", "✍️ Rapportini", "📁 Cartelle"])
+    t1, t2, t3, t5, t6, t4, t7 = st.tabs(["💶 1. Entrate e uscite", "🧱 2. Costi", "📋 3. SAL e margine", "🤝 4. Subappaltatori", "🏦 5. Conti correnti", "✍️ 6. Rapportini", "📁 7. Cartelle"])
     with t1:
         _tab_conti(s)
     with t2:

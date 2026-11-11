@@ -338,7 +338,7 @@ def render(fcr_uri, audit=None, utente=""):
     k = out["kpi"]
     if ss.get("rp_demo"):
         st.info("Esempio: il primo rapportino o la prima segnalazione che inserisci sostituisce questi dati.")
-    t1, t2, t3, t4 = st.tabs(["✍️ Rapportino", "⚠️ Segnalazioni", "📊 Cantieri", "📋 Registro e dossier"])
+    t1, t2, t3, t4 = st.tabs(["✍️ 1. Rapportino", "⚠️ 2. Segnalazioni", "📊 3. Cantieri", "📋 4. Registro e dossier"])
     with t1:
         _tab_rapportino(utente, audit)
     with t2:

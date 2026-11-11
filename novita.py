@@ -17,6 +17,18 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.30.2", "data": "2026-11-11", "titolo": "Il bollino NEW si spegne tutto insieme, linguette numerate in più strumenti", "voci": [
+        "Quando apri «Novità e aggiornamenti», da ora si spengono subito tutti i bollini 🆕 NEW delle schede nell'Hub legate a quelle novità: non serve più aprire "
+        "ogni strumento uno per uno per farli sparire.",
+        "Corretto anche un difetto: una novità vecchia di uno strumento poteva far riaccendere il bollino NEW anche dopo che l'avevi già visto.",
+        "Le linguette di «Rapportini», «Lettere e modelli», «Sopralluogo da telefono» e «Scheda cantiere» sono ora numerate come negli altri "
+        "strumenti (1, 2, 3…), per sapere sempre da dove iniziare senza bisogno di spiegazioni."], "strumenti": ["Rapportini", "Lettere e modelli", "Sopralluogo da telefono", "Scheda cantiere"]},
+    {"id": "3.30.1", "data": "2026-11-11", "titolo": "Menu riordinato: 9 gruppi più chiari invece di 8", "voci": [
+        "«Persone e ruoli» è passato nel primo gruppo insieme a Rubrica e cantieri e Fornitori: sono le tre anagrafiche di base, si aprono per prime.",
+        "«Documenti aziendali FCR» e «Studio legale» sono ora insieme nel nuovo gruppo «7 · Azienda e legale»: sono le cose dell'azienda, non di un singolo cantiere.",
+        "Il vecchio gruppo «Persone e comunicazione» (9 strumenti) è diviso in due: «8 · Persone» (ferie, permessi, note spese, accessi, il tuo riepilogo) e "
+        "«9 · Comunicazione» (chat, verbali, lettere e modelli, novità).",
+        "Stessi strumenti di sempre, nessuno è stato tolto o spostato di accesso: cambia solo dove li trovi nel menu."], "strumenti": []},
     {"id": "3.30.0", "data": "2026-11-11", "titolo": "Ultima modifica sempre visibile, Libro Matricola, documenti caricabili e nuovo strumento «Documenti aziendali FCR»", "voci": [
         "In ogni strumento, nel riquadro di salvataggio, compare ora «🕓 Ultima modifica: ... da ...»: a colpo d'occhio vedi quando e da chi è stato aggiornato per ultimo.",
         "«Persone e ruoli» si è ampliato con tutti i campi del Libro Matricola (contratto, anagrafica, residenza, documenti): nella nuova scheda «5. Libro Matricola» "
@@ -401,8 +413,8 @@ def sigle_nuove(utente, oggi=None, path=None):
         viste = (storage.carica_pratica(NOME_VISTE, path, modulo="cfg") or {}).get(_s(utente).lower(), {})
     except Exception:
         viste = {}
-    out = {}
-    for v in tutte(path):                       # dalla piu' recente: vale la novita' piu' nuova di ogni strumento
+    out, decisi = {}, set()
+    for v in tutte(path):                       # dalla piu' recente: la novita' piu' nuova di ogni strumento decide, quelle piu' vecchie non contano piu'
         try:
             eta = (oggi - dt.date.fromisoformat(_s(v.get("data")))).days
         except ValueError:
@@ -410,7 +422,10 @@ def sigle_nuove(utente, oggi=None, path=None):
         if eta < 0 or eta > GIORNI_NEW:
             continue
         for s in _sigle_di(v):
-            if s not in out and viste.get(s) != _chiave(v):
+            if s in decisi:
+                continue
+            decisi.add(s)
+            if viste.get(s) != _chiave(v):
                 out[s] = v
     return out
 
@@ -426,6 +441,25 @@ def segna_vista(utente, sigla, novita, path=None):
     mie[sigla] = _chiave(novita)
     storage.salva_pratica(NOME_VISTE, tutti, path, autore=_s(utente), modulo="cfg")
     storage.svuota_cache()
+
+
+def segna_tutte_viste(utente, oggi=None, path=None):
+    """Chi apre la pagina delle novita' le ha viste tutte: da questo momento si spengono anche i bollini NEW sugli strumenti citati,
+    senza dover aprire ogni strumento uno per uno. Un'unica lettura e un'unica scrittura, per tutti gli strumenti insieme."""
+    nuove = sigle_nuove(utente, oggi, path)
+    if not nuove or not _s(utente):
+        return
+    tutti = storage.carica_pratica(NOME_VISTE, path, modulo="cfg") or {}
+    mie = tutti.setdefault(_s(utente).lower(), {})
+    cambiato = False
+    for s, v in nuove.items():
+        k = _chiave(v)
+        if mie.get(s) != k:
+            mie[s] = k
+            cambiato = True
+    if cambiato:
+        storage.salva_pratica(NOME_VISTE, tutti, path, autore=_s(utente), modulo="cfg")
+        storage.svuota_cache()
 
 
 def data_it(iso):

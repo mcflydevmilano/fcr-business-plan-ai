@@ -72,6 +72,17 @@ def _app(tmp_path, monkeypatch, utente="admin", pw="segreta"):
     return at
 
 
+def test_aprire_novita_spegne_i_bollini_new_sulle_schede(tmp_path, monkeypatch):
+    at = _app(tmp_path, monkeypatch)
+    assert not at.exception, [e.value for e in at.exception]
+    assert any(b.key.startswith("hub_new_") for b in at.button), "serve almeno uno strumento col bollino NEW per provare il test"
+    at.button(key="hub_nv_apri").click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    at.session_state["active_module"] = None
+    at.run()
+    assert not any((b.key or "").startswith("hub_new_") for b in at.button)           # i bollini NEW sono spariti tutti insieme
+
+
 def test_schermata_e_avviso_nell_hub(tmp_path, monkeypatch):
     at = _app(tmp_path, monkeypatch)
     assert not at.exception, [e.value for e in at.exception]
