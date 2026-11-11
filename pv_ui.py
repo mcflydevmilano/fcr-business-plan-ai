@@ -58,7 +58,8 @@ def _raccogli():
 
 
 def _applica(p, nome):
-    sostituisci_tabella("pv_df", pd.DataFrame(p.get("voci") or [], columns=pv.COLONNE_VOCI))
+    voci = p.get("voci") or []
+    sostituisci_tabella("pv_df", pd.DataFrame(voci, columns=pv.colonne_con_extra(voci)))
     pend = {"pv_" + k: v for k, v in (p.get("params") or {}).items() if k in pv.PV_DEFAULT}
     pend.update({k: v for k, v in (p.get("campi") or {}).items() if k in _CAMPI and v is not None})
     ss["_pending"] = pend
@@ -143,17 +144,28 @@ def render(ai_generate, active_key, fcr_uri, ai, audit=None, utente=""):
         up = st.file_uploader("Importa un computo o preventivo già fatto (Excel o CSV): le colonne le riconosco io", type=["xlsx", "xlsm", "csv"], key="up_pv",
                               help="Non serve rinominare niente: trovo da solo la riga delle intestazioni, leggo tutti i fogli, uso i titoli di capitolo come categorie "
                                    "e salto i totali. Capisco nomi come Tariffa, Designazione dei lavori, Q.tà, Prezzo unitario, Importo.")
+        extra_scelte = []
+        if up is not None:
+            try:
+                extra_opz = pv.colonne_extra_disponibili(up.getvalue(), up.name)
+            except Exception:
+                extra_opz = []
+            if extra_opz:
+                extra_scelte = st.multiselect("Il file ha anche queste colonne, che non fanno parte del computo standard: vuoi tenerle come colonne in più?",
+                                              extra_opz, key=f"pv_extra_{abs(hash(up.name))}",
+                                              help="Restano visibili e modificabili nella tabella, ma non entrano nei calcoli del preventivo.")
         if up is not None and st.button("Importa il file", key="imp_pv"):
             dati_up = up.getvalue()
             try:
-                righe, avv, info = pv.leggi_computo(dati_up, up.name)
+                righe, avv, info = pv.leggi_computo(dati_up, up.name, extra_headers=set(extra_scelte) if extra_scelte else None)
                 voci, av2 = pv.normalizza_voci(righe)
                 if not voci:
                     st.error("Ho letto il file ma non ci sono voci con una quantità.")
                 else:
-                    sostituisci_tabella("pv_df", pd.DataFrame(voci, columns=pv.COLONNE_VOCI))
+                    sostituisci_tabella("pv_df", pd.DataFrame(voci, columns=pv.colonne_con_extra(voci)))
                     audit("pv_import", f"{up.name}: {len(voci)} voci")
-                    ss["pv_imp_esito"] = (f"Importate **{len(voci)} voci** da {up.name}.", info, (avv + av2)[:6])
+                    avvisi_extra = [f"Tenute come colonne in più: {', '.join(extra_scelte)}."] if extra_scelte else []
+                    ss["pv_imp_esito"] = (f"Importate **{len(voci)} voci** da {up.name}.", info, (avv + av2 + avvisi_extra)[:6])
                     ss.pop("pv_imp_manuale", None)
                     st.rerun()
             except pv.ColonneNonRiconosciute as e:

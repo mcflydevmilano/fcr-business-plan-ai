@@ -145,6 +145,20 @@ def test_leggi_computo_gia_fatto_senza_riclassificare():
     assert "riga 4" in info[0] and any("Materiali" in a for a in avv)
 
 
+def test_leggi_computo_riconosce_le_intestazioni_con_simbolo_euro():
+    """Bug reale segnalato dall'utente: un file con le intestazioni «Materiali €/u» ecc. (le stesse che la suite usa
+    in esportazione) veniva letto, ma materiali/manodopera/noli restavano a zero perché il simbolo «€» non era tolto
+    anche dai sinonimi riconosciuti, solo dall'intestazione del file."""
+    dati = _xlsx({"Computo": [
+        ["Descrizione", "U.M.", "Quantità", "Materiali €/u", "Manodopera €/u", "Noli e altro €/u"],
+        ["Massetto in sabbia e cemento", "m²", 100, 5.5, 3.2, 1.1],
+    ]})
+    righe, avv, info = pv.leggi_computo(dati, "x.xlsx")
+    assert len(righe) == 1
+    assert righe[0]["Materiali"] == 5.5 and righe[0]["Manodopera"] == 3.2 and righe[0]["Noli_altro"] == 1.1
+    assert not any("solo prezzo" in a for a in avv)                      # non e' finito tutto su Materiali: le 3 colonne sono state riconosciute
+
+
 def test_leggi_computo_piu_fogli_e_csv_e_manuale():
     dati = _xlsx({"Edile": [["Descrizione", "Qta", "Manodopera", "Materiali"], ["Cappotto", 100, 20, 35]],
                   "Impianti": [["Voce", "Quantità", "Costo unitario"], ["Caldaia", 1, 3000]],
@@ -162,3 +176,32 @@ def test_leggi_computo_piu_fogli_e_csv_e_manuale():
     assert righe[0]["Descrizione"] == "Posa pavimento" and righe[0]["Quantita"] == 40
     with pytest.raises(ValueError):
         pv.leggi_computo(b"non e' un excel", "x.xlsx")
+
+
+def test_colonne_extra_proposte_e_mantenute_se_scelte():
+    """Colonne del file non riconosciute: si propongono (colonne_extra_disponibili), e se scelte restano nelle voci,
+    nella tabella e sopravvivono a un salvataggio/ricarica (round trip), senza entrare nei calcoli."""
+    dati = _xlsx({"Computo": [
+        ["Descrizione", "U.M.", "Quantità", "Prezzo unitario", "Zona", "Coefficiente"],
+        ["Massetto", "m²", 100, 20, "Bagno", 1.05],
+        ["Tinteggiatura", "m²", 50, 8, "Soggiorno", 1.0],
+    ]})
+    extra = pv.colonne_extra_disponibili(dati, "x.xlsx")
+    assert "Zona" in extra and "Coefficiente" in extra and "Descrizione" not in extra
+    # senza scegliere le colonne extra: si perdono, come oggi
+    righe, _, _ = pv.leggi_computo(dati, "x.xlsx")
+    voci, _ = pv.normalizza_voci(righe)
+    assert "Zona" not in voci[0] and pv.colonne_con_extra(voci) == pv.COLONNE_VOCI
+    # scegliendole: restano nelle voci e nella tabella
+    righe2, _, _ = pv.leggi_computo(dati, "x.xlsx", extra_headers={"Zona"})
+    voci2, _ = pv.normalizza_voci(righe2)
+    assert voci2[0]["Zona"] == "Bagno" and voci2[1]["Zona"] == "Soggiorno" and "Coefficiente" not in voci2[0]
+    assert pv.colonne_con_extra(voci2) == pv.COLONNE_VOCI + ["Zona"]
+    # round trip: come quando si salva la tabella (to_dict) e si ricarica (pd.DataFrame coi colonne_con_extra)
+    df = pd.DataFrame(voci2, columns=pv.colonne_con_extra(voci2))
+    voci3, _ = pv.normalizza_voci(df.to_dict("records"))
+    assert voci3[0]["Zona"] == "Bagno"
+    # il calcolo non cambia: la colonna extra non e' un costo
+    out = pv.calcola_preventivo(voci2, {})
+    out_senza = pv.calcola_preventivo(voci, {})
+    assert out["kpi"]["costi_diretti"] == out_senza["kpi"]["costi_diretti"]

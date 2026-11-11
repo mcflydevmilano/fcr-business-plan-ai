@@ -17,6 +17,12 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.31.1", "data": "2026-11-11", "titolo": "Computo e Preventivo: puoi tenere le colonne del file che non riconosco", "voci": [
+        "Quando importi un Excel o CSV in «Computo e Preventivo», se il file ha colonne che non fanno parte dello schema della suite "
+        "(es. «Zona», «Coefficiente», altre colonne del tuo prezzario), ora te le propongo prima di importare: scegli quali tenere e "
+        "restano come colonne in più nella tabella, modificabili, invece di sparire.",
+        "Queste colonne in più restano anche salvando e riaprendo il preventivo: non entrano nei calcoli (materiali, manodopera, noli e "
+        "prezzo restano quelli delle colonne standard), servono solo a non perdere informazioni del file originale."], "strumenti": ["Computo e Preventivo"]},
     {"id": "3.31.0", "data": "2026-11-11", "titolo": "Rapportini: presenze nome per nome con registrazione automatica in Organico; Organico diviso tra personale interno e operai", "voci": [
         "In «Rapportini», scheda del rapportino giornaliero, c'è ora una tabella facoltativa per segnare chi era in cantiere quel giorno, persona per persona "
         "con le sue ore: il numero dei presenti e le ore totali del rapportino si calcolano da soli da questi dati, senza doverli scrivere a parte.",

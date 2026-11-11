@@ -42,8 +42,28 @@ def _r2(x):
 # ----------------------------------------------------------------------------
 # VOCI
 # ----------------------------------------------------------------------------
+def _extra_di(r):
+    """Colonne in piu' (non standard) presenti nella riga: quelle aggiunte dall'utente in import o rimaste da un salvataggio precedente."""
+    out = {}
+    for k, v in (r or {}).items():
+        if k not in COLONNE_VOCI:
+            out[k] = None if (isinstance(v, float) and v != v) else v        # NaN -> None, il resto passa cosi' com'e'
+    return out
+
+
+def colonne_con_extra(voci):
+    """COLONNE_VOCI piu' le eventuali colonne in piu' trovate nelle voci (per costruire la tabella senza perderle)."""
+    extra = []
+    for v in voci or []:
+        for k in v:
+            if k not in COLONNE_VOCI and k not in extra:
+                extra.append(k)
+    return list(COLONNE_VOCI) + extra
+
+
 def normalizza_voci(righe):
-    """Pulisce le righe (da editor, file o AI). Restituisce (voci valide, avvisi). Scarta le righe senza descrizione e quantita'."""
+    """Pulisce le righe (da editor, file o AI). Restituisce (voci valide, avvisi). Scarta le righe senza descrizione e quantita'.
+    Le colonne che non fanno parte dello schema standard (aggiunte dall'utente in import) restano in ogni voce, non si perdono."""
     voci, avvisi = [], []
     for i, r in enumerate(righe or [], start=1):
         desc = str(r.get("Descrizione") or "").strip()
@@ -62,7 +82,7 @@ def normalizza_voci(righe):
         voci.append({
             "Codice": str(r.get("Codice") or "").strip(), "Categoria": str(r.get("Categoria") or "").strip() or "Varie",
             "Descrizione": desc, "UM": str(r.get("UM") or "").strip() or "cad", "Quantita": qta,
-            "Materiali": mat, "Manodopera": man, "Noli_altro": nol,
+            "Materiali": mat, "Manodopera": man, "Noli_altro": nol, **_extra_di(r),
         })
     return voci, avvisi
 
@@ -131,11 +151,17 @@ def _chiave_col(v):
     return t
 
 
+# Confrontiamo intestazioni gia' passate da _chiave_col (senza il simbolo «€») con i sinonimi:
+# anche i sinonimi vanno normalizzati allo stesso modo, altrimenti «Materiali €/u» (l'intestazione
+# che la suite stessa usa in esportazione) non verrebbe mai riconosciuta in importazione.
+_SIN_NORM = {campo: {_chiave_col(s) for s in sin} for campo, sin in _SIN.items()}
+
+
 def _campo_di(intest):
     k = _chiave_col(intest)
     if not k or k in ("nan", "none"):
         return None
-    for campo, sin in _SIN.items():
+    for campo, sin in _SIN_NORM.items():
         if k in sin:
             return campo
     if "descri" in k or "designaz" in k:
@@ -175,13 +201,22 @@ def _testo(v):
     return "" if t.lower() in ("nan", "none", "nat") else t
 
 
-def _estrai_righe(df, nome_foglio, riga_int, mappa, categoria_foglio=""):
+def _estrai_righe(df, nome_foglio, riga_int, mappa, categoria_foglio="", extra_headers=None):
     """Righe voce da un foglio con intestazioni note. Le righe-titolo (testo senza numeri) diventano la categoria delle voci seguenti;
-    le righe di totale e di riporto si saltano; un testo lungo senza numeri prolunga la descrizione della voce precedente."""
+    le righe di totale e di riporto si saltano; un testo lungo senza numeri prolunga la descrizione della voce precedente.
+    `extra_headers`: intestazioni (testo originale) scelte dall'utente da tenere come colonne in più, oltre a quelle riconosciute."""
     righe, avvisi = [], []
     cat = categoria_foglio
     ultima = None
     prezzi_da_importo = 0
+    extra_idx = {}
+    if extra_headers:
+        for j, v in enumerate(df.iloc[riga_int].tolist()):
+            if j in mappa.values():
+                continue
+            t = _testo(v)
+            if t in extra_headers:
+                extra_idx[t] = j
     for i in range(riga_int + 1, min(len(df), riga_int + 1 + MAX_RIGHE_FILE)):
         r = df.iloc[i].tolist()
 
@@ -217,6 +252,10 @@ def _estrai_righe(df, nome_foglio, riga_int, mappa, categoria_foglio=""):
             mat = prezzo
         voce = {"Codice": _testo(g("Codice")), "Categoria": _testo(g("Categoria")) or cat, "Descrizione": desc, "UM": _testo(g("UM")),
                 "Quantita": qta, "Materiali": mat, "Manodopera": man, "Noli_altro": nol}
+        for t, j in extra_idx.items():
+            tv = _testo(r[j]) if j < len(r) else ""
+            if tv:
+                voce[t] = tv
         righe.append(voce)
         ultima = voce
     if prezzi_da_importo:
@@ -248,11 +287,37 @@ class ColonneNonRiconosciute(ValueError):
     """Il file e' leggibile ma le intestazioni non sono state riconosciute: l'interfaccia chiede di indicarle a mano."""
 
 
-def leggi_computo(dati, nome_file="", manuale=None):
+def colonne_extra_disponibili(dati, nome_file=""):
+    """Intestazioni del file (testo originale) che non corrispondono a nessun campo riconosciuto: si possono proporre
+    all'utente, prima di importare, come colonne in piu' da tenere oltre a quelle standard. [] se il file non si legge
+    o non ha intestazioni riconoscibili (in quel caso l'import normale mostrera' l'errore giusto)."""
+    try:
+        fogli = _fogli_da_file(dati, nome_file)
+    except Exception:
+        return []
+    extra, viste = [], set()
+    for _, df in fogli.items():
+        if df is None or df.empty:
+            continue
+        riga, mappa = _riga_intestazioni(df)
+        if riga is None:
+            continue
+        for j, v in enumerate(df.iloc[riga].tolist()):
+            if j in mappa.values():
+                continue
+            t = _testo(v)
+            if t and t.lower() not in viste:
+                viste.add(t.lower())
+                extra.append(t)
+    return extra
+
+
+def leggi_computo(dati, nome_file="", manuale=None, extra_headers=None):
     """Legge un computo o preventivo gia' fatto (Excel, tutti i fogli, o CSV) senza obbligare a rinominare le colonne.
     Cerca da sola la riga delle intestazioni (anche sotto titoli e dati dell'azienda), riconosce molti nomi di colonna
     (Tariffa, Designazione dei lavori, Q.tà, Prezzo unitario, Importo...), usa i titoli di capitolo come categoria e salta i totali.
     `manuale` = {"foglio", "riga" (0 = prima), "colonne": {campo: indice}} quando le colonne vanno indicate a mano.
+    `extra_headers`: intestazioni scelte dall'utente (vedi `colonne_extra_disponibili`) da tenere come colonne in piu'.
     Restituisce (righe, avvisi, info). Solleva ColonneNonRiconosciute se non trova niente."""
     fogli = _fogli_da_file(dati, nome_file)
     righe, avvisi, info = [], [], []
@@ -260,7 +325,7 @@ def leggi_computo(dati, nome_file="", manuale=None):
         df = fogli.get(manuale["foglio"])
         if df is None:
             raise ValueError("Foglio non trovato.")
-        r, a = _estrai_righe(df, manuale["foglio"], int(manuale["riga"]), dict(manuale["colonne"]))
+        r, a = _estrai_righe(df, manuale["foglio"], int(manuale["riga"]), dict(manuale["colonne"]), extra_headers=extra_headers)
         return r, a, [f"Foglio «{manuale['foglio']}»: colonne indicate a mano"]
     trovati = []
     for nome_f, df in fogli.items():
@@ -272,7 +337,7 @@ def leggi_computo(dati, nome_file="", manuale=None):
     if not trovati:
         raise ColonneNonRiconosciute("Non ho riconosciuto le colonne del file: indicale tu qui sotto (basta una volta).")
     for nome_f, df, riga, mappa in trovati:
-        r, a = _estrai_righe(df, nome_f, riga, mappa, nome_f if len(trovati) > 1 else "")
+        r, a = _estrai_righe(df, nome_f, riga, mappa, nome_f if len(trovati) > 1 else "", extra_headers=extra_headers)
         righe += r
         avvisi += a
         cols = ", ".join(_ETICHETTA_CAMPO[c] for c in mappa)
