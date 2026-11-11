@@ -5,10 +5,17 @@ import pytest
 import fo
 import mz
 import og
+import storage
 import sx
 
 OGGI = dt.date(2026, 10, 19)
 g = lambda n: (OGGI + dt.timedelta(days=n)).isoformat()
+
+
+@pytest.fixture
+def db(tmp_path):
+    storage.svuota_cache()
+    return str(tmp_path / "n.db")
 
 
 def test_fornitori_documenti_contratti_confronto():
@@ -121,3 +128,32 @@ def test_materiali_prezzo_automatico_magazzino_e_scorta():
     assert o["kpi"]["sotto_scorta"] == 1 and o["sotto_scorta"][0]["Da ordinare"] == 5 and o["kpi"]["giacenze_negative"] == 0
     s = mt.suggerimenti(ordini, art, ["Adam Costruzioni"], [])
     assert "cemento 32,5" in [x.lower() for x in s["materiali"]] and len(s["materiali"]) == 1 and "Adam Costruzioni" in s["fornitori"]
+
+
+def test_organico_tipo_predefinito_interno():
+    """Senza Tipo (salvataggi vecchi) si considera personale interno; un Tipo valido viene mantenuto."""
+    r, av = og.normalizza_ris([{"Risorsa": "Mario Rossi", "Ruolo": "Capo cantiere"}, {"Risorsa": "Luca Bianchi", "Tipo": "Operaio"}, {"Risorsa": "Anna Verdi", "Tipo": "boh"}])
+    assert not av
+    per = {x["Risorsa"]: x["Tipo"] for x in r}
+    assert per["Mario Rossi"] == "Interno" and per["Luca Bianchi"] == "Operaio" and per["Anna Verdi"] == "Interno"
+
+
+def test_organico_censito_e_aggiungi_operaio_nuovo(db):
+    assert og.censito("Mario Rossi", path=db) is False
+    assert og.aggiungi_operaio_nuovo("Mario Rossi", ruolo="Muratore", costo_orario=18.5, autore="collega", path=db) is True
+    assert og.censito("Mario Rossi", path=db) is True
+    assert og.censito("mario rossi", path=db) is True                # senza badare a maiuscole/minuscole
+    ris = og.carica_unico(db)["ris"]
+    assert len(ris) == 1 and ris[0]["Tipo"] == "Operaio" and ris[0]["Ruolo"] == "Muratore" and ris[0]["Costo_orario"] == 18.5
+    # lo stesso nome una seconda volta non viene duplicato
+    assert og.aggiungi_operaio_nuovo("mario rossi", path=db) is False
+    assert len(og.carica_unico(db)["ris"]) == 1
+
+
+def test_organico_aggiungi_operaio_nuovo_non_sovrascrive_colleghi(db):
+    """Un collega ha gia' salvato Organico nel frattempo: aggiungere un operaio nuovo non deve perdere il suo lavoro."""
+    og.salva_unico({"ris": [{"Risorsa": "Anna Verdi", "Tipo": "Interno", "Ruolo": "Amministrazione", "Costo_orario": 15.0,
+                             "Ore_giorno": 8.0, "Ore_mese": 0.0, "Assunzione": "", "Cessazione": ""}]}, autore="collega", path=db)
+    assert og.aggiungi_operaio_nuovo("Mario Rossi", path=db) is True
+    nomi = {r["Risorsa"] for r in og.carica_unico(db)["ris"]}
+    assert nomi == {"Anna Verdi", "Mario Rossi"}

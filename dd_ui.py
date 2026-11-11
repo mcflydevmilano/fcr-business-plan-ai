@@ -35,7 +35,7 @@ SESSIONE = "Dati della sessione"
 NESSUNO = "Non usare"
 
 
-_SESS_KEY = {"fc": "fc_df", "rc": "rc_df", "of": "of_voci", "ga": "ga_gare", "fo": "fo_doc", "sx": "sx_pers", "mz": "mz_mezzi", "og": "og_ris", "rp": "rp_rapp", "gt": "gt_fasi", "lg": "lg_riserve", "sa": "sa_con", "pr": "pr_per", "mt": "mt_ord", "vr": "vr_ver", "ad": "ad_doc"}
+_SESS_KEY = {"fc": "fc_df", "rc": "rc_df", "of": "of_voci", "ga": "ga_gare", "fo": "fo_doc", "sx": "sx_pers", "mz": "mz_mezzi", "og": "og_ris_int", "rp": "rp_rapp", "gt": "gt_fasi", "lg": "lg_riserve", "sa": "sa_con", "pr": "pr_per", "mt": "mt_ord", "vr": "vr_ver", "ad": "ad_doc"}
 
 
 def _sessione_disponibile(m):

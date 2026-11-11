@@ -200,7 +200,7 @@ PASSI = {
     ], "Se un mezzo ha poche ore di uso, il costo orario sale: è un segnale, non un errore."),
     "og": ("Capire se in certi mesi mancano o avanzano persone rispetto ai cantieri.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:og_demo"),
-        ("Inserisci le risorse", "Nella scheda «1. Risorse e Assegnazioni» scrivi persone o squadre con costo orario e ore al giorno (una squadra di 3 = 24). Le ore del mese si calcolano dal calendario, senza sabati, domeniche e festivi. Se qualcuno viene assunto o cessa, scrivi la data: esce da solo dai conti.", "dati:og_ris"),
+        ("Inserisci le risorse", "Nella scheda «1. Personale interno» e «2. Operai di cantiere» scrivi persone o squadre con costo orario e ore al giorno (una squadra di 3 = 24). Le ore del mese si calcolano dal calendario, senza sabati, domeniche e festivi. Se qualcuno viene assunto o cessa, scrivi la data: esce da solo dai conti.", "dati:og_ris_op"),
         ("Ferie e chiusure", "Nella tabella «Ferie, malattie, chiusure» scrivi i giorni di assenza; con «Tutti» valgono per tutta l'azienda. In «Ipotesi» puoi indicare la festa del patrono.", None),
         ("Assegna ai cantieri", "Nella seconda tabella scrivi chi lavora a quale cantiere, da quando a quando, con le ore al mese.", None),
         ("Guarda il carico", "Nella scheda «2. Carico di lavoro» vedi i mesi in sovraccarico (serve più gente) o scarichi (ore ferme).", None),

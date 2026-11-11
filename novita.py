@@ -17,6 +17,18 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.31.0", "data": "2026-11-11", "titolo": "Rapportini: presenze nome per nome con registrazione automatica in Organico; Organico diviso tra personale interno e operai", "voci": [
+        "In «Rapportini», scheda del rapportino giornaliero, c'è ora una tabella facoltativa per segnare chi era in cantiere quel giorno, persona per persona "
+        "con le sue ore: il numero dei presenti e le ore totali del rapportino si calcolano da soli da questi dati, senza doverli scrivere a parte.",
+        "Se scrivi il nome di un operaio che non è ancora in «Organico», la suite te lo segnala e con una piccola conferma (ruolo e costo orario) lo aggiunge "
+        "subito all'elenco aziendale: da quel momento compare anche a chi gestisce Organico, senza bisogno di avvisarlo.",
+        "«Organico» distingue ora in due elenchi separati il personale interno dagli operai di cantiere (prima erano mescolati in una sola tabella).",
+        "«Organico» è diventato un elenco unico aziendale, sempre aggiornato per tutti (come già funziona per i Rapportini): non serve più scegliere o salvare "
+        "con un nome per l'uso di tutti i giorni. Chi vuole tenere comunque una copia di sicurezza con un nome può farlo dall'apposito riquadro facoltativo."],
+     "strumenti": ["Rapportini", "Organico"]},
+    {"id": "3.30.3", "data": "2026-11-11", "titolo": "Corretto l'import nel Computo e preventivo: materiali, manodopera e noli non restano più a zero", "voci": [
+        "Importando un Excel con le colonne «Materiali €/u», «Manodopera €/u» e «Noli e altro €/u» (le stesse intestazioni che la suite usa quando esporti), "
+        "i tre costi venivano letti ma non riconosciuti e restavano a 0,00 per tutte le righe: ora vengono riportati correttamente."], "strumenti": ["Computo e Preventivo"]},
     {"id": "3.30.2", "data": "2026-11-11", "titolo": "Il bollino NEW si spegne tutto insieme, linguette numerate in più strumenti", "voci": [
         "Quando apri «Novità e aggiornamenti», da ora si spengono subito tutti i bollini 🆕 NEW delle schede nell'Hub legate a quelle novità: non serve più aprire "
         "ogni strumento uno per uno per farli sparire.",

@@ -7,6 +7,7 @@ import guida
 
 import charts
 import firma
+import og
 import ops_report
 import rp
 import storage
@@ -28,7 +29,8 @@ def _esempio():
     s = [(g(2), "Villa Lago", "Sicurezza", "Alta", "Parapetto del ponteggio lato nord mancante", "Bianchi", (oggi + dt.timedelta(days=1)).isoformat(), "Aperta"),
          (g(4), "Scuola Elementare", "Materiale / consegna", "Media", "Consegna cavi in ritardo di una settimana", "Verdi", (oggi + dt.timedelta(days=5)).isoformat(), "In corso")]
     rr, ss_ = [dict(zip(rp.COLONNE_RAPP[1:], x)) for x in r], [dict(zip(rp.COLONNE_SEGN[1:], x)) for x in s]
-    return (pd.DataFrame(rp.normalizza_rapp(rr)[0], columns=rp.COLONNE_RAPP), pd.DataFrame(rp.normalizza_segn(ss_)[0], columns=rp.COLONNE_SEGN))
+    return (pd.DataFrame(rp.normalizza_rapp(rr)[0], columns=rp.COLONNE_RAPP), pd.DataFrame(rp.normalizza_segn(ss_)[0], columns=rp.COLONNE_SEGN),
+            pd.DataFrame(columns=rp.COLONNE_PRES))
 
 
 def _records(chiave):
@@ -40,7 +42,7 @@ def _params():
 
 
 def _dati():
-    return {"rapp": rp.normalizza_rapp(_records("rp_rapp"))[0], "segn": rp.normalizza_segn(_records("rp_segn"))[0], "params": _params()}
+    return {"rapp": rp.normalizza_rapp(_records("rp_rapp"))[0], "segn": rp.normalizza_segn(_records("rp_segn"))[0], "pres": rp.normalizza_pres(_records("rp_pres"))[0], "params": _params()}
 
 
 def _raccogli():
@@ -51,12 +53,13 @@ def _raccogli():
 def _firma():
     import hashlib
     import json
-    return hashlib.sha1(json.dumps([_records("rp_rapp"), _records("rp_segn")], default=str, sort_keys=True).encode("utf-8")).hexdigest()
+    return hashlib.sha1(json.dumps([_records("rp_rapp"), _records("rp_segn"), _records("rp_pres")], default=str, sort_keys=True).encode("utf-8")).hexdigest()
 
 
 def _applica(p, nome=""):
     sostituisci_tabella("rp_rapp", pd.DataFrame(p.get("rapp") or [], columns=rp.COLONNE_RAPP))
     sostituisci_tabella("rp_segn", pd.DataFrame(p.get("segn") or [], columns=rp.COLONNE_SEGN))
+    sostituisci_tabella("rp_pres", pd.DataFrame(p.get("pres") or [], columns=rp.COLONNE_PRES))
     ss["rp_demo"] = False
     ss["_rp_firma"] = _firma()
     ss["_pending"] = {"rp_" + k: v for k, v in (p.get("params") or {}).items() if k in PARAM}
@@ -73,7 +76,7 @@ def _carica_condiviso():
         _applica(p, NOME)
         ss["_base_rp"] = {"nome": NOME, "agg": meta["aggiornato"] if meta else ""}
     else:
-        ss["rp_rapp"], ss["rp_segn"] = _esempio()
+        ss["rp_rapp"], ss["rp_segn"], ss["rp_pres"] = _esempio()
         ss["rp_demo"] = esempi_attivi()
 
 
@@ -96,12 +99,13 @@ def _aggiorna_se_cambiato():
 def _sincronizza(utente, audit):
     """Salva nel registro condiviso fondendo il lavoro degli altri telefoni: non si perde nulla anche se in due compilano insieme."""
     toc = ss.get("_rp_toccati", set())
-    rapp, segn = _records("rp_rapp"), _records("rp_segn")
+    rapp, segn, pres = _records("rp_rapp"), _records("rp_segn"), _records("rp_pres")
     for _ in range(4):
         try:
             meta = storage.meta_pratica(NOME, modulo="rp")
             db = storage.carica_pratica(NOME, modulo="rp") if meta else None
-            payload = {"rapp": rp.unisci((db or {}).get("rapp"), rapp, toc), "segn": rp.unisci((db or {}).get("segn"), segn, toc), "params": (db or {}).get("params") or _params()}
+            payload = {"rapp": rp.unisci((db or {}).get("rapp"), rapp, toc), "segn": rp.unisci((db or {}).get("segn"), segn, toc),
+                       "pres": rp.unisci((db or {}).get("pres"), pres, toc), "params": (db or {}).get("params") or _params()}
             agg = storage.salva_pratica(NOME, payload, autore=utente, modulo="rp", atteso=meta["aggiornato"] if meta else "")
         except storage.ConflittoSalvataggio:
             continue                                   # qualcuno ha salvato nel frattempo: rileggi e riprova
@@ -117,9 +121,9 @@ def _sincronizza(utente, audit):
 
 def _aggiungi(tabella, colonne, riga, utente, audit):
     if ss.get("rp_demo"):                              # il primo dato vero sostituisce l'esempio
-        ss["rp_rapp"], ss["rp_segn"] = pd.DataFrame(columns=rp.COLONNE_RAPP), pd.DataFrame(columns=rp.COLONNE_SEGN)
+        ss["rp_rapp"], ss["rp_segn"], ss["rp_pres"] = pd.DataFrame(columns=rp.COLONNE_RAPP), pd.DataFrame(columns=rp.COLONNE_SEGN), pd.DataFrame(columns=rp.COLONNE_PRES)
         ss["rp_demo"] = False
-    norm = rp.normalizza_rapp if tabella == "rp_rapp" else rp.normalizza_segn
+    norm = {"rp_rapp": rp.normalizza_rapp, "rp_segn": rp.normalizza_segn, "rp_pres": rp.normalizza_pres}[tabella]
     ok, _ = norm([riga])
     if not ok:
         st.error("Mancano dei dati obbligatori.")
@@ -195,7 +199,7 @@ def _cantieri():
     vivi = _cantieri_rubrica()
     if vivi:
         return sorted(vivi)
-    return sorted({r["Cantiere"] for r in _records("rp_rapp") + _records("rp_segn") if r.get("Cantiere")})
+    return sorted({r["Cantiere"] for r in _records("rp_rapp") + _records("rp_segn") + _records("rp_pres") if r.get("Cantiere")})
 
 
 def _solo_da_rubrica():
@@ -206,8 +210,59 @@ def _scelta_cantiere(sel, nuovo):
     return (nuovo.strip() if sel == NUOVO or nuovo.strip() else sel)
 
 
+def _tab_operai(utente, audit):
+    st.markdown("##### 👷 Operai presenti (facoltativo, nome per nome)")
+    st.caption("Aggiungi un operaio alla volta con le sue ore: qui sotto, nel rapportino del giorno, «Persone presenti» e «Ore lavorate» si calcolano da soli da questi nomi. "
+               "Un operaio mai visto prima viene aggiunto in automatico all'Organico.")
+    cant = _cantieri()
+    nuovo_op = ss.get("_rp_op_nuovo")
+    if nuovo_op:
+        with st.form("form_op_nuovo", clear_on_submit=True):
+            st.info(f"«{nuovo_op['persona']}» non risulta ancora in Organico: completa i dati per aggiungerlo.")
+            ruolo = st.text_input("Ruolo/qualifica", key="op_nuovo_ruolo")
+            costo = st.number_input("Costo orario aziendale (€/h, facoltativo)", 0.0, 200.0, 0.0, step=1.0, key="op_nuovo_costo")
+            c1, c2 = st.columns(2)
+            ok = c1.form_submit_button("✅ Conferma e aggiungi", type="primary", width="stretch", disabled=sola_lettura())
+            ann = c2.form_submit_button("Annulla", width="stretch")
+        if ok:
+            og.aggiungi_operaio_nuovo(nuovo_op["persona"], ruolo, costo, autore=utente)
+            audit("og_operaio_da_rapportino", nuovo_op["persona"])
+            _aggiungi("rp_pres", rp.COLONNE_PRES, {"Data": nuovo_op["data"], "Cantiere": nuovo_op["cantiere"], "Persona": nuovo_op["persona"], "Ore": nuovo_op["ore"]}, utente, audit)
+            ss.pop("_rp_op_nuovo", None)
+            st.rerun()
+        if ann:
+            ss.pop("_rp_op_nuovo", None)
+            st.rerun()
+        return
+    with st.form("form_op", clear_on_submit=True):
+        solo = _solo_da_rubrica()
+        sel = st.selectbox("Cantiere", cant if solo else (cant + [NUOVO] if cant else [NUOVO]), key="op_cantiere")
+        nuovo = "" if solo else st.text_input("Se è un cantiere nuovo scrivilo qui", key="op_nuovo_cant")
+        a, b, c = st.columns(3)
+        data = a.date_input("Data", value=rp.oggi_italia(), key="op_data", format="DD/MM/YYYY")
+        persona = b.text_input("Nome operaio", key="op_persona")
+        ore = c.number_input("Ore", 0.0, 24.0, 8.0, step=0.5, key="op_ore")
+        invia = st.form_submit_button("➕ Aggiungi operaio", width="stretch", disabled=sola_lettura())
+    if invia:
+        cantiere = _scelta_cantiere(sel, nuovo)
+        if not cantiere or cantiere == NUOVO:
+            st.error("Scegli il cantiere.")
+        elif not persona.strip():
+            st.error("Scrivi il nome dell'operaio.")
+        elif og.censito(persona.strip()):
+            _aggiungi("rp_pres", rp.COLONNE_PRES, {"Data": data, "Cantiere": cantiere, "Persona": persona.strip(), "Ore": ore}, utente, audit)
+            st.rerun()
+        else:
+            ss["_rp_op_nuovo"] = {"persona": persona.strip(), "ore": ore, "cantiere": cantiere, "data": data}
+            st.rerun()
+    oggi_pres = [p for p in _records("rp_pres") if p.get("Data") == rp.oggi_italia().isoformat()]
+    if oggi_pres:
+        st.caption("Oggi: " + ", ".join(f"{p['Persona']} ({p['Ore']:.1f}h, {p['Cantiere']})" for p in oggi_pres))
+
+
 def _tab_rapportino(utente, audit):
     st.markdown("##### Rapportino del giorno")
+    _tab_operai(utente, audit)
     cant = _cantieri()
     n_pad = ss.setdefault("rp_firma_n", 0)
     with st.expander("✍️ Firma (facoltativa): disegna con il dito"):
@@ -226,6 +281,7 @@ def _tab_rapportino(utente, audit):
         c, d = st.columns(2)
         pres = c.number_input("Persone presenti", 0, 500, step=1, key="nr_pres")
         ore = d.number_input("Ore lavorate (totale di tutti)", 0.0, 5000.0, step=1.0, key="nr_ore", help="Persone × ore lavorate. Es. 6 persone per 8 ore = 48.")
+        st.caption("Se hai aggiunto gli operai uno per uno qui sopra per questo cantiere e questa data, questi due numeri si ricalcolano da soli al salvataggio.")
         lav = st.text_area("Lavorazioni eseguite", key="nr_lav", height=90, placeholder="Es. Getto solaio primo piano, posa tubazioni bagno…")
         mezzi = st.text_input("Mezzi usati (facoltativo)", key="nr_mezzi")
         note = st.text_area("Note (facoltative)", key="nr_note", height=70)
@@ -239,7 +295,9 @@ def _tab_rapportino(utente, audit):
         elif not lav.strip():
             st.error("Scrivi almeno una riga sulle lavorazioni eseguite.")
         else:
-            riga = {"Data": data, "Cantiere": cantiere, "Compilato_da": utente, "Meteo": meteo, "Presenti": pres, "Ore": ore, "Lavorazioni": lav, "Mezzi": mezzi, "Note": note}
+            pres_g, ore_g = rp.riepilogo_giorno(_records("rp_pres"), data.isoformat(), cantiere)
+            riga = {"Data": data, "Cantiere": cantiere, "Compilato_da": utente, "Meteo": meteo, "Presenti": pres_g or pres, "Ore": ore_g or ore,
+                    "Lavorazioni": lav, "Mezzi": mezzi, "Note": note}
             id_new = _aggiungi("rp_rapp", rp.COLONNE_RAPP, riga, utente, audit)
             if id_new:
                 _salva_allegati(id_new, foto, png_firma, utente, audit)
@@ -315,11 +373,13 @@ def _cambia_stato(id_, stato, utente, audit):
 
 def _cfg():
     n, t, s = st.column_config.NumberColumn, st.column_config.TextColumn, st.column_config.SelectboxColumn
-    a, b = rp.ETICHETTE_RAPP, rp.ETICHETTE_SEGN
+    a, b, c = rp.ETICHETTE_RAPP, rp.ETICHETTE_SEGN, rp.ETICHETTE_PRES
     return ({"Id": None, "Data": t(a["Data"], help="AAAA-MM-GG o GG/MM/AAAA"), "Cantiere": colonna_cantiere(a["Cantiere"], (("rp_rapp", "Cantiere"),)), "Compilato_da": t(a["Compilato_da"]), "Meteo": s(a["Meteo"], options=list(rp.METEO)),
              "Presenti": n(a["Presenti"], min_value=0.0, step=1.0, format="%.0f"), "Ore": n(a["Ore"], min_value=0.0, step=1.0, format="%.0f"), "Lavorazioni": t(a["Lavorazioni"], width="large"), "Mezzi": t(a["Mezzi"]), "Note": t(a["Note"])},
             {"Id": None, "Data": t(b["Data"]), "Cantiere": colonna_cantiere(b["Cantiere"], (("rp_segn", "Cantiere"),)), "Tipo": s(b["Tipo"], options=list(rp.TIPI_SEGN)), "Gravita": s(b["Gravita"], options=list(rp.GRAVITA)),
-             "Descrizione": t(b["Descrizione"], width="large"), "Responsabile": t(b["Responsabile"]), "Scadenza": t(b["Scadenza"], help="AAAA-MM-GG o GG/MM/AAAA"), "Stato": s(b["Stato"], options=list(rp.STATI_SEGN))})
+             "Descrizione": t(b["Descrizione"], width="large"), "Responsabile": t(b["Responsabile"]), "Scadenza": t(b["Scadenza"], help="AAAA-MM-GG o GG/MM/AAAA"), "Stato": s(b["Stato"], options=list(rp.STATI_SEGN))},
+            {"Id": None, "Data": t(c["Data"], help="AAAA-MM-GG o GG/MM/AAAA"), "Cantiere": colonna_cantiere(c["Cantiere"], (("rp_pres", "Cantiere"),)), "Persona": t(c["Persona"], width="medium"),
+             "Ore": n(c["Ore"], min_value=0.0, step=0.5, format="%.1f")})
 
 
 def render(fcr_uri, audit=None, utente=""):
@@ -360,11 +420,13 @@ def render(fcr_uri, audit=None, utente=""):
             st.dataframe(pd.DataFrame([{k2: v for k2, v in c.items() if k2 != "Stato"} for c in out["cantieri"]]), hide_index=True, width="stretch")
     with t4:
         pannello_archivio("rp", "i rapportini", _raccogli, _applica, audit, utente)
-        banner_esempio("rp_demo", [("rp_rapp", rp.COLONNE_RAPP), ("rp_segn", rp.COLONNE_SEGN)], "svuota_rp")
-        cr, cs = _cfg()
+        banner_esempio("rp_demo", [("rp_rapp", rp.COLONNE_RAPP), ("rp_segn", rp.COLONNE_SEGN), ("rp_pres", rp.COLONNE_PRES)], "svuota_rp")
+        cr, cs, cp = _cfg()
         blocco_tabella("rp_rapp", "Registro dei rapportini", "Correzioni e import. Per salvare le modifiche usa «Salva e riapri» qui sopra (nome «Rapportini» per il registro condiviso).",
                        rp.COLONNE_RAPP, rp.ETICHETTE_RAPP, cr, ss["rp_rapp"], "rp", 1, audit, 260)
         blocco_tabella("rp_segn", "Registro delle segnalazioni", "", rp.COLONNE_SEGN, rp.ETICHETTE_SEGN, cs, ss["rp_segn"], "rp", 2, audit, 220)
+        blocco_tabella("rp_pres", "Registro delle presenze (nome per nome)", "Una riga per persona, giorno e cantiere: da qui si ricalcolano «Persone presenti» e «Ore lavorate» del rapportino.",
+                       rp.COLONNE_PRES, rp.ETICHETTE_PRES, cp, ss["rp_pres"], "rp", 3, audit, 220)
         for x in (a1 + a2)[:4]:
             st.caption("⚠️ " + x)
         st.subheader("Soglie")

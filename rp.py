@@ -27,6 +27,8 @@ ETICHETTE_RAPP = {"Id": "Id", "Data": "Data", "Cantiere": "Cantiere", "Compilato
 COLONNE_SEGN = ["Id", "Data", "Cantiere", "Tipo", "Gravita", "Descrizione", "Responsabile", "Scadenza", "Stato"]
 ETICHETTE_SEGN = {"Id": "Id", "Data": "Data", "Cantiere": "Cantiere", "Tipo": "Tipo", "Gravita": "Gravità", "Descrizione": "Descrizione",
                   "Responsabile": "Responsabile", "Scadenza": "Scadenza", "Stato": "Stato"}
+COLONNE_PRES = ["Id", "Data", "Cantiere", "Persona", "Ore"]
+ETICHETTE_PRES = {"Id": "Id", "Data": "Data", "Cantiere": "Cantiere", "Persona": "Persona", "Ore": "Ore lavorate"}
 
 
 def _s(v):
@@ -85,6 +87,31 @@ def normalizza_segn(righe):
         visti.add(riga["Id"])
         out.append(riga)
     return out, avvisi
+
+
+def normalizza_pres(righe):
+    """Operai presenti, nome per nome, con le ore del giorno. L'Id non dipende dalle ore: aggiungendo una riga con le ore corrette
+    per la stessa persona, lo stesso giorno e lo stesso cantiere si aggiorna quella riga (vince l'ultima), non se ne crea un'altra."""
+    tappe, ordine, avvisi = {}, [], []
+    for i, r in enumerate(righe or [], start=1):
+        if not any(_s(r.get(c)) for c in COLONNE_PRES if c != "Id"):
+            continue
+        d, cant, persona = data_da(r.get("Data")), _s(r.get("Cantiere")), _s(r.get("Persona"))
+        if d is None or not cant or not persona:
+            avvisi.append(f"Operaio presente {i}: servono data, cantiere e nome, riga ignorata.")
+            continue
+        riga = {"Data": d.isoformat(), "Cantiere": cant, "Persona": persona, "Ore": max(0.0, to_float(r.get("Ore"), 0.0))}
+        riga["Id"] = _s(r.get("Id")) or nuovo_id("P", d, cant, persona)
+        if riga["Id"] not in tappe:
+            ordine.append(riga["Id"])
+        tappe[riga["Id"]] = riga
+    return [tappe[k] for k in ordine], avvisi
+
+
+def riepilogo_giorno(pres, data_iso, cantiere):
+    """(persone, ore totali) per un cantiere in un giorno, dalle presenze registrate nome per nome."""
+    righe = [p for p in (pres or []) if p.get("Data") == data_iso and p.get("Cantiere") == cantiere]
+    return len({p["Persona"] for p in righe}), round(sum(to_float(p.get("Ore"), 0.0) for p in righe), 1)
 
 
 def unisci(db, locale, toccati=(), colonna_id="Id"):

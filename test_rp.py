@@ -57,3 +57,20 @@ def test_id_stabile_e_righe_invalide():
     r1, av = rp.normalizza_rapp([rapp(g(0), "A"), rapp(g(0), "A"), {"Data": "", "Cantiere": "B", "Ore": 5}])
     assert len(r1) == 1 and len(av) == 1 and r1[0]["Id"]
     assert rp.normalizza_rapp(r1)[0][0]["Id"] == r1[0]["Id"]
+
+
+def test_presenze_nome_per_nome():
+    p, av = rp.normalizza_pres([{"Data": g(0), "Cantiere": "Villa Lago", "Persona": "Mario Rossi", "Ore": 8},
+                                {"Data": g(0), "Cantiere": "Villa Lago", "Persona": "Luca Bianchi", "Ore": 6.5},
+                                {"Data": g(0), "Cantiere": "Scuola", "Persona": "Mario Rossi", "Ore": 4},
+                                {"Data": "", "Cantiere": "X", "Persona": "", "Ore": 1}])
+    assert len(p) == 3 and len(av) == 1
+    n, ore = rp.riepilogo_giorno(p, g(0), "Villa Lago")
+    assert n == 2 and ore == 14.5
+
+
+def test_presenze_id_stabile_alla_correzione_ore():
+    """Correggere le ore della stessa persona, stesso giorno e cantiere aggiorna la riga, non ne crea un'altra."""
+    p1, _ = rp.normalizza_pres([{"Data": g(0), "Cantiere": "Villa Lago", "Persona": "Mario Rossi", "Ore": 8}])
+    p2, _ = rp.normalizza_pres(p1 + [{"Data": g(0), "Cantiere": "Villa Lago", "Persona": "Mario Rossi", "Ore": 7}])
+    assert len(p2) == 1 and p2[0]["Ore"] == 7 and p2[0]["Id"] == p1[0]["Id"]

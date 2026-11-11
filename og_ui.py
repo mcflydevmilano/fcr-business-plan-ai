@@ -10,49 +10,127 @@ import og
 import ops_report
 import theme
 from core import fmt_num
-from ui_util import colonna_cantiere, esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sostituisci_tabella
+from ui_util import colonna_cantiere, esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
 
 ss = st.session_state
 PARAM = ("mesi", "sat_min_pct", "ore_giorno", "patrono", "festivita")
+NOME = og.NOME_UNICO             # salvataggio condiviso: un solo elenco aziendale, tutti vedono lo stesso (come i Rapportini)
 
 
 @senza_esempi
 def _esempio():
     oggi = dt.date.today()
     g = lambda n: (oggi + dt.timedelta(days=n)).isoformat()
-    ris = [("Squadra Muratori A", "Muratori", 32, 24, None, "", ""), ("Squadra Muratori B", "Muratori", 32, 16, None, "", ""), ("Impiantisti", "Impianti", 38, 16, None, "", ""),
-           ("Capocantiere Bianchi", "Capocantiere", 45, 8, None, "", ""), ("Gruista", "Operatore", 34, 8, None, "", "")]
+    interni = [("Capocantiere Bianchi", "Capocantiere", 45, 8, None, "", "")]
+    operai = [("Squadra Muratori A", "Muratori", 32, 24, None, "", ""), ("Squadra Muratori B", "Muratori", 32, 16, None, "", ""),
+              ("Impiantisti", "Impianti", 38, 16, None, "", ""), ("Gruista", "Operatore", 34, 8, None, "", "")]
     ass = [("Squadra Muratori A", "Villa Lago", g(-60), g(60), 300), ("Squadra Muratori A", "Scuola Elementare", g(30), g(240), 260), ("Squadra Muratori B", "Scuola Elementare", g(-30), g(150), 280),
            ("Impiantisti", "Scuola Elementare", g(60), g(180), 300), ("Impiantisti", "Villa Lago", g(-30), g(45), 120), ("Capocantiere Bianchi", "Villa Lago", g(-60), g(60), 90),
            ("Capocantiere Bianchi", "Scuola Elementare", g(-30), g(240), 100), ("Gruista", "Scuola Elementare", g(20), g(120), 120)]
+    campi = ["Risorsa", "Ruolo", "Costo_orario", "Ore_giorno", "Ore_mese", "Assunzione", "Cessazione"]
+    mk_ris = lambda tipo, rows: pd.DataFrame([{**dict(zip(campi, r)), "Tipo": tipo} for r in rows], columns=og.COLONNE_RIS)
     mk = lambda cols, rows: pd.DataFrame([dict(zip(cols, r)) for r in rows], columns=cols)
-    return mk(og.COLONNE_RIS, ris), mk(og.COLONNE_ASS, ass), mk(og.COLONNE_ASSENZE, [])
+    return mk_ris("Interno", interni), mk_ris("Operaio", operai), mk(og.COLONNE_ASS, ass), mk(og.COLONNE_ASSENZE, [])
 
 
 def _cfg():
     n, t = st.column_config.NumberColumn, st.column_config.TextColumn
     a, b = og.ETICHETTE_RIS, og.ETICHETTE_ASS
-    return ({"Risorsa": t(a["Risorsa"], width="medium"), "Ruolo": t(a["Ruolo"]), "Costo_orario": n(a["Costo_orario"], min_value=0.0, step=1.0, format="%.1f"), "Ore_giorno": n(a["Ore_giorno"], min_value=0.0, max_value=24.0, step=1.0, format="%.1f"),
-             "Ore_mese": n(a["Ore_mese"], min_value=0.0, step=10.0, format="%.0f"), "Assunzione": t(a["Assunzione"], help="AAAA-MM-GG o GG/MM/AAAA"), "Cessazione": t(a["Cessazione"], help="Dopo questa data la persona esce da capacità, costi e previsioni.")},
+    cr = {"Risorsa": t(a["Risorsa"], width="medium"), "Tipo": None, "Ruolo": t(a["Ruolo"]), "Costo_orario": n(a["Costo_orario"], min_value=0.0, step=1.0, format="%.1f"),
+          "Ore_giorno": n(a["Ore_giorno"], min_value=0.0, max_value=24.0, step=1.0, format="%.1f"), "Ore_mese": n(a["Ore_mese"], min_value=0.0, step=10.0, format="%.0f"),
+          "Assunzione": t(a["Assunzione"], help="AAAA-MM-GG o GG/MM/AAAA"), "Cessazione": t(a["Cessazione"], help="Dopo questa data la persona esce da capacità, costi e previsioni.")}
+    return (cr,
             {"Risorsa": t(b["Risorsa"], width="medium"), "Commessa": colonna_cantiere(b["Commessa"], (("og_ass", "Commessa"),)), "Dal": t(b["Dal"], help="AAAA-MM-GG o GG/MM/AAAA"), "Al": t(b["Al"], help="Vuoto = senza fine"),
              "Ore_mese": n(b["Ore_mese"], min_value=0.0, step=10.0, format="%.0f")},
             {"Risorsa": t(og.ETICHETTE_ASSENZE["Risorsa"], width="medium"), "Dal": t("Dal", help="AAAA-MM-GG o GG/MM/AAAA"), "Al": t(og.ETICHETTE_ASSENZE["Al"]), "Motivo": t(og.ETICHETTE_ASSENZE["Motivo"])})
 
 
+def _combinati():
+    """Le due tabelle di questa sessione (interni e operai) come un'unica lista, con il campo Tipo giusto per ciascuna."""
+    i = ss["og_ris_int"].assign(Tipo="Interno").to_dict("records") if "og_ris_int" in ss else []
+    o = ss["og_ris_op"].assign(Tipo="Operaio").to_dict("records") if "og_ris_op" in ss else []
+    return i + o
+
+
 def _raccogli():
-    return {"ris": ss["og_ris"].to_dict("records"), "ass": ss["og_ass"].to_dict("records"), "abs": ss["og_abs"].to_dict("records"), "params": {k: ss.get("og_" + k, og.OG_DEFAULT[k]) for k in PARAM}}
+    return {"ris": _combinati(), "ass": ss["og_ass"].to_dict("records"), "abs": ss["og_abs"].to_dict("records"), "params": {k: ss.get("og_" + k, og.OG_DEFAULT[k]) for k in PARAM}}
 
 
-def _applica(p, nome):
-    sostituisci_tabella("og_ris", pd.DataFrame(p.get("ris") or [], columns=og.COLONNE_RIS))
+def _firma():
+    import hashlib
+    import json
+    return hashlib.sha1(json.dumps(_raccogli(), default=str, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def _applica(p, nome=""):
+    ris = p.get("ris") or []
+    interni = [r for r in ris if str(r.get("Tipo") or "") != "Operaio"]
+    operai = [r for r in ris if str(r.get("Tipo") or "") == "Operaio"]
+    sostituisci_tabella("og_ris_int", pd.DataFrame(interni, columns=og.COLONNE_RIS))
+    sostituisci_tabella("og_ris_op", pd.DataFrame(operai, columns=og.COLONNE_RIS))
     sostituisci_tabella("og_ass", pd.DataFrame(p.get("ass") or [], columns=og.COLONNE_ASS))
     sostituisci_tabella("og_abs", pd.DataFrame(p.get("abs") or [], columns=og.COLONNE_ASSENZE))
     ss["og_demo"] = False
+    ss["_og_firma"] = _firma()
     ss["_pending"] = {"og_" + k: v for k, v in (p.get("params") or {}).items() if k in PARAM}
 
 
+def _carica_condiviso():
+    """All'apertura: se esiste l'elenco condiviso lo carica; altrimenti parte con un esempio."""
+    import storage
+    try:
+        p = storage.carica_pratica(NOME, modulo="og")
+        meta = storage.meta_pratica(NOME, modulo="og") if p else None
+    except Exception:
+        p, meta = None, None
+    if p:
+        _applica(p, NOME)
+        ss["_base_og"] = {"nome": NOME, "agg": meta["aggiornato"] if meta else ""}
+    else:
+        ss["og_ris_int"], ss["og_ris_op"], ss["og_ass"], ss["og_abs"] = _esempio()
+        ss["og_demo"] = esempi_attivi()
+        ss["_og_firma"] = _firma()
+
+
+def _aggiorna_se_cambiato():
+    """Se un collega ha salvato Organico (o un Rapportino ha aggiunto un operaio) e qui non ci sono modifiche in sospeso, rilegge i dati."""
+    import storage
+    base = ss.get("_base_og") or {}
+    if base.get("nome") != NOME or ss.get("og_demo") or ss.get("_og_firma") != _firma():
+        return
+    try:
+        meta = storage.meta_pratica(NOME, modulo="og")
+        if meta and meta["aggiornato"] != base.get("agg"):
+            p = storage.carica_pratica(NOME, modulo="og")
+            if p:
+                _applica(p, NOME)
+                ss["_base_og"] = {"nome": NOME, "agg": meta["aggiornato"]}
+    except Exception:
+        pass
+
+
+def _salva(utente, audit):
+    import storage
+    for _ in range(4):
+        try:
+            meta = storage.meta_pratica(NOME, modulo="og")
+            agg = storage.salva_pratica(NOME, _raccogli(), autore=utente, modulo="og", atteso=meta["aggiornato"] if meta else "")
+        except storage.ConflittoSalvataggio:
+            p = storage.carica_pratica(NOME, modulo="og")
+            if p:
+                _applica(p, NOME)
+            continue
+        except Exception as e:
+            return False, f"Salvataggio non riuscito: {e}"
+        ss["_base_og"] = {"nome": NOME, "agg": agg}
+        ss["_og_firma"] = _firma()
+        audit("og_salvato", NOME)
+        return True, ""
+    return False, "Troppi salvataggi contemporanei: riprova tra un istante."
+
+
 def _dati():
-    r, a1 = og.normalizza_ris(ss["og_ris"].to_dict("records"))
+    r, a1 = og.normalizza_ris(_combinati())
     a, a2 = og.normalizza_ass(ss["og_ass"].to_dict("records"), {x["Risorsa"] for x in r})
     ab, a3 = og.normalizza_assenze(ss["og_abs"].to_dict("records"), [x["Risorsa"] for x in r])
     return r, a, ab, a1 + a2 + a3
@@ -62,26 +140,27 @@ def render(fcr_uri, audit=None, utente=""):
     audit = audit or (lambda *a, **k: None)
     st.markdown(theme.hero(fcr_uri, "Organico e carico di lavoro", "Quanta gente serve nei prossimi mesi, quando si è in troppi o in pochi e quanto costano le ore ferme."), unsafe_allow_html=True)
     guida.mostra("og")
-    if "og_ris" in ss and "og_abs" not in ss:
-        ss["og_abs"] = pd.DataFrame(columns=og.COLONNE_ASSENZE)
-        for c in ("Ore_giorno", "Assunzione", "Cessazione"):
-            if c not in ss["og_ris"].columns:
-                ss["og_ris"][c] = None
-    if "og_ris" not in ss:
-        ss["og_ris"], ss["og_ass"], ss["og_abs"] = _esempio()
-        ss["og_demo"] = esempi_attivi()
-    for _k, _cols in (("og_ris", ("Ruolo", "Assunzione", "Cessazione")), ("og_ass", ("Dal", "Al")), ("og_abs", ("Risorsa", "Dal", "Al", "Motivo"))):
+    if "og_ris_int" not in ss:
+        _carica_condiviso()
+    else:
+        _aggiorna_se_cambiato()
+    for _k, _cols in (("og_ris_int", ("Ruolo", "Assunzione", "Cessazione")), ("og_ris_op", ("Ruolo", "Assunzione", "Cessazione")),
+                      ("og_ass", ("Dal", "Al")), ("og_abs", ("Risorsa", "Dal", "Al", "Motivo"))):
         for _c in _cols:
             if _c in ss[_k].columns and ss[_k][_c].dtype != object:
                 ss[_k][_c] = ss[_k][_c].astype(object).where(ss[_k][_c].notna(), "")
-    pannello_archivio("og", "l'organico", _raccogli, _applica, audit, utente)
+    st.caption("Organico è un unico elenco aziendale: quello che vedi è sempre l'ultimo salvato, anche se aggiunto da un Rapportino.")
+    if st.button("💾 Salva le modifiche", key="og_salva", type="primary", disabled=sola_lettura()):
+        ok, err = _salva(utente, audit)
+        st.success("Salvato.") if ok else st.error(err)
     t1, t2, t3 = st.tabs(["👷 1. Risorse e Assegnazioni", "📊 2. Carico di lavoro", "📄 3. Dossier"])
     cr, ca, cb = _cfg()
     with t1:
-        banner_esempio("og_demo", [("og_ris", og.COLONNE_RIS), ("og_ass", og.COLONNE_ASS), ("og_abs", og.COLONNE_ASSENZE)], "svuota_og")
-        blocco_tabella("og_ris", "Risorse", "Persone o squadre. Le ore disponibili si calcolano dal calendario (lun-ven, senza festivi). Per una squadra di 3 persone scrivi 24 ore al giorno. Con «Cessato il» la persona esce in automatico da capacità e costi (le ore passate restano).", og.COLONNE_RIS, og.ETICHETTE_RIS, cr, ss["og_ris"], "og", 1, audit, 220)
-        blocco_tabella("og_ass", "Assegnazioni alle commesse", "Una riga per ogni periodo in cui una risorsa lavora a una commessa, con le ore mensili. Al vuoto = senza fine.", og.COLONNE_ASS, og.ETICHETTE_ASS, ca, ss["og_ass"], "og", 2, audit, 280)
-        blocco_tabella("og_abs", "Ferie, malattie, chiusure", "Giorni in cui una risorsa non c'è. Scrivi «Tutti» per una chiusura aziendale (es. Ferragosto, ponte). Sabato, domenica e festività nazionali sono già esclusi.", og.COLONNE_ASSENZE, og.ETICHETTE_ASSENZE, cb, ss["og_abs"], "og", 3, audit, 180)
+        banner_esempio("og_demo", [("og_ris_int", og.COLONNE_RIS), ("og_ris_op", og.COLONNE_RIS), ("og_ass", og.COLONNE_ASS), ("og_abs", og.COLONNE_ASSENZE)], "svuota_og")
+        blocco_tabella("og_ris_int", "Personale interno", "Dipendenti e staff fisso dell'azienda.", og.COLONNE_RIS, og.ETICHETTE_RIS, cr, ss["og_ris_int"], "og", 1, audit, 180)
+        blocco_tabella("og_ris_op", "Operai di cantiere", "Operai e squadre di cantiere (anche esterni): qui compaiono anche quelli aggiunti in automatico dai Rapportini.", og.COLONNE_RIS, og.ETICHETTE_RIS, cr, ss["og_ris_op"], "og", 2, audit, 220)
+        blocco_tabella("og_ass", "Assegnazioni alle commesse", "Una riga per ogni periodo in cui una risorsa lavora a una commessa, con le ore mensili. Al vuoto = senza fine.", og.COLONNE_ASS, og.ETICHETTE_ASS, ca, ss["og_ass"], "og", 3, audit, 280)
+        blocco_tabella("og_abs", "Ferie, malattie, chiusure", "Giorni in cui una risorsa non c'è. Scrivi «Tutti» per una chiusura aziendale (es. Ferragosto, ponte). Sabato, domenica e festività nazionali sono già esclusi.", og.COLONNE_ASSENZE, og.ETICHETTE_ASSENZE, cb, ss["og_abs"], "og", 4, audit, 180)
         ss.setdefault("og_mesi", int(og.OG_DEFAULT["mesi"]))
         ss.setdefault("og_sat_min_pct", float(og.OG_DEFAULT["sat_min_pct"]))
         st.subheader("Ipotesi")
@@ -135,3 +214,6 @@ def render(fcr_uri, audit=None, utente=""):
         else:
             scarica_dossier("og", lambda n: ops_report.report_og(out, ris, ass, n, ab), "Organico", audit, "Organico e carico di lavoro")
         st.caption("Le ore disponibili vengono dal calendario (lun-ven, senza festività e assenze inserite). Gli straordinari non sono considerati.")
+        with st.expander("🗄️ Copie di sicurezza con nome (facoltativo)"):
+            st.caption("Organico è un elenco unico: questa è solo una copia di sicurezza con un nome a tua scelta, per tornare indietro se serve. Non serve per il lavoro di tutti i giorni.")
+            pannello_archivio("og", "una copia di Organico", _raccogli, _applica, audit, utente)

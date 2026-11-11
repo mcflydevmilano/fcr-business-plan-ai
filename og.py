@@ -9,10 +9,12 @@ from sc import data_da
 from scad import oggi_da
 
 OG_DEFAULT = {"oggi": None, "mesi": 6, "sat_min_pct": 60.0, "ore_giorno": 8.0, "festivita": True, "patrono": ""}
-COLONNE_RIS = ["Risorsa", "Ruolo", "Costo_orario", "Ore_giorno", "Ore_mese", "Assunzione", "Cessazione"]
-ETICHETTE_RIS = {"Risorsa": "Risorsa (persona o squadra)", "Ruolo": "Ruolo", "Costo_orario": "Costo orario aziendale (€/h)",
+COLONNE_RIS = ["Risorsa", "Tipo", "Ruolo", "Costo_orario", "Ore_giorno", "Ore_mese", "Assunzione", "Cessazione"]
+ETICHETTE_RIS = {"Risorsa": "Risorsa (persona o squadra)", "Tipo": "Tipo (interno o operaio)", "Ruolo": "Ruolo", "Costo_orario": "Costo orario aziendale (€/h)",
                  "Ore_giorno": "Ore al giorno (vuoto = 8; part-time = meno)", "Ore_mese": "Ore al mese fisse (facoltativo: vuoto = uso il calendario)",
                  "Assunzione": "Assunto dal (facoltativo)", "Cessazione": "Cessato il (facoltativo)"}
+TIPI_RIS = ("Interno", "Operaio")
+NOME_UNICO = "Organico"            # salvataggio condiviso: un solo elenco aziendale, tutti scrivono qui (come i Rapportini)
 COLONNE_ASS = ["Risorsa", "Commessa", "Dal", "Al", "Ore_mese"]
 ETICHETTE_ASS = {"Risorsa": "Risorsa", "Commessa": "Commessa", "Dal": "Dal", "Al": "Al", "Ore_mese": "Ore al mese"}
 COLONNE_ASSENZE = ["Risorsa", "Dal", "Al", "Motivo"]
@@ -50,7 +52,10 @@ def normalizza_ris(righe):
         if ass_ and ces and ces < ass_:
             avvisi.append(f"«{n}»: la cessazione è prima dell'assunzione, ignoro la cessazione.")
             ces = None
-        out.append({"Risorsa": n, "Ruolo": _s(r.get("Ruolo")), "Costo_orario": max(0.0, to_float(r.get("Costo_orario"), 0.0)), "Ore_giorno": og_, "Ore_mese": om,
+        tipo = _s(r.get("Tipo"))
+        if tipo not in TIPI_RIS:
+            tipo = "Interno"                                 # i salvataggi vecchi (senza Tipo) sono personale interno: e' lo stato di oggi
+        out.append({"Risorsa": n, "Tipo": tipo, "Ruolo": _s(r.get("Ruolo")), "Costo_orario": max(0.0, to_float(r.get("Costo_orario"), 0.0)), "Ore_giorno": og_, "Ore_mese": om,
                     "Assunzione": ass_.isoformat() if ass_ else "", "Cessazione": ces.isoformat() if ces else ""})
     return out, avvisi
 
@@ -142,6 +147,62 @@ def normalizza_ass(righe, nomi):
             continue
         out.append({"Risorsa": n, "Commessa": c, "Dal": dal.isoformat(), "Al": al.isoformat() if al else "", "Ore_mese": ore})
     return out, avvisi
+
+
+# ----------------------------------------------------------------------------
+# SALVATAGGIO CONDIVISO: un solo elenco aziendale (come i Rapportini), non salvataggi multipli con nome
+# ----------------------------------------------------------------------------
+def carica_unico(path=None):
+    """L'elenco unico aziendale di Organico, oppure {} se non e' mai stato salvato nessuno."""
+    import storage
+    return storage.carica_pratica(NOME_UNICO, path, modulo="og") or {}
+
+
+def salva_unico(dati, autore="", path=None, atteso=None):
+    """Salva l'elenco unico aziendale. `atteso`: timestamp gia' letto, per accorgersi se nel frattempo ha salvato un collega."""
+    import storage
+    agg = storage.salva_pratica(NOME_UNICO, dati, path, autore=autore, modulo="og", atteso=atteso)
+    storage.svuota_cache()
+    return agg
+
+
+def censito(nome, path=None):
+    """True se questo nome e' gia' in Organico (interno o operaio), senza badare a maiuscole o spazi."""
+    n = _s(nome).lower()
+    if not n:
+        return False
+    ris = carica_unico(path).get("ris") or []
+    return any(_s(r.get("Risorsa")).lower() == n for r in ris)
+
+
+def aggiungi_operaio_nuovo(nome, ruolo="", costo_orario=0.0, autore="", path=None):
+    """Se il nome non e' ancora censito (interno o operaio), lo aggiunge all'elenco unico di Organico come operaio di cantiere.
+    Pensato per essere richiamato da un altro strumento (i Rapportini) quando si registra un operaio mai visto prima:
+    da quel momento compare anche in Organico, senza che chi gestisce Organico debba scriverlo a mano.
+    Restituisce True se e' stato aggiunto, False se il nome era gia' censito."""
+    import storage
+    n = _s(nome)
+    if not n:
+        return False
+    for _ in range(4):
+        try:
+            meta = storage.meta_pratica(NOME_UNICO, path, modulo="og")
+            dati = (storage.carica_pratica(NOME_UNICO, path, modulo="og") if meta else None) or {}
+        except Exception:
+            meta, dati = None, {}
+        ris = list(dati.get("ris") or [])
+        if any(_s(r.get("Risorsa")).lower() == n.lower() for r in ris):
+            return False
+        ris.append({"Risorsa": n, "Tipo": "Operaio", "Ruolo": _s(ruolo), "Costo_orario": max(0.0, to_float(costo_orario, 0.0)),
+                    "Ore_giorno": 0.0, "Ore_mese": 0.0, "Assunzione": "", "Cessazione": ""})
+        dati["ris"] = ris
+        try:
+            storage.salva_pratica(NOME_UNICO, dati, path, autore=autore, modulo="og", atteso=meta["aggiornato"] if meta else "")
+            storage.svuota_cache()
+            return True
+        except storage.ConflittoSalvataggio:
+            continue                                       # qualcuno ha salvato Organico nel frattempo: rileggi e riprova
+    return False
 
 
 def _mesi(inizio, n):
