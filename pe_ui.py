@@ -37,12 +37,33 @@ def _cfg():
             "Attivo": st.column_config.SelectboxColumn(a["Attivo"], options=["Sì", "No"])}
 
 
+def _cfg_matricola():
+    t = st.column_config.TextColumn
+    n = st.column_config.NumberColumn
+    a = pe.ETICHETTE_PERSONE_COMPLETE
+    cfg = {"Persona": t(a["Persona"], width="medium", disabled=True, help="Si ricava da Nome e Cognome importati."),
+           "Tipo": st.column_config.SelectboxColumn(a["Tipo"], options=pe.TIPI), "Attivo": st.column_config.SelectboxColumn(a["Attivo"], options=["Sì", "No"]),
+           "Cantiere": t(a["Cantiere"]), "Ruolo": st.column_config.SelectboxColumn(a["Ruolo"], options=pe.RUOLI), "Reparto": t(a["Reparto"]), "Email": t(a["Email"]),
+           "Telefono": t(a["Telefono"]), "Utente": t(a["Utente"])}
+    for c in pe.COLONNE_MATRICOLA:
+        if c in cfg:
+            continue
+        if c in pe.COLONNE_DATE_MATRICOLA:
+            cfg[c] = t(a[c], help="Formato AAAA-MM-GG.")
+        elif c == "Ore":
+            cfg[c] = n(a[c])
+        else:
+            cfg[c] = t(a[c])
+    return cfg
+
+
 def _raccogli():
-    return {"persone": ss["pe_pers"].to_dict("records")}
+    return {"persone": ss["pe_pers"].to_dict("records"), "matricola": ss["pe_matricola"].to_dict("records")}
 
 
 def _applica(p, nome):
     sostituisci_tabella("pe_pers", pd.DataFrame(p.get("persone") or [], columns=pe.COLONNE_PERSONE))
+    sostituisci_tabella("pe_matricola", pd.DataFrame(p.get("matricola") or [], columns=pe.COLONNE_PERSONE_COMPLETE))
     ss["pe_demo"] = False
 
 
@@ -163,9 +184,11 @@ def render(fcr_uri, audit=None, utente="", utenti_secrets=None):
     if "pe_pers" not in ss:
         ss["pe_pers"] = _esempio()
         ss["pe_demo"] = esempi_attivi()
+    if "pe_matricola" not in ss:
+        ss["pe_matricola"] = pd.DataFrame(columns=pe.COLONNE_PERSONE_COMPLETE)
     pannello_archivio("pe", "l'elenco", _raccogli, _applica, audit, utente)
     st.caption("🔒 Dati personali dei lavoratori: tienili essenziali e dai accesso a questo strumento solo a chi serve (si decide da Utenti → Permessi).")
-    t1, t2, t3, t4 = st.tabs(["🧾 1. Elenco del personale", "🎭 2. Ruoli e profili", "🔐 3. Accessi all'app", "📄 4. Dossier"])
+    t1, t2, t3, t4, t5 = st.tabs(["🧾 1. Elenco del personale", "🎭 2. Ruoli e profili", "🔐 3. Accessi all'app", "📄 4. Dossier", "📋 5. Libro Matricola"])
     with t1:
         banner_esempio("pe_demo", [("pe_pers", pe.COLONNE_PERSONE)], "svuota_pe")
         blocco_tabella("pe_pers", "Personale", "Una riga per persona. Il ruolo serve a proporre i permessi giusti.", pe.COLONNE_PERSONE, pe.ETICHETTE_PERSONE, _cfg(), ss["pe_pers"], "pe", 1, audit, 320, pe.SINONIMI_PERSONE)
@@ -205,3 +228,32 @@ def render(fcr_uri, audit=None, utente="", utenti_secrets=None):
                      {"titolo": "Nota", "testo": ["Documento con dati personali: va conservato e condiviso solo con chi ne ha titolo."]}],
                     [{"nome": "Personale", "intest": pe.COLONNE_PERSONE, "righe": [[p[c] for c in pe.COLONNE_PERSONE] for p in persone]}], [k["persone"]])
             scarica_dossier("pe", _gen, "Persone", audit, "Persone e ruoli")
+
+    with t5:
+        st.caption("La scheda completa di ogni dipendente (contratto, anagrafica, residenza, documenti), come nel registro cartaceo. Tutto l'elenco è già visibile qui sotto, senza doverlo aprire riga per riga.")
+        blocco_tabella("pe_matricola", "Libro Matricola", "Una riga per dipendente, con tutti i dati del libro matricola.", pe.COLONNE_PERSONE_COMPLETE, pe.ETICHETTE_PERSONE_COMPLETE,
+                        _cfg_matricola(), ss["pe_matricola"], "pe", 5, audit, 420, None)
+        st.markdown("**📥 Importa / aggiorna dal file del Libro Matricola**")
+        if sola_lettura():
+            st.caption("Importazione non disponibile per il ruolo «lettore».")
+        else:
+            up = st.file_uploader("File del libro matricola (.xlsx)", type=["xlsx"], key="up_pe_matricola")
+            if up is not None:
+                try:
+                    nuove, avvi, rapp = pe.importa_matricola(up)
+                except Exception as e:
+                    st.error(f"File non leggibile: {e}")
+                    nuove = []
+                if nuove:
+                    st.success(f"Lette {rapp['righe']} persone dal foglio «{rapp['foglio']}».")
+                    for a in avvi[:8]:
+                        st.caption("⚠️ " + a)
+                    modo = st.radio("Cosa fare con quelle già presenti", ["Aggiorna per matricola/nome e aggiungi le nuove", "Sostituisci tutto"], key="pe_matricola_modo")
+                    if st.button("Importa nel Libro Matricola", type="primary", key="pe_matricola_importa"):
+                        att = ss["pe_matricola"].to_dict("records")
+                        fin = nuove if modo == "Sostituisci tutto" else pe.unisci_matricola(att, nuove)
+                        sostituisci_tabella("pe_matricola", pd.DataFrame(fin, columns=pe.COLONNE_PERSONE_COMPLETE))
+                        audit("pe_matricola_import", f"{up.name}: {len(nuove)} righe")
+                        st.rerun()
+                elif up is not None:
+                    st.error("Non ho trovato le colonne del libro matricola (servono almeno «MAT.» e «COGNOME»). Controlla che sia il file giusto.")

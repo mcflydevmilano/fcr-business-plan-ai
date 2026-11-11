@@ -278,6 +278,15 @@ CARDS = {'credit': {'icona': '📊',
                  'Scarico in Excel'],
         'tag': ['Link', 'Scadenze', 'Excel'],
         'bottone': 'Archivio documenti'},
+ 'da': {'icona': '🏢',
+        'titolo': 'Documenti aziendali FCR',
+        'desc': "DURC, SOA, certificazioni, assicurazioni e visura dell'azienda: tutto l'elenco con scadenze e i file veri, sempre scaricabili.",
+        'voci': ['Elenco sempre visibile, senza aprire riga per riga',
+                 'Carichi il PDF o la foto del documento',
+                 'Avviso sui documenti scaduti o in scadenza',
+                 'Dossier PDF ed Excel'],
+        'tag': ['DURC', 'SOA', 'Scadenze'],
+        'bottone': 'Documenti aziendali'},
  'fc': {'icona': '🧭',
         'titolo': 'Flusso commessa (28 passaggi)',
         'desc': 'Lo schema FCR dal primo incontro alla chiusura: chi fa cosa, chi approva e cosa blocca.',
@@ -398,7 +407,7 @@ GRUPPI = [
     ("2 · Dalla gara al contratto", "Opportunità, gare, preventivi e prezziario",
      ["rc", "bd", "ga", "pv", "fv", "sp", "ee", "es", "pz", "of", "pc", "dc"]),
     ("3 · Il cantiere in corso", "Avanzamento lavori, subappalti, ordini, documenti, sicurezza e mezzi",
-     ["cl", "gt", "sl", "sa", "oa", "ad", "sx", "mz"]),
+     ["cl", "gt", "sl", "sa", "oa", "ad", "da", "sx", "mz"]),
     ("4 · Ogni giorno in cantiere", "Rapportini, ore, materiali e organico: da fare dal telefono",
      ["rp", "pr", "mt", "og"]),
     ("5 · I soldi", "Dott. Claudio Arosio: fatture e scadenze, banche, cassa, rating e business plan",
@@ -548,7 +557,7 @@ def _freschezza(righe):
             st.markdown(f"{ico[r['stato']]} **{r['nome']}** — {quando}{chi}  <span style='color:#94a3b8'>(si aggiorna ogni {r['soglia']} gg)</span>", unsafe_allow_html=True)
 
 
-DATI_RICERCA = ["rc", "of", "ru", "fo", "sc", "sl", "ga", "sx", "mz", "og", "rp", "gt", "lg", "bk", "oa", "pe", "pv", "cf", "bp", "sa", "pr", "mt", "vr", "ad", "fc", "ta", "fv", "es", "ee"]
+DATI_RICERCA = ["rc", "of", "ru", "fo", "sc", "sl", "ga", "sx", "mz", "og", "rp", "gt", "lg", "bk", "oa", "pe", "pv", "cf", "bp", "sa", "pr", "mt", "vr", "ad", "fc", "ta", "fv", "es", "ee", "da"]
 
 
 @st.cache_data(ttl=30, show_spinner=False)

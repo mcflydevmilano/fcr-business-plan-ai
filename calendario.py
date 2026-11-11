@@ -5,6 +5,7 @@ formazioni e idoneita' del personale, documenti di cantiere, scadenze dei mezzi.
 import datetime as dt
 import hashlib
 
+import da
 import fo
 import ga
 import gt
@@ -20,9 +21,9 @@ import sc
 import sx
 from sc import data_da
 
-MODULI_CALENDARIO = ("sc", "ga", "fo", "sx", "mz", "rp", "gt", "lg", "sa", "mt", "vr", "ad", "ta", "fp")
-NOMI_MODULO = {"sc": "Scadenzario", "ga": "Gare e offerte", "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "rp": "Rapportini di cantiere", "gt": "Cronoprogramma", "lg": "Studio legale", "ch": "Compiti dalla chat", "sa": "Subappalti", "mt": "Materiali", "vr": "Verbali e riunioni", "ad": "Archivio documenti", "ta": "Compiti e attività", "fp": "Ferie e permessi"}
-CATEGORIE = ["Incasso", "Pagamento", "Gara", "Documento gara", "Documento fornitore", "Formazione / idoneità", "Documento di cantiere", "Mezzo", "Segnalazione", "Fine fase", "Termine legale", "Contratto", "Compito", "Documento subappalto", "Consegna", "Azione di riunione", "Documento commessa", "Attività"]
+MODULI_CALENDARIO = ("sc", "ga", "fo", "sx", "mz", "rp", "gt", "lg", "sa", "mt", "vr", "ad", "ta", "fp", "da")
+NOMI_MODULO = {"sc": "Scadenzario", "ga": "Gare e offerte", "fo": "Fornitori", "sx": "Sicurezza", "mz": "Parco mezzi", "rp": "Rapportini di cantiere", "gt": "Cronoprogramma", "lg": "Studio legale", "ch": "Compiti dalla chat", "sa": "Subappalti", "mt": "Materiali", "vr": "Verbali e riunioni", "ad": "Archivio documenti", "ta": "Compiti e attività", "fp": "Ferie e permessi", "da": "Documenti aziendali"}
+CATEGORIE = ["Incasso", "Pagamento", "Gara", "Documento gara", "Documento fornitore", "Formazione / idoneità", "Documento di cantiere", "Mezzo", "Segnalazione", "Fine fase", "Termine legale", "Contratto", "Compito", "Documento subappalto", "Consegna", "Azione di riunione", "Documento commessa", "Attività", "Documento aziendale"]
 
 
 def _stato(giorni, preavviso):
@@ -63,6 +64,12 @@ def eventi(payloads, oggi=None, orizzonte_gg=60, categorie=None):
         for d in docs:
             if d["Scadenza"]:
                 ev.append(_ev(data_da(d["Scadenza"]), oggi, "fo", "Documento fornitore", f"{d['Documento']} - {d['Fornitore']}", d["Tipo"], None, prev))
+    if p.get("da"):
+        doc, _ = da.normalizza_doc(p["da"].get("doc"))
+        prev = int((p["da"].get("params") or {}).get("preavviso_gg", da.DA_DEFAULT["preavviso_gg"]))
+        for x in doc:
+            if x["Scadenza"]:
+                ev.append(_ev(data_da(x["Scadenza"]), oggi, "da", "Documento aziendale", f"{x['Tipo']}" + (f" - {x['Descrizione']}" if x["Descrizione"] else ""), x["Responsabile"], None, prev))
     if p.get("sx"):
         pers, _ = sx.normalizza_pers(p["sx"].get("pers"))
         docc, _ = sx.normalizza_docc(p["sx"].get("docc"))

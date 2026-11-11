@@ -182,6 +182,14 @@ PASSI = {
         ("Scarica il dossier", "Nella scheda «3. Dossier» premi il pulsante per PDF ed Excel.", "dossier"),
         ("Salva", "Apri «💾 Salva e riapri la sicurezza» in alto e premi Salva.", "salvato"),
     ], "Strumento di promemoria: la verifica ufficiale resta al responsabile della sicurezza (RSPP)."),
+    "da": ("Avere in un unico posto DURC, SOA, certificazioni, assicurazioni e visura dell'azienda, con le scadenze e i file veri.", [
+        ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:da_demo"),
+        ("Inserisci i documenti", "Nella scheda «1. Documenti» scrivi tipo, descrizione, numero e scadenza di ogni documento aziendale.", "dati:da_doc"),
+        ("Carica il file", "Scegli il documento dal menu qui sotto e allega il PDF o la foto: resta scaricabile da qui.", None),
+        ("Guarda le scadenze", "Qui sotto vedi subito quali documenti sono scaduti o in scadenza.", None),
+        ("Scarica il dossier", "Nella scheda «2. Dossier» premi il pulsante per PDF ed Excel.", "dossier"),
+        ("Salva", "Apri «💾 Salva e riapri i documenti aziendali» in alto e premi Salva.", "salvato"),
+    ], "I file caricati qui non finiscono nelle versioni storiche del salvataggio: restano nell'archivio a parte, sempre scaricabili."),
     "mz": ("Sapere quanto costa ogni mezzo all'ora, se è usato abbastanza e quando scadono revisioni e assicurazioni.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:mz_demo"),
         ("Inserisci i mezzi", "Nella scheda «1. Mezzi e Utilizzo» scrivi i costi fissi, i costi per ora e le ore previste all'anno.", "dati:mz_mezzi"),

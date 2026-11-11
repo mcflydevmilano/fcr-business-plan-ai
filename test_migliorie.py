@@ -53,6 +53,16 @@ def test_ripristino_versione_in_interfaccia(monkeypatch):
     assert not at.exception and at.number_input(key="ga_preavviso_gg").value == 10
 
 
+def test_etichetta_ultima_modifica(monkeypatch):
+    at = _nuovo(monkeypatch, modulo="ga")
+    testo = " ".join(c.value for c in at.caption)
+    assert "Ultima modifica" not in testo                              # niente salvato ancora: nessuna etichetta
+    at.text_input(key="sv_nome_ga").set_value("Prova modifica").run()
+    at.button(key="sv_salva_ga").click().run()
+    testo = " ".join(c.value for c in at.caption)
+    assert "🕓 Ultima modifica" in testo and "tester" in testo            # compare con data/ora e con l'autore del salvataggio
+
+
 def test_ruolo_lettore_sola_lettura(monkeypatch):
     import auth
     assert "lettore" in auth.RUOLI

@@ -13,8 +13,8 @@ COLONNE_DOCFO = ["Fornitore", "Tipo", "Documento", "Scadenza"]
 ETICHETTE_DOCFO = {"Fornitore": "Fornitore / subappaltatore", "Tipo": "Tipo", "Documento": "Documento", "Scadenza": "Scadenza"}
 COLONNE_CONTR = ["Fornitore", "Commessa", "Descrizione", "Importo", "Fatturato", "Pagato"]
 ETICHETTE_CONTR = {"Fornitore": "Fornitore", "Commessa": "Commessa", "Descrizione": "Descrizione", "Importo": "Importo contratto (€)", "Fatturato": "Fatturato finora (€)", "Pagato": "Pagato finora (€)"}
-COLONNE_OFF = ["Voce", "Fornitore", "Importo"]
-ETICHETTE_OFF = {"Voce": "Voce / lavorazione", "Fornitore": "Fornitore", "Importo": "Offerta (€)"}
+COLONNE_OFF = ["Voce", "Fornitore", "Importo", "Posa", "Smaltimento"]
+ETICHETTE_OFF = {"Voce": "Voce / lavorazione", "Fornitore": "Fornitore", "Importo": "Offerta (€)", "Posa": "Posa incl.", "Smaltimento": "Smaltimento incl."}
 SINONIMI_DOCFO = {"Fornitore": ("Ragione sociale", "Impresa", "Anagrafica"), "Documento": ("Certificato", "Tipo documento"), "Scadenza": ("Data scadenza", "Valido fino al")}
 
 
@@ -48,16 +48,20 @@ def normalizza_contratti(righe):
     return out, avvisi
 
 
+def _si_no(v):
+    return "Sì" if str(v or "").strip().lower() in ("sì", "si", "s", "yes", "y", "true", "1") else "No"
+
+
 def normalizza_offerte(righe):
     out, avvisi = [], []
     for i, r in enumerate(righe or [], start=1):
-        if not any(str(r.get(c) or "").strip() for c in COLONNE_OFF):
+        if not any(str(r.get(c) or "").strip() for c in ("Voce", "Fornitore", "Importo")):
             continue
         v, f, imp = str(r.get("Voce") or "").strip(), str(r.get("Fornitore") or "").strip(), to_float(r.get("Importo"), 0.0)
         if not v or not f or imp <= 0:
             avvisi.append(f"Riga {i} delle offerte: servono voce, fornitore e importo, riga ignorata.")
             continue
-        out.append({"Voce": v, "Fornitore": f, "Importo": imp})
+        out.append({"Voce": v, "Fornitore": f, "Importo": imp, "Posa": _si_no(r.get("Posa")), "Smaltimento": _si_no(r.get("Smaltimento"))})
     return out, avvisi
 
 
@@ -98,10 +102,13 @@ def calcola_fo(docs, contratti, offerte, p=None):
         best_ok = min(ok, key=lambda o: o["Importo"]) if ok else None
         media = sum(imp) / len(imp)
         conf.append({"Voce": v, "Offerte": len(of), "Minima": min(imp), "Massima": max(imp), "Media": media, "Scarto %": (max(imp) - min(imp)) / min(imp) * 100.0,
-                     "Più bassa": best["Fornitore"], "Più bassa in regola": best_ok["Fornitore"] if best_ok else "nessuno in regola", "Risparmio vs media": media - best["Importo"]})
+                     "Più bassa": best["Fornitore"], "Più bassa in regola": best_ok["Fornitore"] if best_ok else "nessuno in regola", "Risparmio vs media": media - best["Importo"],
+                     "Posa (più bassa)": best["Posa"], "Smaltimento (più bassa)": best["Smaltimento"]})
         risp += media - best["Importo"]
         if best_ok is None or best_ok["Fornitore"] != best["Fornitore"]:
             avvisi.append(f"«{v}»: l'offerta più bassa ({best['Fornitore']}) è di un fornitore con documenti scaduti.")
+        if len({o["Posa"] for o in of}) > 1 or len({o["Smaltimento"] for o in of}) > 1:
+            avvisi.append(f"«{v}»: le offerte non sono tutte comparabili — alcune includono posa o smaltimento e altre no. Controlla prima di scegliere la più bassa.")
     c = conta([d["Stato"] for d in righe_doc])
     kpi = {"n_fornitori": len(nomi), "doc_scaduti": c["bad"], "doc_in_scadenza": c["warn"], "doc_ok": c["ok"], "doc_nd": c["nd"],
            "forn_critici": sum(1 for f in forn if f["Stato"] == "bad"), "impegnato": sum(x["Importo"] for x in contratti), "fatturato": sum(x["Fatturato"] for x in contratti),

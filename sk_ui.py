@@ -199,6 +199,14 @@ def render(fcr_uri, audit=None, utente=""):
     if not schede:
         st.info("Nessun cantiere vivo. Nella Rubrica metti lo stato «In corso» al cantiere, oppure attiva «Mostra anche cantieri sospesi o conclusi».")
         return
+    st.subheader("Tutti i cantieri a confronto")
+    st.caption("L'elenco completo è già qui, senza bisogno di apire ogni cantiere: scegli sotto solo se ti serve il dettaglio di uno in particolare.")
+    righe_tutti = _tutti(schede)
+    st.dataframe(pd.DataFrame(righe_tutti), hide_index=True, width="stretch")
+    st.download_button("📥 Scarica in Excel", nuovi_ui._xlsx({"Cantieri": righe_tutti, **{(f"{x['Codice'] or 'X'}")[:31]: [{"Voce": a, "Importo": round(b, 2)} for a, b in x["costi"].items()] for x in schede[:20]}}),
+                       file_name=f"cantieri_{dt.date.today().isoformat()}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="dlx_sk_top")
+    st.divider()
+    st.subheader("Dettaglio di un cantiere")
     nomi = [_etichetta(s) for s in schede]
     scelto = st.selectbox("Cantiere", nomi, key="sk_sel")
     s = schede[nomi.index(scelto)] if scelto in nomi else schede[0]
@@ -224,9 +232,4 @@ def render(fcr_uri, audit=None, utente=""):
         _tab_rapportini(s)
     with t7:
         _tab_cartelle(s)
-    st.subheader("Tutti i cantieri a confronto")
-    righe = _tutti(schede)
-    st.dataframe(pd.DataFrame(righe), hide_index=True, width="stretch")
     st.caption("Margine corrente = fatture attive − costi sostenuti. Cassa = incassato − pagato sulle fatture. Sono dati di gestione presi dagli altri strumenti, non un bilancio.")
-    st.download_button("📥 Scarica in Excel", nuovi_ui._xlsx({"Cantieri": righe, **{(f"{x['Codice'] or 'X'}")[:31]: [{"Voce": a, "Importo": round(b, 2)} for a, b in x["costi"].items()] for x in schede[:20]}}),
-                       file_name=f"cantieri_{dt.date.today().isoformat()}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="dlx_sk")

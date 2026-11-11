@@ -40,6 +40,7 @@ import sl_ui
 import ga_ui
 import fo_ui
 import sx_ui
+import da_ui
 import mz_ui
 import og_ui
 import rp_ui
@@ -743,7 +744,7 @@ def applica_payload(p, nome):
 # INTESTAZIONE E SIDEBAR
 # ----------------------------------------------------------------------------
 MODULO = ss.get("active_module")          # None = Hub, "credit" = Credit Risk & Rating, "bp" = Business Plan Studio
-PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",), "ch": ("chat_",), "mc": ("mc_",), "sa": ("sa_",), "pr": ("pr_",), "mt": ("mt_",), "vr": ("vr_",), "ad": ("ad_",), "fc": ("fc_",), "ta": ("ta_",), "sk": ("sk_",), "nv": ("nv_",), "ac": ("ac_",), "fv": ("fv_",), "es": ("es_",), "ee": ("ee_",), "fp": ("fp_",), "ns": ("ns_",), "lm": ("lm_",), "sd": ("sd_",), "rm": ("rm_",), "fe": ("fe_",), "sp": ("sp_",), "bd": ("bd_",), "mi": ("mi_",), "pc": ("pc_",), "cl": ("cl_",), "dc": ("dc_",)}
+PREFISSI_STATO = {"credit": ("delta_", "piano_", "soglia_", "cov_", "pratica_nome"), "bp": ("bp_",), "cf": ("cf_",), "pv": ("pv_",), "sc": ("sc_",), "sl": ("sl_",), "ga": ("ga_",), "fo": ("fo_",), "sx": ("sx_",), "mz": ("mz_",), "og": ("og_",), "rp": ("rp_",), "gt": ("gt_",), "ru": ("ru_",), "lg": ("lg_",), "bk": ("bk_",), "oa": ("oa_",), "pe": ("pe_",), "ca": ("ca_",), "dd": ("dd_",), "rc": ("rc_",), "of": ("of_",), "ch": ("chat_",), "mc": ("mc_",), "sa": ("sa_",), "pr": ("pr_",), "mt": ("mt_",), "vr": ("vr_",), "ad": ("ad_",), "fc": ("fc_",), "ta": ("ta_",), "sk": ("sk_",), "nv": ("nv_",), "ac": ("ac_",), "fv": ("fv_",), "es": ("es_",), "ee": ("ee_",), "fp": ("fp_",), "ns": ("ns_",), "lm": ("lm_",), "sd": ("sd_",), "rm": ("rm_",), "fe": ("fe_",), "sp": ("sp_",), "bd": ("bd_",), "mi": ("mi_",), "pc": ("pc_",), "cl": ("cl_",), "dc": ("dc_",), "da": ("da_",)}
 
 
 pwa.inietta()
@@ -1129,7 +1130,7 @@ if MODULO == "sl":
     st.stop()
 
 ss["_ia"] = (ai_generate, active_key)          # per i moduli che leggono documenti con l'IA (es. bolle DDT)
-for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og", og_ui), ("rp", rp_ui), ("gt", gt_ui), ("ru", ru_ui), ("lg", lg_ui), ("bk", bk_ui), ("oa", oa_ui), ("pz", pz_ui), ("rc", rc_ui), ("of", of_ui), ("mc", nuovi_ui.mc_ui), ("sa", nuovi_ui.sa_ui), ("pr", nuovi_ui.pr_ui), ("mt", nuovi_ui.mt_ui), ("vr", nuovi_ui.vr_ui), ("ad", nuovi_ui.ad_ui), ("fc", fc_ui), ("ta", ta_ui), ("fv", fv_ui), ("es", es_ui), ("ee", ee_ui), ("sk", sk_ui), ("nv", novita_ui)):
+for _m, _ui in (("ga", ga_ui), ("fo", fo_ui), ("sx", sx_ui), ("mz", mz_ui), ("og", og_ui), ("rp", rp_ui), ("gt", gt_ui), ("ru", ru_ui), ("lg", lg_ui), ("bk", bk_ui), ("oa", oa_ui), ("pz", pz_ui), ("rc", rc_ui), ("of", of_ui), ("mc", nuovi_ui.mc_ui), ("sa", nuovi_ui.sa_ui), ("pr", nuovi_ui.pr_ui), ("mt", nuovi_ui.mt_ui), ("vr", nuovi_ui.vr_ui), ("ad", nuovi_ui.ad_ui), ("fc", fc_ui), ("ta", ta_ui), ("fv", fv_ui), ("es", es_ui), ("ee", ee_ui), ("sk", sk_ui), ("nv", novita_ui), ("da", da_ui)):
     if MODULO == _m:
         _ui.render(FCR_URI, audit, ss["utente"]["username"])
         ui_util.bozza_fine()

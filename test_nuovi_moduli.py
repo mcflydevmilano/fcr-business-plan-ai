@@ -426,6 +426,57 @@ def test_pe_revoca_l_accesso():
     assert not at.exception and storage.utente_db("marco.colombo")["attivo"] == 0
 
 
+def test_pe_importa_libro_matricola():
+    import pe
+    header = ["", "MAT.", "COGNOME", "NOME", "CANTIERE", "DATA ASSUNZIONE", "DATA CESSAZIONE", "TEMPO", "ULTIMA SCADENZA\nCONTRATTO ", "PRIMA SCADENZA",
+              "1° PROROGA", "2° PROROGA", "3° PROROGA", "4° PROROGA", "TRASFORMAZIONI", "LICENZIAMENTO/\nDIMISSIONI", "TIPOLOGIA ORARIO", "ORE", "QUALIFICA",
+              "MANSIONI", "LIVELLO", "CCNL", "MANSIONE", "NOTE", "DATA DI   NASCITA", "LUOGO DI NASCITA", "PROV", "CODICE FISCALE", "TEL/CELL.", "RESIDENZA",
+              "N. CIV.", "CITTA'", "PROV", "CAP", "DOMICILIO", "CITTA'", "PROV", "CAP", "SESSO", "CITTADINZANZA", "CI N°", "SCADENZA",
+              "N.DOCUMENTO /\nPERMESSO DI SOGG.", "PERMESSO DI SOGGIORNO SCADENZE", "RILASCIATO DA\nCOMUNE/QUESTURA", "VARIE", "IBAN", "", ""]
+    mappa = pe._intestazioni_matricola(header)
+    assert mappa[19] == "Mansioni" and mappa[22] == "Mansioni"                      # «MANSIONI» e «MANSIONE»: stesso campo
+    assert mappa[26] == "Nascita_prov" and mappa[32] == "Residenza_prov" and mappa[36] == "Domicilio_prov"          # 3 «PROV» distinte per posizione
+    assert mappa[31] == "Residenza_citta" and mappa[35] == "Domicilio_citta"
+
+
+def test_pe_importa_libro_matricola_colonna_duplicata_vuota_non_sovrascrive(tmp_path):
+    import pe
+    import openpyxl
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "MATRICOLE"
+    ws.append(["", "MAT.", "COGNOME", "NOME"] + [""] * 15 + ["MANSIONI"] + [""] * 2 + ["MANSIONE"])
+    ws.append([])
+    ws.append(["", "1", "Rossi", "Mario"] + [""] * 15 + ["IMP. AMM."] + [""] * 2 + [""])            # MANSIONI piena, MANSIONE (legacy) vuota
+    p = tmp_path / "matricola.xlsx"
+    wb.save(p)
+    righe, avvisi, rapporto = pe.importa_matricola(str(p))
+    assert not avvisi and rapporto["righe"] == 1
+    assert righe[0]["Mansioni"] == "IMP. AMM."                                      # non deve essere svuotato dalla colonna duplicata vuota
+
+
+def test_pe_tab_libro_matricola_mostra_tutto_e_importa(tmp_path):
+    import openpyxl
+    import pe
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "MATRICOLE"
+    ws.append(["", "MAT.", "COGNOME", "NOME"] + [""] * 15 + ["MANSIONI"] + [""] * 2 + ["MANSIONE"])
+    ws.append([])
+    ws.append(["", "1", "Rossi", "Mario"] + [""] * 15 + ["IMP. AMM."] + [""] * 2 + [""])
+    p = tmp_path / "matricola.xlsx"
+    wb.save(p)
+    X = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    at = _pagina_pe()
+    t5 = at.tabs[4]
+    assert "Libro Matricola" in t5.proto.label
+    at.file_uploader(key="up_pe_matricola").set_value([("matricola.xlsx", open(p, "rb").read(), X)]).run()
+    next(b for b in at.button if b.key == "pe_matricola_importa").click().run()
+    assert not at.exception
+    assert at.session_state["pe_matricola"].iloc[0]["Persona"] == "Mario Rossi"
+    assert at.session_state["pe_matricola"].iloc[0]["Mansioni"] == "IMP. AMM."
+
+
 def test_controllo_nomi_include_le_persone():
     import anagrafica as an
     uff = an.elenchi([{"Nome": "Alfa"}], [{"Cantiere": "Villa Lago"}], [{"Persona": "Marco Colombo", "Utente": "marco.colombo"}])
@@ -437,7 +488,7 @@ def test_controllo_nomi_include_le_persone():
 
 def test_pe_si_apre_e_il_profilo_direzione_lo_vede():
     at = _app(_u("root", "admin"), "pe")
-    assert not at.exception and len(at.tabs) == 4
+    assert not at.exception and len(at.tabs) == 5
     assert "pe" in permessi.PROFILI_BASE["direzione"] and "pe" not in permessi.PROFILI_BASE["cantiere"]
 
 

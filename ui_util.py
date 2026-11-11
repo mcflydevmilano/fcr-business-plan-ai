@@ -94,6 +94,18 @@ def _ora_it(ts):
         return f"alle {str(ts)[11:16]} (UTC)"
 
 
+def etichetta_ultima_modifica(modulo):
+    """Mostra 'Ultima modifica: 10/11 alle 14:30 · Mario' per l'ultimo salvataggio vero di questo strumento (se c'e' gia' qualcosa di salvato)."""
+    import storage
+    try:
+        agg = storage.ultimi_aggiornamenti().get(modulo)
+    except Exception:
+        agg = None
+    if agg:
+        aggiornato, autore, _nome = agg
+        st.caption(f"🕓 Ultima modifica: {_ora_it(aggiornato)}" + (f" · {autore}" if autore else ""))
+
+
 def salva_protetto(modulo, nome, payload, utente, audit):
     """Salva controllando che nessun altro abbia modificato lo stesso salvataggio dopo che lo hai aperto. Restituisce True se ha salvato."""
     import storage
@@ -327,6 +339,7 @@ def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente="
                     st.caption("Il ripristino apre i dati di quella versione; per renderla definitiva salvala di nuovo (la versione attuale finisce nello storico).")
         else:
             st.caption("Nessun salvataggio per questo modulo.")
+    etichetta_ultima_modifica(modulo)
 
 
 def modello_excel(colonne, etichette, esempi):

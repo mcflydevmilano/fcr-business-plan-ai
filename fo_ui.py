@@ -6,14 +6,59 @@ import streamlit as st
 import guida
 
 import charts
+import doc_allegati
 import fo
 import ops_report
 import theme
 from core import fmt_num
+from ddt import DdtErrore
 from ui_util import colonna_cantiere, esempi_attivi, senza_esempi, banner_esempio, blocco_tabella, pannello_archivio, scarica_dossier, sola_lettura, sostituisci_tabella
 
 ss = st.session_state
 ICONE = {"ok": "🟢", "warn": "🟡", "bad": "🔴", "nd": "⚪"}
+
+
+def _kb(n):
+    n = n or 0
+    return f"{n / 1048576:.1f} MB" if n > 1048576 else f"{n / 1024:.0f} KB"
+
+
+def _sezione_documenti_fo(righe_doc, utente, audit):
+    st.markdown("**📎 Documenti caricati (es. il PDF del DURC)**")
+    opz = [r for r in righe_doc if (r.get("Fornitore") or "").strip() and (r.get("Documento") or "").strip()]
+    if not opz:
+        st.caption("Aggiungi prima almeno una riga qui sopra (Fornitore e Documento), poi torna qui per allegare il file.")
+        return
+    etichette = [f"{r['Fornitore']} · {r['Documento']}" for r in opz]
+    idx = st.selectbox("Documento", range(len(opz)), format_func=lambda i: etichette[i], key="fo_doc_sel")
+    r = opz[idx]
+    esistenti = doc_allegati.elenca("fornitori", r["Fornitore"])
+    esistenti = [e for e in esistenti if e["voce"] == r["Documento"]]
+    for e in esistenti:
+        c1, c2, c3 = st.columns([3, 1, 1])
+        c1.caption(f"📄 {e['nome_file']} · {_kb(e['dimensione'])} · caricato da {e['caricato_da'] or '—'}")
+        letto = doc_allegati.leggi(e["id"])
+        if letto:
+            c2.download_button("⬇️ Scarica", letto[1], file_name=e["nome_file"], mime=e["mime"], key=f"fo_doc_dl_{e['id']}")
+        if not sola_lettura() and c3.button("🗑️ Elimina", key=f"fo_doc_del_{e['id']}"):
+            doc_allegati.elimina(e["id"])
+            audit("fo_doc_eliminato", f"{r['Fornitore']} · {r['Documento']}")
+            st.rerun()
+    if not esistenti:
+        st.caption("Nessun file caricato per questo documento.")
+    if sola_lettura():
+        return
+    up = st.file_uploader("Carica il PDF (o una foto)", type=["pdf", "jpg", "jpeg", "png"], key="fo_doc_up")
+    if up is not None and st.button("📎 Allega", key="fo_doc_allega"):
+        try:
+            doc_allegati.salva("fornitori", r["Fornitore"], r["Documento"], up.name, up.getvalue(), scadenza=r.get("Scadenza", ""), utente=utente)
+        except doc_allegati.DocDoppio:
+            st.warning("Questo file è già stato caricato.")
+        except DdtErrore as e:
+            st.error(str(e))
+        else:
+            audit("fo_doc_caricato", f"{r['Fornitore']} · {r['Documento']}: {up.name}")
+            st.rerun()
 
 
 @senza_esempi
@@ -24,8 +69,8 @@ def _esempio():
             ("Ponteggi Gamma", "Subappaltatore", "DURC", g(150)), ("Ponteggi Gamma", "Subappaltatore", "Assicurazione RCT/RCO", g(20))]
     contr = [("Calcestruzzi Alfa", "Villa Lago", "Fornitura calcestruzzo", 80000, 60000, 40000), ("Elettroimpianti Beta", "Scuola Elementare", "Impianti elettrici", 110000, 120000, 110000),
              ("Ponteggi Gamma", "Villa Lago", "Noleggio ponteggi", 25000, 9500, 0)]
-    off = [("Impianto idraulico Scuola", "Idraulica Delta", 38000), ("Impianto idraulico Scuola", "Elettroimpianti Beta", 41000), ("Impianto idraulico Scuola", "Calcestruzzi Alfa", 35500),
-           ("Serramenti Villa", "Infissi Omega", 22000), ("Serramenti Villa", "Falegnameria Sigma", 24500)]
+    off = [("Impianto idraulico Scuola", "Idraulica Delta", 38000, "Sì", "No"), ("Impianto idraulico Scuola", "Elettroimpianti Beta", 41000, "Sì", "Sì"),
+           ("Impianto idraulico Scuola", "Calcestruzzi Alfa", 35500, "No", "No"), ("Serramenti Villa", "Infissi Omega", 22000, "Sì", "No"), ("Serramenti Villa", "Falegnameria Sigma", 24500, "Sì", "Sì")]
     mk = lambda cols, rows: pd.DataFrame([dict(zip(cols, r)) for r in rows], columns=cols)
     return mk(fo.COLONNE_DOCFO, docs), mk(fo.COLONNE_CONTR, contr), mk(fo.COLONNE_OFF, off)
 
@@ -37,7 +82,8 @@ def _cfg():
              "Scadenza": t(a["Scadenza"], help="AAAA-MM-GG o GG/MM/AAAA")},
             {"Fornitore": t(b["Fornitore"]), "Commessa": colonna_cantiere(b["Commessa"], (("fo_contr", "Commessa"),)), "Descrizione": t(b["Descrizione"]), "Importo": n(b["Importo"], min_value=0.0, step=1000.0, format="%.0f"),
              "Fatturato": n(b["Fatturato"], min_value=0.0, step=500.0, format="%.0f"), "Pagato": n(b["Pagato"], min_value=0.0, step=500.0, format="%.0f")},
-            {"Voce": t(c["Voce"], width="medium"), "Fornitore": t(c["Fornitore"]), "Importo": n(c["Importo"], min_value=0.0, step=500.0, format="%.0f")})
+            {"Voce": t(c["Voce"], width="medium"), "Fornitore": t(c["Fornitore"]), "Importo": n(c["Importo"], min_value=0.0, step=500.0, format="%.0f"),
+             "Posa": st.column_config.SelectboxColumn(c["Posa"], options=["Sì", "No"]), "Smaltimento": st.column_config.SelectboxColumn(c["Smaltimento"], options=["Sì", "No"])})
 
 
 def _raccogli():
@@ -114,6 +160,7 @@ def render(fcr_uri, audit=None, utente=""):
     with t1:
         banner_esempio("fo_demo", [("fo_doc", fo.COLONNE_DOCFO), ("fo_contr", fo.COLONNE_CONTR), ("fo_off", fo.COLONNE_OFF)], "svuota_fo")
         blocco_tabella("fo_doc", "Documenti dei fornitori", "Una riga per documento (DURC, assicurazione, SOA...) con la sua scadenza.", fo.COLONNE_DOCFO, fo.ETICHETTE_DOCFO, cd, ss["fo_doc"], "fo", 1, audit, 260, fo.SINONIMI_DOCFO)
+        _sezione_documenti_fo(ss["fo_doc"].to_dict("records"), utente, audit)
         a, b, c = st.columns([2, 2, 1])
         nuovo = a.text_input("Nuovo fornitore: aggiungi i documenti standard", key="fo_nuovo_nome", placeholder="Ragione sociale")
         tipo = b.selectbox("Tipo", fo.TIPI, key="fo_nuovo_tipo")

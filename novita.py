@@ -17,6 +17,17 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.30.0", "data": "2026-11-11", "titolo": "Ultima modifica sempre visibile, Libro Matricola, documenti caricabili e nuovo strumento «Documenti aziendali FCR»", "voci": [
+        "In ogni strumento, nel riquadro di salvataggio, compare ora «🕓 Ultima modifica: ... da ...»: a colpo d'occhio vedi quando e da chi è stato aggiornato per ultimo.",
+        "«Persone e ruoli» si è ampliato con tutti i campi del Libro Matricola (contratto, anagrafica, residenza, documenti): nella nuova scheda «5. Libro Matricola» "
+        "importi direttamente il tuo file Excel aziendale e vedi subito l'elenco completo, senza doverlo aprire riga per riga.",
+        "In «Fornitori», scheda «1. Dati»: puoi ora caricare il PDF o la foto di un documento (es. il DURC) direttamente su quella riga, e scaricarlo quando serve.",
+        "Sempre in «Fornitori»: nei preventivi da confrontare ci sono due nuove caselle Sì/No, «Posa incl.» e «Smaltimento incl.», e un avviso quando le offerte "
+        "sulla stessa voce non sono tutte comparabili (alcune includono posa o smaltimento, altre no).",
+        "Nuovo strumento «Documenti aziendali FCR» (gruppo «3 · Il cantiere in corso»): un unico posto per DURC, SOA, certificazioni, assicurazioni e visura "
+        "dell'azienda, con scadenze, avvisi e i file veri caricabili e scaricabili. Le scadenze compaiono anche nel Calendario.",
+        "In «Scheda cantiere»: l'elenco di tutti i cantieri a confronto è ora la prima cosa che vedi aprendo lo strumento, prima di scegliere un cantiere per il dettaglio."],
+     "strumenti": ["Persone e ruoli", "Fornitori", "Documenti aziendali FCR", "Scheda cantiere"]},
     {"id": "3.29.3", "data": "2026-11-10", "titolo": "Corretto il backup automatico del database", "voci": [
         "Il backup cifrato notturno falliva sempre il suo stesso controllo di sicurezza (il «ripristino di prova») quando nel database c'erano "
         "tabelle ancora vuote (es. ferie/permessi o DDT mai usati): ora il controllo crea prima tutte le tabelle dei vari strumenti, così il "
