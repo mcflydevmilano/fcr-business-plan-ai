@@ -173,7 +173,7 @@ def _tab_accessi(persone, utente, utenti_secrets, audit):
             storage.aggiorna_utente(p["Utente"], attivo=1)
             audit("utente_riattivato", f"{p['Utente']} (da Persone e ruoli)")
             st.rerun()
-    st.caption("Ricordati di salvare l'elenco (riquadro «💾 Salva e riapri l'elenco» in alto): il collegamento persona ↔ account resta nel salvataggio.")
+    st.caption("Ricordati di salvare l'elenco (riquadro «💾 Salva l'elenco» in alto): il collegamento persona ↔ account resta nel salvataggio.")
 
 
 def render(fcr_uri, audit=None, utente="", utenti_secrets=None):

@@ -121,11 +121,11 @@ def _proposte_ia(sha, numero, data, forn, comm, utente, audit):
     d = data_da(data)
     cc1, cc2 = st.columns(2)
     if cc1.button(f"✅ Segna {len(scelte)} ordini come consegnati", key=f"ddt_ok_{sha}", type="primary", disabled=sola_lettura() or not scelte or d is None,
-                  help="Imposta «Consegnato: sì», la data della bolla e il numero DDT. Poi salva con «Salva e riapri»."):
+                  help="Imposta «Consegnato: sì», la data della bolla e il numero DDT. Poi salva con «Salva»."):
         nuovi, n = ddt.conferma_consegne(ordini, scelte, ddt.normalizza_numero(numero), d.isoformat())
         sostituisci_tabella("mt_ord", pd.DataFrame(nuovi, columns=mt.COLONNE_ORDINI))
         audit("ddt_consegne_confermate", f"{n} ordini, DDT {numero}")
-        st.success(f"{n} ordini segnati come consegnati con DDT {numero} del {d.strftime('%d/%m/%Y')}. Salva con «Salva e riapri».")
+        st.success(f"{n} ordini segnati come consegnati con DDT {numero} del {d.strftime('%d/%m/%Y')}. Salva con «Salva».")
     if d is None and scelte:
         st.caption("Scrivi una data valida (GG/MM/AAAA) per poter confermare.")
     senza = [a["riga"] for a in abb if a["indice"] is None]
@@ -133,7 +133,7 @@ def _proposte_ia(sha, numero, data, forn, comm, utente, audit):
         nuove = [{"Materiale": x["Materiale"], "Fornitore": forn or r["fornitore"], "Commessa": comm or "", "Quantita": x["Quantita"], "Um": x["Um"], "Prezzo_unit": x["Prezzo_unit"],
                   "Consegna_prevista": "", "Consegnato": "sì", "Data_consegna": d.isoformat(), "Ddt": ddt.normalizza_numero(numero)} for x in senza]
         a_, dop = _aggiungi_righe(nuove, utente, audit, "bolla IA")
-        st.success(f"Aggiunte {a_} righe. Salva con «Salva e riapri».")
+        st.success(f"Aggiunte {a_} righe. Salva con «Salva».")
 
 
 # ----------------------------------------------------------------------------
@@ -184,7 +184,7 @@ def _carica(utente, audit):
                         st.caption("⚠️ " + x)
                     if righe and st.button(f"➕ Aggiungi queste {len(righe)} righe agli Ordini e consegne", key=f"ddt_imp_{sha}"):
                         a, d = _aggiungi_righe(righe, utente, audit, f.name)
-                        st.success(f"Aggiunte {a} righe" + (f" ({d} già presenti, saltate)" if d else "") + ". Per tenerle, salva con «Salva e riapri» in alto." if a else f"Nessuna riga aggiunta: erano già tutte presenti ({d}).")
+                        st.success(f"Aggiunte {a} righe" + (f" ({d} già presenti, saltate)" if d else "") + ". Per tenerle, salva con «Salva» in alto." if a else f"Nessuna riga aggiunta: erano già tutte presenti ({d}).")
                 except ddt.DdtErrore as e:
                     st.warning(str(e) + " Puoi comunque archiviare il file.")
             _proposte_ia(sha, numero, data, forn, comm, utente, audit)
@@ -309,7 +309,7 @@ def _controlli(utente, audit):
                 df.loc[ri, "Ddt"] = ddt.normalizza_numero(num)
                 sostituisci_tabella("mt_ord", df)
                 audit("ddt_collegato", f"{df.loc[ri, 'Materiale']} → DDT {num}")
-                st.success("Collegato. Salva con «Salva e riapri» per tenerlo.")
+                st.success("Collegato. Salva con «Salva» per tenerlo.")
                 st.rerun()
 
 

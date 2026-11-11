@@ -135,7 +135,7 @@ def _aggiungi(tabella, colonne, riga, utente, audit):
     if okk:
         st.toast("Salvato e condiviso ✅")
     else:
-        st.warning(err + " I dati restano sul tuo schermo: riprova a salvare dal pannello «Salva e riapri».")
+        st.warning(err + " I dati restano sul tuo schermo: riprova a salvare dal pannello «Salva» qui sotto.")
     return nuova["Id"]
 
 
@@ -419,10 +419,10 @@ def render(fcr_uri, audit=None, utente=""):
             st.pyplot(charts.fig_rp_ore(out["cantieri"], "light"), clear_figure=True)
             st.dataframe(pd.DataFrame([{k2: v for k2, v in c.items() if k2 != "Stato"} for c in out["cantieri"]]), hide_index=True, width="stretch")
     with t4:
-        pannello_archivio("rp", "i rapportini", _raccogli, _applica, audit, utente)
+        pannello_archivio("rp", "i rapportini", _raccogli, _applica, audit, utente, auto_apri=False)
         banner_esempio("rp_demo", [("rp_rapp", rp.COLONNE_RAPP), ("rp_segn", rp.COLONNE_SEGN), ("rp_pres", rp.COLONNE_PRES)], "svuota_rp")
         cr, cs, cp = _cfg()
-        blocco_tabella("rp_rapp", "Registro dei rapportini", "Correzioni e import. Per salvare le modifiche usa «Salva e riapri» qui sopra (nome «Rapportini» per il registro condiviso).",
+        blocco_tabella("rp_rapp", "Registro dei rapportini", "Correzioni e import. Per salvare le modifiche usa «Salva» qui sopra (nome «Rapportini» per il registro condiviso).",
                        rp.COLONNE_RAPP, rp.ETICHETTE_RAPP, cr, ss["rp_rapp"], "rp", 1, audit, 260)
         blocco_tabella("rp_segn", "Registro delle segnalazioni", "", rp.COLONNE_SEGN, rp.ETICHETTE_SEGN, cs, ss["rp_segn"], "rp", 2, audit, 220)
         blocco_tabella("rp_pres", "Registro delle presenze (nome per nome)", "Una riga per persona, giorno e cantiere: da qui si ricalcolano «Persone presenti» e «Ore lavorate» del rapportino.",

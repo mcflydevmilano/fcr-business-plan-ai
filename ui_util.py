@@ -253,8 +253,12 @@ def _bozza_banner(modulo, applica, utente, s):
             st.rerun()
 
 
-def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente=""):
-    """Riquadro 'Salva / apri' per un modulo. `raccogli()` -> payload (dict JSON); `applica(payload, nome)` ripristina i dati."""
+def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente="", auto_apri=True):
+    """Riquadro 'Salva / apri' per un modulo. `raccogli()` -> payload (dict JSON); `applica(payload, nome)` ripristina i dati.
+    `auto_apri=True` (default): la prima volta che si apre lo strumento in questa sessione, se esiste gia' un salvataggio
+    carica da solo il piu' recente, senza bisogno di cliccare «Apri» (si puo' comunque scegliere un salvataggio diverso qui sotto).
+    `auto_apri=False` per i moduli che hanno gia' un proprio caricamento automatico (es. un elenco unico aziendale) e usano
+    questo pannello solo come copia di sicurezza facoltativa con un nome."""
     import storage
     audit = audit or (lambda *a, **k: None)
     ap = ss.get("_apri_pratica")
@@ -270,9 +274,24 @@ def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente="
             ss.pop(f"_conf_{modulo}", None)
             applica(payload, ap["nome"])
             st.rerun()
+    elif auto_apri and f"_base_{modulo}" not in ss and not ss.get(f"_auto_tentato_{modulo}"):
+        # prima apertura di questa sessione (un solo tentativo, anche se non trova nulla): carica da solo l'ultimo salvataggio.
+        # Il tentativo si segna SEMPRE, cosi' un salvataggio fatto da un collega mentre questa sessione e' gia' aperta
+        # (es. mentre si sta scrivendo un nome per salvare) non viene caricato a sorpresa sopra al lavoro in corso.
+        ss[f"_auto_tentato_{modulo}"] = True
+        try:
+            piu_recente = (storage.elenca_pratiche(modulo=modulo) or [None])[0]
+            payload = storage.carica_pratica(piu_recente["nome"], modulo=modulo) if piu_recente else None
+        except Exception:
+            piu_recente, payload = None, None
+        if piu_recente and payload:
+            meta = storage.meta_pratica(piu_recente["nome"], modulo=modulo)
+            ss[f"_base_{modulo}"] = {"nome": piu_recente["nome"], "agg": meta["aggiornato"] if meta else ""}
+            applica(payload, piu_recente["nome"])
+            st.rerun()
     _s = _bozza_inizio(modulo, raccogli, applica, utente)
     _bozza_banner(modulo, applica, utente, _s)
-    with st.expander(f"💾 Salva e riapri {etichetta}" + (f"  ·  copia automatica delle {_s['ora']}" if _s.get("ora") else "")):
+    with st.expander(f"💾 Salva {etichetta}" + (f"  ·  copia automatica delle {_s['ora']}" if _s.get("ora") else "")):
         st.caption("Mentre lavori, la suite tiene una copia automatica di quello che scrivi (solo per te): se la pagina si chiude, al ritorno puoi riprenderla. "
                    "Per condividerlo con i colleghi, salvalo con un nome.")
         if not storage.database_persistente():
@@ -295,6 +314,9 @@ def pannello_archivio(modulo, etichetta, raccogli, applica, audit=None, utente="
             except Exception as e:
                 st.error(f"Impossibile salvare: {e}")
         conflitto_salvataggio(modulo, utente, audit)
+    with st.expander(f"📂 Dati salvati di {etichetta}"):
+        if auto_apri:
+            st.caption("Lo strumento apre già da solo l'ultimo salvataggio: usa qui sotto solo se vuoi passare a un salvataggio diverso o tornare a una versione precedente.")
         try:
             elenco = storage.elenca_pratiche(modulo=modulo)
             if storage.elenca_pratiche(modulo=modulo, demo=True) and st.checkbox("Mostra anche i dati dimostrativi", key=f"sv_demo_{modulo}", help="Salvataggi di prova «DEMO - …»: non toccano i dati veri."):

@@ -17,6 +17,18 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.32.0", "data": "2026-11-11", "titolo": "Apre da solo l'ultimo salvataggio in tutti gli strumenti, e «Salva» separato da «Dati salvati»", "voci": [
+        "In ogni strumento con salvataggi con nome, da ora non serve più cliccare «Apri»: aprendo lo strumento trovi già caricato da solo "
+        "l'ultimo salvataggio fatto (da te o da un collega). Se vuoi tornare a un salvataggio diverso o a una versione precedente, puoi "
+        "sempre farlo dal riquadro «📂 Dati salvati».",
+        "Il vecchio riquadro unico «💾 Salva e riapri» è diviso in due, più chiari: «💾 Salva» (per salvare con un nome) e "
+        "«📂 Dati salvati» (per vedere, aprire o eliminare i salvataggi e le versioni precedenti)."],
+     "strumenti": []},
+    {"id": "3.31.2", "data": "2026-11-11", "titolo": "Computo e Preventivo: colonna in più anche a mano, senza importare un file", "voci": [
+        "Nella tabella delle voci c'è ora «➕ Aggiungi o togli una colonna»: puoi aggiungere una colonna in più scrivendo solo il nome, "
+        "senza bisogno di importare un file, e toglierla quando non serve più.",
+        "Funziona come le colonne che arrivano dall'import: restano visibili e si salvano col preventivo, ma non entrano nei calcoli."],
+     "strumenti": ["Computo e Preventivo"]},
     {"id": "3.31.1", "data": "2026-11-11", "titolo": "Computo e Preventivo: puoi tenere le colonne del file che non riconosco", "voci": [
         "Quando importi un Excel o CSV in «Computo e Preventivo», se il file ha colonne che non fanno parte dello schema della suite "
         "(es. «Zona», «Coefficiente», altre colonne del tuo prezzario), ora te le propongo prima di importare: scegli quali tenere e "

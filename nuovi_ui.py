@@ -260,7 +260,7 @@ def _rapido_sa(utente, audit):
                 audit("sa_sal_rapido", f"{sub} {com} {imp:g}")
         if ok:
             ss["sa_q_reset"] = True
-            ss["sa_q_msg"] = "Aggiunto. Ricorda «Salva e riapri»."
+            ss["sa_q_msg"] = "Aggiunto. Ricorda «Salva»."
             st.rerun()
         if ss.get("sa_q_msg"):
             st.success(ss.pop("sa_q_msg"))
@@ -331,7 +331,7 @@ def _rapido_pr(utente, audit):
                 riga = pd.DataFrame([{"Persona": chi, "Data": quando.isoformat(), "Commessa": comm.strip(), "Ore": ore}], columns=pr.COLONNE_ORE)
                 sostituisci_tabella("pr_ore", pd.concat([ss["pr_ore"], riga], ignore_index=True))
                 audit("pr_ore_registrate", f"{chi} {quando.isoformat()} {ore:g} h")
-                st.success("Ore registrate. Ricorda di salvare con «Salva e riapri».")
+                st.success("Ore registrate. Ricorda di salvare con «Salva».")
                 st.rerun()
 
 
@@ -361,7 +361,7 @@ def _importa_rapportini_pr(utente, audit):
             att = att[att["Persona"].astype(str) != pr.SQUADRA] if len(att) else att
             sostituisci_tabella("pr_ore", pd.concat([att, pd.DataFrame(nuove, columns=pr.COLONNE_ORE)], ignore_index=True) if len(att) else pd.DataFrame(nuove, columns=pr.COLONNE_ORE))
             audit("pr_import_rapportini", str(len(nuove)))
-            st.success(f"Importate {len(nuove)} registrazioni. Salva con «Salva e riapri».")
+            st.success(f"Importate {len(nuove)} registrazioni. Salva con «Salva».")
             st.rerun()
 
 
@@ -516,7 +516,7 @@ def _rapido_ordine_mt(audit):
         sostituisci_tabella("mt_ord", pd.concat([ss["mt_ord"], riga], ignore_index=True))
         audit("mt_ordine_rapido", f"{mat} {qta:g} {um}")
         ss["mt_q_reset"] = True
-        ss["mt_q_msg"] = f"Ordine aggiunto: {mat}. Ricorda «Salva e riapri»."
+        ss["mt_q_msg"] = f"Ordine aggiunto: {mat}. Ricorda «Salva»."
         st.rerun()
     if ss.get("mt_q_msg"):
         st.success(ss.pop("mt_q_msg"))
@@ -593,7 +593,7 @@ def _registra_mov_pistola(materiale, tipo, qta, mag, audit, cod):
     out = mt.calcola_mt([], mt.normalizza_mov(ss["mt_mov"].to_dict("records"))[0], None, art)
     ora = next((m["Giacenza"] for m in out["magazzini"] if mt._n(m["Materiale"]) == mt._n(materiale) and m["Magazzino"] == (mag or mt.DEPOSITO)), 0.0)
     audit("mt_pistola", f"{tipo} {qta:g} {materiale} {mag or mt.DEPOSITO} ({cod})")
-    ss["mt_p_msg"] = ("ok", f"✅ {tipo}: {qta:g} × {materiale} → {mag or mt.DEPOSITO}. Giacenza ora: {ora:g}. (Ricorda «Salva e riapri».)")
+    ss["mt_p_msg"] = ("ok", f"✅ {tipo}: {qta:g} × {materiale} → {mag or mt.DEPOSITO}. Giacenza ora: {ora:g}. (Ricorda «Salva».)")
 
 
 def _rapido_mt(utente, audit):

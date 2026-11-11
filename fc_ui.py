@@ -242,7 +242,7 @@ def render(fcr_uri, audit=None, utente=""):
         c1.checkbox("Aggiorna lo stato nel Registro commerciale", key="fc_sync_reg", help="La pratica avanza da sola (S0 → S5). Non torna mai indietro e non tocca «Sospeso».")
         c2.checkbox("Crea i compiti per il responsabile", key="fc_sync_comp", help="Ogni passaggio «In corso» diventa un compito in «Compiti e attività»; si chiude quando il passaggio è concluso.")
         c3.number_input("Scadenza dei compiti (giorni)", 1, 60, key="fc_scad_gg")
-        st.caption("Le scelte e la tabella si salvano insieme al flusso: apri «💾 Salva e riapri» in alto e premi Salva.")
+        st.caption("Le scelte e la tabella si salvano insieme al flusso: apri «💾 Salva» in alto e premi Salva.")
         if righe:
             a, b = st.columns(2)
             if a.button("🔄 Allinea ora tutte le commesse", key="cmd_fc_allinea", disabled=sola_lettura(), width="stretch",

@@ -305,7 +305,7 @@ def render(fcr_uri, audit=None, vai_a=None):
                 st.toast(f"Tolti {n} salvataggi di prova", icon="🧹")
                 st.rerun()
             if demo_presenti:
-                st.caption("Presenti per: " + ", ".join(sorted(demo_presenti)) + ". In ogni strumento, nel riquadro «Salva e riapri», spunta «Mostra anche i dati dimostrativi» per aprirli.")
+                st.caption("Presenti per: " + ", ".join(sorted(demo_presenti)) + ". In ogni strumento, nel riquadro «📂 Dati salvati», spunta «Mostra anche i dati dimostrativi» per aprirli.")
     soglie = {"margine_target": ss.get("dd_margine", dd.DD_DEFAULT["margine_target"]), "scaduto_warn": ss.get("dd_scw", dd.DD_DEFAULT["scaduto_warn"]),
               "scaduto_bad": ss.get("dd_scb", dd.DD_DEFAULT["scaduto_bad"])}
     righe, gen, azioni = dd.semafori(metriche, soglie)

@@ -216,4 +216,4 @@ def render(fcr_uri, audit=None, utente=""):
         st.caption("Le ore disponibili vengono dal calendario (lun-ven, senza festività e assenze inserite). Gli straordinari non sono considerati.")
         with st.expander("🗄️ Copie di sicurezza con nome (facoltativo)"):
             st.caption("Organico è un elenco unico: questa è solo una copia di sicurezza con un nome a tua scelta, per tornare indietro se serve. Non serve per il lavoro di tutti i giorni.")
-            pannello_archivio("og", "una copia di Organico", _raccogli, _applica, audit, utente)
+            pannello_archivio("og", "una copia di Organico", _raccogli, _applica, audit, utente, auto_apri=False)

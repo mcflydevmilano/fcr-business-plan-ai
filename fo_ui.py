@@ -141,7 +141,7 @@ def _unisci_voci(off, audit):
             sostituisci_tabella("fo_off", pd.DataFrame(nuove, columns=fo.COLONNE_OFF))
             ss.pop("fo_gruppi_ia", None)
             audit("fo_voci_unite", f"{len(scelti)} gruppi, {n} righe")
-            st.success(f"Unite {n} righe. Per tenere il risultato salva con «Salva e riapri».")
+            st.success(f"Unite {n} righe. Per tenere il risultato salva con «Salva».")
             st.rerun()
 
 

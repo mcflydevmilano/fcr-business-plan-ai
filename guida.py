@@ -29,7 +29,7 @@ PASSI = {
         ("Controlla le ipotesi", "Rileggi ricavi, costi e importo del mutuo: sono proposte da correggere con i tuoi numeri.", None),
         ("Guarda il piano", "Nelle schede «2. Conto Economico» e «3. Finanziamenti e Cash Flow» controlla utile, rata del mutuo e DSCR.", None),
         ("Scarica il dossier", "Nella scheda «5. Dossier PDF» premi «🚀 Genera il dossier PDF».", None),
-        ("Salva", "Apri «💾 Salva e riapri il business plan» in alto, scrivi un nome e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva il business plan» in alto, scrivi un nome e premi Salva.", "salvato"),
     ], "Il piano è una stima: l'AI propone, tu decidi. Non è un parere di credito."),
     "cf": ("Capire quanta liquidità serve nei prossimi mesi con il portafoglio dei cantieri.", [
         ("Togli l'esempio", "Il portafoglio che vedi è finto (100 cantieri). Sostituiscilo con i tuoi: importa un file Excel oppure scrivi i cantieri nella tabella.", "demo:cf_demo"),
@@ -37,7 +37,7 @@ PASSI = {
         ("Guarda il Cash Flow", "Nella scheda «2. Cash Flow» vedi mese per mese quando la cassa scende e se si va sotto il fido.", None),
         ("Prova gli imprevisti", "Nella scheda «3. Stress e Soluzioni» simula incassi in ritardo o costi più alti.", None),
         ("Scarica il dossier", "Nella scheda «4. Dossier» premi «📄 Genera dossier PDF ed Excel».", "dossier"),
-        ("Salva", "Apri «💾 Salva e riapri il portafoglio» in alto, dai un nome e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva il portafoglio» in alto, dai un nome e premi Salva.", "salvato"),
     ], "I cantieri vengono presi dalla tabella: più è aggiornata, più la previsione è affidabile."),
     "pv": ("Passare dal computo dei lavori al prezzo da dare al cliente, con il margine sotto controllo.", [
         ("Inserisci le voci di computo", "Nella scheda «1. Computo» scrivi ogni lavorazione con quantità e COSTI unitari (materiali, manodopera, noli). Puoi anche farle proporre dall'AI da una descrizione.", None),
@@ -45,7 +45,7 @@ PASSI = {
         ("Leggi il margine", "Controlla il prezzo al cliente e lo sconto massimo che puoi concedere senza perdere margine.", None),
         ("Metti alla prova i costi", "Nella scheda «3. Sensibilità e Cash Flow» vedi cosa succede se i costi salgono.", None),
         ("Scarica il preventivo", "Nella scheda «4. Documenti» premi «📄 Genera preventivo (PDF cliente) ed Excel interno».", "dossier"),
-        ("Salva", "Apri «💾 Salva e riapri il preventivo» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva il preventivo» in alto e premi Salva.", "salvato"),
     ], "I costi proposti dall'AI sono stime: verificali su prezzari e progetto prima di inviare un preventivo."),
     "ee": ("Fare un preventivo rapido per pompa di calore, caldaia, cappotto, LED, solare termico o colonnine di ricarica.", [
         ("Scegli l'intervento", "In alto scegli il tipo di lavoro: le voci e i dati da inserire cambiano di conseguenza.", None),
@@ -53,7 +53,7 @@ PASSI = {
         ("Controlla i costi", "Nella scheda «2» premi «Proponi le voci», poi sostituisci i costi con quelli del tuo listino e imposta ricarico, IVA e detrazione.", None),
         ("Leggi il risultato", "Nella scheda «3» vedi prezzo, risparmio e anni di rientro.", None),
         ("Usa il preventivo", "Nella scheda «5» porti il prezzo nell'Offerta, lo aggiungi allo strumento ESCo o scarichi l'Excel.", None),
-        ("Salva", "Apri «💾 Salva e riapri il preventivo» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva il preventivo» in alto e premi Salva.", "salvato"),
     ], "Consumi, rendimenti e costi proposti sono stime: verificali con un sopralluogo e con il listino."),
     "fp": ("Chiedere ferie e permessi e farli approvare, senza fogli e senza telefonate.", [
         ("Chiedi", "Nella scheda «Chiedi» scegli ferie, permesso a ore, malattia o altro, indica le date e invia: vedi subito i giorni che ti restano.", None),
@@ -72,7 +72,7 @@ PASSI = {
         ("Aggiorna i prezzi", "Per ogni voce metti coefficiente, prezzario nuovo e % di aumento: il prezzo aggiornato si calcola da solo.", None),
         ("Aggiungi le tue colonne", "Con «Aggiungi o togli una colonna» metti le colonne che ti servono (es. subappaltatore, stato).", None),
         ("Guarda i totali", "Nella scheda «2» vedi il computo completo, il totale di progetto, quello aggiornato e la differenza. Scarichi l'Excel.", None),
-        ("Salva", "In alto, «Salva e riapri il computo»: dai un nome (es. il cantiere) e lo ritrovano anche i colleghi.", None),
+        ("Salva", "In alto, «Salva il computo»: dai un nome (es. il cantiere) e lo ritrovano anche i colleghi.", None),
     ], "Le colonne «a mano» servono solo per casi particolari: se le lasci vuote calcolo io."),
     "pc": ("Dare al cliente una pagina con lo stato dei lavori, senza dargli accesso alla suite.", [
         ("Crea il link", "Nella scheda «2» scrivi il nome del cliente e per quanti giorni vale. Copia il link: si vede una volta sola.", None),
@@ -132,7 +132,7 @@ PASSI = {
         ("Imposta il contratto", "Scegli risparmio condiviso o canone fisso, durata, finanziamento e risparmio garantito.", None),
         ("Leggi il piano", "Controlla rientro, VAN, TIR e copertura del debito: gli avvisi ti dicono cosa non torna.", None),
         ("Scarica il contratto", "Nella scheda «3. Contratto EPC» scarichi la bozza in Word da completare con il legale.", None),
-        ("Salva", "Apri «💾 Salva e riapri il piano ESCo» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva il piano ESCo» in alto e premi Salva.", "salvato"),
     ], "Stime al lordo delle imposte: il piano va verificato con il commercialista e il contratto con un legale."),
     "fv": ("Fare in pochi minuti un preventivo fotovoltaico affidabile: prezzo, detrazione, produzione e anni per rientrare.", [
         ("Descrivi il tetto", "Nella scheda «1. Impianto» indica cliente, orientamento, zona, numero e potenza dei moduli, eventuale batteria e i consumi in bolletta.", None),
@@ -140,7 +140,7 @@ PASSI = {
         ("Leggi il risultato", "Nella scheda «3. Risultato» vedi prezzo, detrazione, risparmio e anni di rientro.", None),
         ("Carica il listino", "Nella scheda «4. Listino» importi il file Excel del fornitore: poi aggiungi le voci con un clic.", None),
         ("Porta il prezzo nell'Offerta", "Nella scheda «5. Documenti» premi «Metti l'impianto nell'Offerta» o scarica l'Excel.", None),
-        ("Salva", "Apri «💾 Salva e riapri il preventivo fotovoltaico» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva il preventivo fotovoltaico» in alto e premi Salva.", "salvato"),
     ], "Resa, prezzi dell'energia e detrazione sono stime da verificare alla firma del contratto."),
     "sc": ("Rispondere a «questa settimana ho cassa?» con le fatture da incassare e da pagare.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero»: le fatture che vedi ora sono finte.", "demo:sc_demo"),
@@ -148,7 +148,7 @@ PASSI = {
         ("Scrivi saldo e fido", "Sotto «Ipotesi di previsione» metti il saldo del conto e il fido della banca.", None),
         ("Guarda la cassa", "Nella scheda «2. Cassa settimanale» vedi settimana per settimana se la cassa regge.", None),
         ("Sollecita i clienti", "Nella scheda «3. Solleciti» trovi le bozze di lettera per chi è in ritardo: rileggile prima di inviarle.", None),
-        ("Salva", "Apri «💾 Salva e riapri lo scadenzario», dai un nome (es. «Ottobre») e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva lo scadenzario», dai un nome (es. «Ottobre») e premi Salva.", "salvato"),
     ], "Nelle fatture XML non c'è il cantiere: puoi scriverlo dopo nella tabella. Le note di credito vanno tolte a mano dalla fattura collegata."),
     "sl": ("Controllare ogni commessa: quanto hai fatturato, quanto hai speso e quanto margine resta a fine lavori.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero»: le commesse che vedi sono finte.", "demo:sl_demo"),
@@ -156,7 +156,7 @@ PASSI = {
         ("Registra i SAL e i costi", "Nelle tabelle sotto aggiungi i SAL emessi (con la data) e le fatture dei fornitori già sostenute.", None),
         ("Leggi il controllo", "Nella scheda «2. Controllo commesse» il semaforo dice se il margine a finire regge. Rosso = da intervenire.", None),
         ("Passa i dati agli altri strumenti", "Nella scheda «3. Integrazioni» invia SAL e costi allo Scadenzario e le commesse al Cash Flow.", None),
-        ("Salva", "Apri «💾 Salva e riapri la contabilità lavori» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva la contabilità lavori» in alto e premi Salva.", "salvato"),
     ], "«Invia al Cash Flow» sostituisce tutto il portafoglio del Cash Flow: salvalo prima se contiene altri cantieri."),
     "ga": ("Decidere a quali gare partecipare, con che ribasso, e non perdere nessuna scadenza.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero»: le gare che vedi sono finte.", "demo:ga_demo"),
@@ -164,7 +164,7 @@ PASSI = {
         ("Prepara i documenti", "Scegli una gara e premi per aggiungere la check-list dei documenti richiesti, poi spunta quelli pronti.", None),
         ("Scegli il ribasso", "Nella scheda «2. Valutazione» trovi il ribasso massimo che mantiene il margine obiettivo e il valore atteso.", None),
         ("Passa le gare vinte al SAL", "Nella scheda «3. Integrazioni» premi «📐 Invia le gare vinte a SAL e contabilità».", None),
-        ("Salva", "Apri «💾 Salva e riapri le gare» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva le gare» in alto e premi Salva.", "salvato"),
     ], "Il ribasso massimo dipende dai costi che inserisci: se sono sottostimati, anche il ribasso consigliato lo è."),
     "fo": ("Tenere sotto controllo documenti, contratti e preventivi dei fornitori e subappaltatori.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:fo_demo"),
@@ -172,7 +172,7 @@ PASSI = {
         ("Aggiungi contratti e offerte", "Sotto trovi i contratti aperti e le offerte ricevute per la stessa fornitura.", None),
         ("Guarda cosa scade", "Nella scheda «2. Controllo» vedi i documenti scaduti o in scadenza e i fornitori da non usare.", None),
         ("Confronta i preventivi", "Nella scheda «3. Confronto preventivi» vedi l'offerta più bassa tra i fornitori in regola. Se due fornitori hanno scritto la stessa lavorazione in modo diverso, la suite propone di unirle: spunta e conferma.", None),
-        ("Salva", "Apri «💾 Salva e riapri i fornitori» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva i fornitori» in alto e premi Salva.", "salvato"),
     ], "Un fornitore con documenti scaduti non dovrebbe entrare in cantiere: controlla il rosso prima di assegnare lavori."),
     "sx": ("Verificare formazioni, idoneità mediche e documenti obbligatori di ogni cantiere.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:sx_demo"),
@@ -180,7 +180,7 @@ PASSI = {
         ("Spunta i documenti di cantiere", "Per ogni cantiere indica quali documenti obbligatori (POS, PSC, notifica) sono presenti.", None),
         ("Guarda i problemi", "Nella scheda «2. Controllo» vedi i cantieri a rischio e cosa va rinnovato.", None),
         ("Scarica il dossier", "Nella scheda «3. Dossier» premi il pulsante per PDF ed Excel.", "dossier"),
-        ("Salva", "Apri «💾 Salva e riapri la sicurezza» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva la sicurezza» in alto e premi Salva.", "salvato"),
     ], "Strumento di promemoria: la verifica ufficiale resta al responsabile della sicurezza (RSPP)."),
     "da": ("Avere in un unico posto DURC, SOA, certificazioni, assicurazioni e visura dell'azienda, con le scadenze e i file veri.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:da_demo"),
@@ -188,7 +188,7 @@ PASSI = {
         ("Carica il file", "Scegli il documento dal menu qui sotto e allega il PDF o la foto: resta scaricabile da qui.", None),
         ("Guarda le scadenze", "Qui sotto vedi subito quali documenti sono scaduti o in scadenza.", None),
         ("Scarica il dossier", "Nella scheda «2. Dossier» premi il pulsante per PDF ed Excel.", "dossier"),
-        ("Salva", "Apri «💾 Salva e riapri i documenti aziendali» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva i documenti aziendali» in alto e premi Salva.", "salvato"),
     ], "I file caricati qui non finiscono nelle versioni storiche del salvataggio: restano nell'archivio a parte, sempre scaricabili."),
     "mz": ("Sapere quanto costa ogni mezzo all'ora, se è usato abbastanza e quando scadono revisioni e assicurazioni.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:mz_demo"),
@@ -196,7 +196,7 @@ PASSI = {
         ("Registra l'uso e le scadenze", "Aggiungi le ore di uso per cantiere e le scadenze (revisione, assicurazione, tagliando).", None),
         ("Leggi costi e scadenze", "Nella scheda «2. Costi e Scadenze» vedi tariffa oraria, mezzi poco usati e scadenze vicine.", None),
         ("Invia i costi al SAL", "Nella scheda «3. Integrazioni» premi «📐 Invia i costi dei mezzi a SAL e contabilità».", None),
-        ("Salva", "Apri «💾 Salva e riapri il parco mezzi» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva il parco mezzi» in alto e premi Salva.", "salvato"),
     ], "Se un mezzo ha poche ore di uso, il costo orario sale: è un segnale, non un errore."),
     "og": ("Capire se in certi mesi mancano o avanzano persone rispetto ai cantieri.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:og_demo"),
@@ -205,7 +205,7 @@ PASSI = {
         ("Assegna ai cantieri", "Nella seconda tabella scrivi chi lavora a quale cantiere, da quando a quando, con le ore al mese.", None),
         ("Guarda il carico", "Nella scheda «2. Carico di lavoro» vedi i mesi in sovraccarico (serve più gente) o scarichi (ore ferme).", None),
         ("Scarica il dossier", "Nella scheda «3. Dossier» premi il pulsante per PDF ed Excel.", "dossier"),
-        ("Salva", "Apri «💾 Salva e riapri l'organico» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva l'organico» in alto e premi Salva.", "salvato"),
     ], "Le ore disponibili vanno scritte al netto di ferie e malattie."),
     "rp": ("Il giornale del cantiere dal telefono: cosa si è fatto oggi e cosa non va.", [
         ("Scrivi il rapportino", "Nella scheda «✍️ Rapportino» scegli il cantiere, scrivi quante persone c'erano, le ore totali e cosa avete fatto. Premi «➕ Salva il rapportino».", "dati:rp_rapp"),
@@ -221,11 +221,11 @@ PASSI = {
         ("Aggiorna l'avanzamento", "Ogni settimana cambia la percentuale di avanzamento reale delle fasi in corso.", None),
         ("Leggi il Gantt", "Nella scheda «2. Gantt e ritardi» la linea rossa è oggi: le barre in giallo o rosso sono in ritardo.", None),
         ("Scarica il dossier", "Nella scheda «3. Dossier» premi il pulsante per PDF ed Excel.", "dossier"),
-        ("Salva", "Apri «💾 Salva e riapri il cronoprogramma» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva il cronoprogramma» in alto e premi Salva.", "salvato"),
     ], "I legami valgono dentro lo stesso cantiere e il nome della fase va scritto uguale. I giorni di fermo e le date «Non prima del» le scrivi tu: il programma non sa da solo che piove o che il camion è in ritardo."),
     "mc": ("Vedere il margine vero di ogni commessa, con i costi di subappalti, ore, materiali e mezzi.", [
         ("Inserisci le commesse", "In «SAL e contabilità lavori» scrivi le commesse con contratto, costi preventivati e avanzamento reale.", None),
-        ("Compila gli altri strumenti", "Subappalti, Presenze, Materiali e Parco mezzi: più dati metti, più il margine è vero. Salva ognuno con «Salva e riapri».", None),
+        ("Compila gli altri strumenti", "Subappalti, Presenze, Materiali e Parco mezzi: più dati metti, più il margine è vero. Salva ognuno con «Salva».", None),
         ("Scegli i costi da contare", "Qui sopra scegli quali fonti includere: i costi già mandati a SAL non vengono contati due volte.", None),
         ("Leggi i margini", "Rosso = il margine finale previsto è molto sotto il preventivato; giallo = leggermente sotto.", None),
     ], "È una stima di gestione: il margine finale dipende dall'avanzamento reale che inserisci."),
@@ -235,14 +235,14 @@ PASSI = {
         ("Registra i SAL e i pagamenti", "Aggiungi ogni SAL ricevuto con l'importo lordo e quanto hai già pagato. Con «Inserimento veloce» scrivi poche lettere del nome («adam») e scegli dai suggerimenti.", None),
         ("Registra i documenti", "DURC, polizze e idoneità con la data di scadenza.", None),
         ("Leggi i risultati", "Nella scheda «2. Risultati» vedi cosa devi pagare e chi ha documenti scaduti: non pagarlo finché non li rinnova.", None),
-        ("Salva", "Apri «💾 Salva e riapri i subappalti» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva i subappalti» in alto e premi Salva.", "salvato"),
     ], "L'avviso sui pagamenti è un promemoria: la valutazione legale resta all'ufficio o al consulente."),
     "pr": ("Registrare le ore di ognuno per commessa e vedere il costo della manodopera.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:pr_demo"),
         ("Inserisci le persone", "Nella scheda «1. Dati» scrivi nome, qualifica e costo orario aziendale (se hai solo la RAL usa «Calcola il costo orario dalla RAL»). Con «Cessato il» la persona non viene più proposta.", "dati:pr_per"),
         ("Registra le ore", "Dal telefono usa «Registra le mie ore»: scegli il giorno, la commessa e le ore, poi premi Registra.", None),
         ("Leggi i risultati", "Nella scheda «2. Risultati» vedi ore, straordinari e costo per commessa.", None),
-        ("Salva", "Apri «💾 Salva e riapri le presenze» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva le presenze» in alto e premi Salva.", "salvato"),
     ], "Il costo orario è il costo per l'azienda, non la paga netta. Sono dati personali: trattali con riservatezza."),
     "mt": ("Sapere cosa è stato ordinato, cosa è arrivato in cantiere e quanto costa per commessa.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:mt_demo"),
@@ -251,14 +251,14 @@ PASSI = {
         ("Archivia le bolle", "Nella scheda «5. Bolle (DDT)» carica il PDF, la foto o l'Excel della bolla: la suite propone numero e data, tu controlli. Con «Leggi la bolla con l'IA» compila anche le righe e le abbina agli ordini aperti: tu confermi e diventano consegnati. Da Excel puoi anche aggiungere le righe agli ordini.", None),
         ("Registra carichi e scarichi", "Nella seconda tabella segna cosa entra e cosa esce: la giacenza si calcola da sola, per magazzino. Con «Magazzino con la pistola dei codici a barre» spari l'etichetta e il movimento si registra da solo; i codici si scrivono nella tabella «Articoli e codici a barre», dove puoi anche fissare la scorta minima.", None),
         ("Ordine veloce", "Apri «Nuovo ordine veloce»: scrivi poche lettere e scegli dai suggerimenti. Scelti materiale e fornitore il prezzo si compila da solo con l'ultimo pagato.", None),
-        ("Salva", "Apri «💾 Salva e riapri i materiali» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva i materiali» in alto e premi Salva.", "salvato"),
     ], "Un ritardo si vede in rosso: controlla prima il fornitore."),
     "vr": ("Non perdere le decisioni delle riunioni: ogni azione ha un responsabile e una scadenza.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:vr_demo"),
         ("Scrivi il verbale", "Nella scheda «1. Dati» aggiungi la riunione con data, partecipanti e decisioni.", "dati:vr_ver"),
         ("Aggiungi le azioni", "Nella seconda tabella scrivi cosa fare, chi e entro quando. Il responsabile è il nome utente (es. mario).", None),
         ("Crea i compiti", "Nella scheda «3. Collegamenti» premi «Crea i compiti nella chat»: ognuno li vede nella chat e nel calendario.", None),
-        ("Salva", "Apri «💾 Salva e riapri i verbali» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva i verbali» in alto e premi Salva.", "salvato"),
     ], "I compiti si creano solo per persone che hanno un utente nella suite."),
     "ac": ("Registrare entrata e uscita dal telefono, senza fogli e senza dimenticanze.", [
         ("Inquadra il QR", "Con la fotocamera del telefono inquadra il codice all'ingresso: si apre la pagina di timbratura.", None),
@@ -281,7 +281,7 @@ PASSI = {
         ("Aggiungi un compito", "Nella scheda «2. Nuovo e tabella» scrivi cosa fare, il responsabile, la scadenza e la commessa.", None),
         ("Muovi i compiti", "Nella bacheca premi ◀ e ▶ per spostare un compito tra Da fare, In corso, In attesa e Fatto.", None),
         ("Controlla i ritardi", "La scheda «4. Per persona» mostra chi ha compiti scaduti. Le scadenze compaiono anche nel Calendario.", None),
-        ("Salva", "Apri «💾 Salva e riapri» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva» in alto e premi Salva.", "salvato"),
     ], "Il responsabile è il nome utente: scrivilo uguale per vedere «Solo i miei»."),
     "fc": ("Seguire ogni commessa lungo i 28 passaggi dello schema FCR, sapendo chi deve fare cosa e cosa è bloccato.", [
         ("Avvia una commessa", "Nella scheda «2. Scheda commessa» apri «Avvia il flusso» e scegli la pratica del Registro commerciale: il suo codice è il codice madre.", "dati:fc_df"),
@@ -290,13 +290,13 @@ PASSI = {
         ("Registra i passaggi", "Apri il passaggio e premi «Segna fatto». Dove serve, un'altra persona preme «Approva». Il CdA, il Presidente e l'assemblea danno GO o NO GO.", None),
         ("Lascia fare al flusso", "Ogni passaggio aggiorna da solo lo stato nel Registro commerciale e crea il compito per il responsabile, con scadenza. Chi deve approvare riceve un messaggio in chat.", None),
         ("Guarda cosa blocca", "Se un GO manca, i passaggi dopo non si completano. Il NO GO del CdA o dell'assemblea ferma la commessa; quello del Presidente riporta l'offerta al passo 7.", None),
-        ("Controlla e salva", "La scheda «3. Controlli» segnala passaggi senza iniziali, fuori sequenza o fermi. Poi apri «💾 Salva e riapri» in alto e premi Salva.", "salvato"),
+        ("Controlla e salva", "La scheda «3. Controlli» segnala passaggi senza iniziali, fuori sequenza o fermi. Poi apri «💾 Salva» in alto e premi Salva.", "salvato"),
     ], "Il flusso non sostituisce le firme e le approvazioni vere: registra chi le ha date e quando."),
     "ad": ("Avere in un posto solo i link dei documenti di ogni commessa e sapere cosa manca o scade.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:ad_demo"),
         ("Inserisci i documenti", "Nella scheda «1. Dati» scrivi commessa, categoria, titolo e il link al file o alla cartella (https://...).", "dati:ad_doc"),
         ("Controlla cosa manca", "Nella scheda «2. Risultati» vedi i documenti attesi che non hai registrato e quelli scaduti.", None),
-        ("Salva", "Apri «💾 Salva e riapri l'archivio documenti» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva l'archivio documenti» in alto e premi Salva.", "salvato"),
     ], "I file restano dove sono: la suite conserva solo il link."),
     "ch": ("Scrivere ai colleghi senza uscire dalla suite: canali, gruppi privati e chat dirette.", [
         ("Scegli dove scrivere", "A sinistra trovi i canali pubblici, i gruppi privati e le chat dirette: un pallino rosso indica i messaggi da leggere.", None),
@@ -313,14 +313,14 @@ PASSI = {
         ("Aggiungi il mercato", "Nella scheda «6. Mercato» scrivi gli annunci della zona (così com'è / efficientato).", None),
         ("Segui i finanziamenti", "Nella scheda «7. Continuità finanziaria» registra le richieste al Condominio e ai condomini (AGOS) con stato, esito e documenti.", None),
         ("Genera l'offerta", "Nella scheda «8. Offerta» premi «Genera» e scarica PowerPoint, PDF ed Excel.", "dossier"),
-        ("Salva", "Apri «💾 Salva e riapri l'offerta» in alto, scrivi il codice pratica come nome e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva l'offerta» in alto, scrivi il codice pratica come nome e premi Salva.", "salvato"),
     ], "I calcoli sono simulazioni: recupero fiscale, risparmio e valori di mercato vanno verificati caso per caso. Salva una pratica per ogni condominio."),
     "rc": ("Sapere a che punto è ogni pratica commerciale, quanto vale e cosa va fatto adesso.", [
         ("Importa il registro", "Nella scheda «4. Importa dal tuo Excel» carica il file del registro: l'app legge i fogli Registro ed Eliminati e riconosce da sola le colonne.", None),
         ("Guarda il cruscotto", "Nella scheda «1. Cruscotto» vedi le pratiche per stato e per commerciale, il valore in corso e la pipeline (valore × % di successo).", None),
         ("Cerca una pratica", "Nella scheda «2. Pratiche» cerca per città, indirizzo, amministratore o codice, e filtra per stato o commerciale.", None),
         ("Segui i prossimi interventi", "Nella scheda «3. Da fare» vedi cosa è scaduto o sta per scadere e chi lo deve fare. Quando è fatto, aggiorna stato e scadenza nella scheda «2».", None),
-        ("Salva", "Apri «💾 Salva e riapri il registro» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva il registro» in alto e premi Salva.", "salvato"),
     ], "Il valore pipeline lo ricalcola l'app: non serve scriverlo. Per togliere una pratica senza perderla, metti «Eliminata» nella colonna Archivio."),
     "pz": ("Avere i prezzi di riferimento a portata di mano per preventivi e acquisti, e sapere quando vanno aggiornati.", [
         ("Carica il prezziario", "Nella scheda «2. Carica un prezziario» scegli il file Excel del listino: l'app riconosce il quadrimestre dal nome, mostra cosa ha letto e cosa ha saltato. Poi premi «Salva».", None),
@@ -336,7 +336,7 @@ PASSI = {
         ("Chiama o scrivi", "Nella scheda «2. Scheda contatto» scegli un nome: trovi i pulsanti Chiama, Scrivi e WhatsApp e tutto ciò che lo riguarda (documenti, fatture, cantieri).", None),
         ("Controlla i nomi", "Nella scheda «4. Controllo nomi» vedi i nomi scritti diversamente negli altri strumenti (refusi, «Srl» in più) e li correggi tutti con un clic.", None),
         ("Usa lo stesso codice ovunque", "Scrivi il codice cantiere nelle altre tabelle: così ritrovi tutto di un lavoro. La colonna «Codice in altro sistema» serve se un cantiere ha un codice anche altrove.", None),
-        ("Salva", "Apri «💾 Salva e riapri la rubrica» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva la rubrica» in alto e premi Salva.", "salvato"),
     ], "I collegamenti con fatture e documenti funzionano per nome: scrivi il fornitore sempre allo stesso modo in tutti gli strumenti."),
     "pe": ("Avere l'elenco di chi lavora in azienda e dare a ciascuno solo gli accessi che gli servono.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:pe_demo"),
@@ -344,7 +344,7 @@ PASSI = {
         ("Guarda i ruoli", "Nella scheda «2. Ruoli e profili» vedi quali strumenti apre ogni ruolo.", None),
         ("Crea gli accessi", "Nella scheda «3. Accessi all'app» (solo amministratore) scegli la persona, controlla il profilo proposto e premi «Crea account e abilita». Comunica la password temporanea in privato.", None),
         ("Revoca chi esce", "Quando qualcuno non è più in servizio, mettilo «No» in elenco e usa «⛔ Revoca accesso».", None),
-        ("Salva", "Apri «💾 Salva e riapri l'elenco» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva l'elenco» in alto e premi Salva.", "salvato"),
     ], "Sono dati personali: tienili essenziali e dai accesso a questo strumento solo a chi serve. Chi non è nell'elenco ma ha un account compare come «account senza persona»."),
     "lg": ("Passare un cliente allo studio legale con tutto il fascicolo, e non perdere i termini di riserve, contratti e penali.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:lg_demo"),
@@ -353,7 +353,7 @@ PASSI = {
         ("Passa un cliente allo studio", "Nella scheda «2. Passa allo studio» scegli il cliente, controlla il messaggio e premi «Invia allo studio» (oppure scarica il fascicolo PDF).", None),
         ("Guarda le penali", "Scrivi i termini contrattuali di fine lavori nella scheda 1: nella scheda «4. Penali di ritardo» vedi il ritardo e la penale stimati dal Cronoprogramma.", None),
         ("Scarica il dossier", "Nella scheda «5. Dossier» premi il pulsante per PDF ed Excel.", "dossier"),
-        ("Salva", "Apri «💾 Salva e riapri lo studio legale» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva lo studio legale» in alto e premi Salva.", "salvato"),
     ], "È un promemoria, non una consulenza legale: le scadenze di legge le fissa lo studio e tu scrivi le date che comunica. L'invio diretto richiede che l'amministratore imposti STUDIO_LEGALE_EMAIL o lo Slack dello studio."),
     "bk": ("Sapere quali fatture sono state pagate o incassate guardando l'estratto conto, senza spuntare a mano.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:bk_demo"),
@@ -362,7 +362,7 @@ PASSI = {
         ("Controlla gli abbinamenti", "Nella scheda «2. Abbinamenti» i 🟢 sono sicuri, i 🟡 vanno guardati. Togli la spunta a quelli sbagliati.", None),
         ("Conferma", "Premi «Segna come pagate/incassate»: lo Scadenzario si aggiorna. Poi salvalo.", None),
         ("Scarica il dossier", "Nella scheda «3. Dossier» premi il pulsante per PDF ed Excel.", "dossier"),
-        ("Salva", "Apri «💾 Salva e riapri i movimenti» in alto e premi Salva.", "salvato"),
+        ("Salva", "Apri «💾 Salva i movimenti» in alto e premi Salva.", "salvato"),
     ], "Gli abbinamenti sono proposte: l'ultima parola è tua. I movimenti senza fattura (stipendi, spese bancarie) restano nell'elenco a parte."),
     "oa": ("Far approvare ogni acquisto alla persona giusta, in base all'importo, con la traccia di chi ha deciso.", [
         ("Togli l'esempio", "Premi «Svuota l'esempio e parti da zero».", "demo:oa_demo"),
@@ -371,7 +371,7 @@ PASSI = {
         ("Approva o respingi", "Nella scheda «2. Da approvare» scegli l'ordine: solo chi è autorizzato (e non l'ha chiesto) può approvare. Per respingere serve il motivo.", None),
         ("Controlla le anomalie", "Nella scheda «3. Controllo» vedi ordini con fornitori irregolari, senza cantiere o in attesa da troppo.", None),
         ("Scarica il dossier", "Nella scheda «4. Dossier» premi il pulsante per PDF ed Excel.", "dossier"),
-        ("Salva", "Apri «💾 Salva e riapri gli ordini» in alto e premi Salva: il salvataggio conserva chi ha approvato e quando.", "salvato"),
+        ("Salva", "Apri «💾 Salva gli ordini» in alto e premi Salva: il salvataggio conserva chi ha approvato e quando.", "salvato"),
     ], "I nomi dei richiedenti e degli approvatori sono i nomi utente: per il controllo «chi chiede non approva» devono essere scritti uguali."),
     "ca": ("Una sola lista di tutte le scadenze: fatture, gare, documenti, formazioni, mezzi e fasi.", [
         ("Scegli cosa vedere", "In alto scegli quanti giorni mostrare e il tipo di scadenza.", None),

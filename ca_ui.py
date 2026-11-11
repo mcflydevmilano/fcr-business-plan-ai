@@ -111,7 +111,7 @@ def render(fcr_uri, audit=None, consentiti=None):
                  "Ecco come sarebbe oggi (anteprima sui dati salvati):")
         pay_s, _ = riepilogo.raccogli()
         if not pay_s:
-            st.info("Nessun salvataggio nel database: salva i dati dei moduli (riquadro «Salva e riapri») per ricevere il riepilogo.")
+            st.info("Nessun salvataggio nel database: salva i dati dei moduli (riquadro «Salva») per ricevere il riepilogo.")
         else:
             ogg, testo, _h, crit = riepilogo.costruisci(pay_s, oggi)
             st.markdown(f"**Oggetto:** {ogg}")
