@@ -11,8 +11,9 @@ import sc
 import fatture
 import sc_report
 import theme
-from core import fmt_num
-from ui_util import cantieri_rubrica, colonna_cantiere, esempi_attivi, senza_esempi, importa_dati, sola_lettura, modello_excel, pannello_archivio, sostituisci_tabella, tabella_modificabile
+from core import fmt_num, to_float
+from ui_util import (cantieri_rubrica, cantieri_vivi_rubrica, colonna_cantiere, esempi_attivi, senza_esempi, importa_dati, sola_lettura, modello_excel, pannello_archivio,
+                      sostituisci_tabella, tabella_modificabile)
 
 ss = st.session_state
 
@@ -121,6 +122,60 @@ def _df(df):
     st.dataframe(df, hide_index=True, width="stretch")
 
 
+def _assegna_cantiere_multiplo(audit):
+    """Assegna un cantiere a tutte le fatture di una controparte che oggi non ce l'hanno: utile dopo un import massivo
+    (es. da PDF/Excel) dove il cantiere non e' indicato nel documento."""
+    if sola_lettura():
+        return
+    df = ss["sc_df"]
+    if df.empty:
+        return
+    vuoto = df["Cantiere"].fillna("").astype(str).str.strip() == ""
+    senza = df[vuoto]
+    controparti = sorted({c for c in senza["Controparte"].astype(str).str.strip() if c and c.lower() != "nan"})
+    if not controparti:
+        return
+    with st.expander(f"🏗️ Assegna un cantiere a più fatture insieme ({len(senza)} senza cantiere)"):
+        st.caption("Scegli una controparte (cliente o fornitore) e il cantiere: verrà assegnato a tutte le sue fatture che oggi non ce l'hanno.")
+        c1, c2 = st.columns(2)
+        contr = c1.selectbox("Controparte", controparti, key="sc_bulk_contr")
+        n = int((senza["Controparte"].astype(str).str.strip() == contr).sum())
+        vivi = cantieri_vivi_rubrica()
+        cant = c2.selectbox("Cantiere", vivi, key="sc_bulk_cant") if vivi else c2.text_input("Cantiere", key="sc_bulk_cant")
+        if st.button(f"Assegna «{cant}» a {n} fatture di «{contr}»", key="sc_bulk_cant_ok", disabled=not str(cant or "").strip()):
+            nuova = df.copy()
+            m = vuoto & (nuova["Controparte"].astype(str).str.strip() == contr)
+            nuova.loc[m, "Cantiere"] = cant
+            sostituisci_tabella("sc_df", nuova)
+            audit("sc_cantiere_multiplo", f"{contr} -> {cant} ({n})")
+            st.rerun()
+
+
+def _salda_multiplo(audit):
+    """Segna piu' fatture come saldate per intero in un colpo solo (es. dopo un controllo con l'estratto conto),
+    invece di modificarle una per una nella tabella."""
+    if sola_lettura():
+        return
+    df = ss["sc_df"]
+    if df.empty:
+        return
+    residuo = df["Importo"].map(lambda x: to_float(x, 0.0)) - df["Saldato"].map(lambda x: to_float(x, 0.0))
+    aperte = df[residuo > 0.009]
+    if aperte.empty:
+        return
+    with st.expander(f"💶 Segna più fatture come saldate per intero ({len(aperte)} aperte)"):
+        st.caption("Seleziona le fatture già incassate o pagate per intero e confermale insieme, invece di modificarle una per una nella tabella.")
+        opz = {i: f"{r['Tipo']} · {r['Controparte'] or '(senza nome)'} · {r['Documento'] or '(senza numero)'} · scad. {r['Scadenza']} · {fmt_num(to_float(r['Importo'], 0.0))} €"
+               for i, r in aperte.iterrows()}
+        scelte = st.multiselect("Fatture da saldare per intero", list(opz.keys()), format_func=lambda i: opz[i], key="sc_bulk_saldo")
+        if st.button(f"Segna {len(scelte)} fatture come saldate", key="sc_bulk_saldo_ok", disabled=not scelte):
+            nuova = df.copy()
+            nuova.loc[scelte, "Saldato"] = nuova.loc[scelte, "Importo"]
+            sostituisci_tabella("sc_df", nuova)
+            audit("sc_saldo_multiplo", str(len(scelte)))
+            st.rerun()
+
+
 def _per_cantiere():
     """Prima schermata: lo Scadenzario diviso per cantiere, con il totale in fondo. Le fatture si modificano nella scheda «Documenti» (che mostra il totale)."""
     docs, _ = sc.normalizza_documenti(ss["sc_df"].to_dict("records"))
@@ -200,6 +255,8 @@ def render(fcr_uri, audit=None, utente=""):
         st.caption("Tipo «Attiva» = fattura emessa a un cliente (da incassare); «Passiva» = fattura di un fornitore (da pagare). Importi IVA inclusa. "
                    "In «Già incassato / pagato» metti quanto è già stato regolato: il residuo conta solo quello che resta.")
         tabella_modificabile("sc_df", ss["sc_df"], _cfg(), altezza=330)
+        _assegna_cantiere_multiplo(audit)
+        _salda_multiplo(audit)
         st.subheader("Ipotesi di previsione")
         a, b, c = st.columns(3)
         with a:

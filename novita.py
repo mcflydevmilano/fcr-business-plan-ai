@@ -17,6 +17,13 @@ MAX_MANUALI = 200
 
 # Piu' recente in alto. Campi: id (versione), data (AAAA-MM-GG), quando (testo da mostrare, facoltativo), titolo, voci (cosa cambia per te), strumenti (sigle o nomi)
 NOVITE = [
+    {"id": "3.33.0", "data": "2026-11-23", "titolo": "Scadenzario: assegna il cantiere e segna il saldato a più fatture insieme", "voci": [
+        "Nella scheda «2. Documenti e Ipotesi», dopo la tabella delle fatture, c'è ora «🏗️ Assegna un cantiere a più fatture insieme»: scegli "
+        "una controparte (cliente o fornitore) senza cantiere e un cantiere, e lo assegni a tutte le sue fatture in un colpo solo, invece di "
+        "farlo riga per riga. Non tocca le fatture che hanno già un cantiere.",
+        "C'è anche «💶 Segna più fatture come saldate per intero»: seleziona le fatture già incassate o pagate (es. dopo un controllo con "
+        "l'estratto conto) e confermale tutte insieme."],
+     "strumenti": ["Scadenzario"]},
     {"id": "3.32.0", "data": "2026-11-11", "titolo": "Apre da solo l'ultimo salvataggio in tutti gli strumenti, e «Salva» separato da «Dati salvati»", "voci": [
         "In ogni strumento con salvataggi con nome, da ora non serve più cliccare «Apri»: aprendo lo strumento trovi già caricato da solo "
         "l'ultimo salvataggio fatto (da te o da un collega). Se vuoi tornare a un salvataggio diverso o a una versione precedente, puoi "
